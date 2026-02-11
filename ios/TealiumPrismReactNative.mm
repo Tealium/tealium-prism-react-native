@@ -1,21 +1,353 @@
 #import "TealiumPrismReactNative.h"
+#import <React/RCTEventEmitter.h>
 
-@implementation TealiumPrismReactNative
-- (NSNumber *)multiply:(double)a b:(double)b {
-    NSNumber *result = @(a * b);
+#ifdef RCT_NEW_ARCH_ENABLED
+#import <TealiumPrismReactNativeSpec/TealiumPrismReactNativeSpec.h>
+#endif
 
-    return result;
+// Swift bridge (Xcode-generated header from TealiumPrismBridge.swift)
+#import "TealiumPrismReactNative-Swift.h"
+
+static NSString *const kEventDataLayerUpdated = @"TealiumDataLayerUpdated";
+static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
+
+@implementation TealiumPrismReactNative {
+    BOOL _hasListeners;
+}
+
+// MARK: - Module Setup
+
++ (NSString *)moduleName {
+    return @"TealiumPrismReactNative";
+}
+
++ (BOOL)requiresMainQueueSetup {
+    return NO;
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
-    (const facebook::react::ObjCTurboModule::InitParams &)params
-{
+    (const facebook::react::ObjCTurboModule::InitParams &)params {
     return std::make_shared<facebook::react::NativeTealiumPrismReactNativeSpecJSI>(params);
 }
 
-+ (NSString *)moduleName
-{
-  return @"TealiumPrismReactNative";
+// MARK: - Initialization & Lifecycle
+
+- (void)initialize:(JS::NativeTealiumPrismReactNative::PrismConfigSpec &)config
+           resolve:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject {
+    @try {
+        TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+
+        // Get lifecycle enabled (default true)
+        BOOL lifecycleEnabled = config.lifecycleEnabled().has_value() ? config.lifecycleEnabled().value() : YES;
+
+        [bridge createWithAccount:config.account()
+                          profile:config.profile()
+                      environment:config.environment()
+                         logLevel:config.logLevel()
+                       dataSource:config.dataSource()
+                     settingsFile:config.settingsFile()
+                      settingsUrl:config.settingsUrl()
+                existingVisitorId:config.existingVisitorId()
+               visitorIdentityKey:config.visitorIdentityKey()
+                 momentsApiRegion:config.momentsApiRegion()
+                 lifecycleEnabled:lifecycleEnabled
+                       completion:^(BOOL success) {
+            resolve(success ? @YES : @NO);
+        }];
+    } @catch (NSException *exception) {
+        reject(@"INIT_ERROR", exception.reason, nil);
+    }
+}
+
+- (void)shutdown {
+    [[TealiumPrismBridge shared] shutdown];
+}
+
+- (void)isInitialized:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject {
+    resolve(@([[TealiumPrismBridge shared] isInitialized]));
+}
+
+// MARK: - Tracking
+
+- (void)track:(JS::NativeTealiumPrismReactNative::TrackDataSpec &)trackData
+      resolve:(RCTPromiseResolveBlock)resolve
+       reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    NSString *name = trackData.name();
+    NSString *type = trackData.type() ?: @"event";
+    NSDictionary *dataDict = trackData.data() ? (NSDictionary *)trackData.data() : nil;
+    [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict];
+    resolve(nil);
+}
+
+- (void)flushEventQueue:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] flushEventQueueWithCompletion:^{
+        resolve(nil);
+    }];
+}
+
+// MARK: - Data Layer
+
+- (void)setDataLayerString:(NSString *)key
+                     value:(NSString *)value
+                    expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerStringWithKey:key value:value expiry:expiry];
+}
+
+- (void)setDataLayerNumber:(NSString *)key
+                     value:(double)value
+                    expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerNumberWithKey:key value:value expiry:expiry];
+}
+
+- (void)setDataLayerBoolean:(NSString *)key
+                      value:(BOOL)value
+                     expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerBooleanWithKey:key value:value expiry:expiry];
+}
+
+- (void)setDataLayerObject:(NSString *)key
+                     value:(NSDictionary *)value
+                    expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerObjectWithKey:key value:value expiry:expiry];
+}
+
+- (void)setDataLayerStringArray:(NSString *)key
+                          value:(NSArray<NSString *> *)value
+                         expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerStringArrayWithKey:key value:value expiry:expiry];
+}
+
+- (void)getDataLayerString:(NSString *)key
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerStringWithKey:key completion:^(NSString *value) {
+        resolve(value ?: [NSNull null]);
+    }];
+}
+
+- (void)getDataLayerNumber:(NSString *)key
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerNumberWithKey:key completion:^(NSNumber *value) {
+        resolve(value ?: [NSNull null]);
+    }];
+}
+
+- (void)getDataLayerBoolean:(NSString *)key
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerBooleanWithKey:key completion:^(NSNumber *value) {
+        resolve(value ?: [NSNull null]);
+    }];
+}
+
+- (void)getDataLayerObject:(NSString *)key
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerObjectWithKey:key completion:^(NSDictionary *value) {
+        resolve(value ?: [NSNull null]);
+    }];
+}
+
+- (void)getDataLayerStringArray:(NSString *)key
+                        resolve:(RCTPromiseResolveBlock)resolve
+                         reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerStringArrayWithKey:key completion:^(NSArray<NSString *> *value) {
+        resolve(value ?: [NSNull null]);
+    }];
+}
+
+- (void)removeDataLayerValue:(NSString *)key {
+    [[TealiumPrismBridge shared] removeDataLayerValueWithKey:key];
+}
+
+- (void)removeDataLayerValues:(NSArray<NSString *> *)keys {
+    [[TealiumPrismBridge shared] removeDataLayerValuesWithKeys:keys];
+}
+
+// MARK: - Trace
+
+- (void)joinTrace:(NSString *)traceId {
+    [[TealiumPrismBridge shared] joinTraceWithTraceId:traceId];
+}
+
+- (void)leaveTrace {
+    [[TealiumPrismBridge shared] leaveTrace];
+}
+
+// MARK: - Visitor / Identity
+
+- (void)getVisitorId:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getVisitorIdWithCompletion:^(NSString *visitorId) {
+        resolve(visitorId ?: [NSNull null]);
+    }];
+}
+
+- (void)resetVisitorId:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] resetVisitorIdWithCompletion:^(NSString *visitorId, NSError *error) {
+        if (error) {
+            reject(@"RESET_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(visitorId);
+        }
+    }];
+}
+
+- (void)clearStoredVisitorIds:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] clearStoredVisitorIdsWithCompletion:^(NSString *visitorId, NSError *error) {
+        if (error) {
+            reject(@"CLEAR_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(visitorId);
+        }
+    }];
+}
+
+// MARK: - Consent
+
+- (void)setConsentStatus:(NSString *)status {
+    [[TealiumPrismBridge shared] setConsentStatus:status];
+}
+
+- (void)getConsentStatus:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getConsentStatusWithCompletion:^(NSString *status) {
+        resolve(status ?: @"unknown");
+    }];
+}
+
+- (void)setConsentCategories:(NSArray<NSString *> *)categories {
+    [[TealiumPrismBridge shared] setConsentCategories:categories];
+}
+
+- (void)getConsentCategories:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getConsentCategoriesWithCompletion:^(NSArray<NSString *> *categories) {
+        resolve(categories ?: @[]);
+    }];
+}
+
+// MARK: - MomentsAPI
+
+- (void)fetchEngineResponse:(NSString *)engineId
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] fetchEngineResponseWithEngineId:engineId completion:^(NSDictionary *response) {
+        resolve(response ?: [NSNull null]);
+    }];
+}
+
+// MARK: - Trace (Extended)
+
+- (void)forceEndOfVisit {
+    [[TealiumPrismBridge shared] forceEndOfVisit];
+}
+
+// MARK: - Lifecycle (Manual)
+
+- (void)lifecycleLaunch:(NSDictionary *)data
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] lifecycleLaunchWithData:data completion:^{
+        resolve(nil);
+    }];
+}
+
+- (void)lifecycleWake:(NSDictionary *)data
+              resolve:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] lifecycleWakeWithData:data completion:^{
+        resolve(nil);
+    }];
+}
+
+- (void)lifecycleSleep:(NSDictionary *)data
+               resolve:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] lifecycleSleepWithData:data completion:^{
+        resolve(nil);
+    }];
+}
+
+// MARK: - DataLayer Events
+
+- (void)enableDataLayerEvents {
+    __weak TealiumPrismReactNative *weakSelf = self;
+
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+    bridge.onDataUpdated = ^(NSDictionary<NSString *, id> *data) {
+        TealiumPrismReactNative *strongSelf = weakSelf;
+        if (strongSelf && strongSelf->_hasListeners) {
+            [strongSelf sendEventWithName:kEventDataLayerUpdated body:data];
+        }
+    };
+    bridge.onDataRemoved = ^(NSArray<NSString *> *keys) {
+        TealiumPrismReactNative *strongSelf = weakSelf;
+        if (strongSelf && strongSelf->_hasListeners) {
+            [strongSelf sendEventWithName:kEventDataLayerRemoved body:@{@"keys": keys}];
+        }
+    };
+
+    [bridge enableDataLayerEvents];
+}
+
+- (void)disableDataLayerEvents {
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+    bridge.onDataUpdated = nil;
+    bridge.onDataRemoved = nil;
+    [bridge disableDataLayerEvents];
+}
+
+// MARK: - Event Emitter Support
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[kEventDataLayerUpdated, kEventDataLayerRemoved];
+}
+
+- (void)addListener:(NSString *)eventType {
+    _hasListeners = YES;
+}
+
+- (void)removeListeners:(double)count {
+    // Keep listeners enabled as long as any remain
+}
+
+- (void)startObserving {
+    _hasListeners = YES;
+}
+
+- (void)stopObserving {
+    _hasListeners = NO;
 }
 
 @end

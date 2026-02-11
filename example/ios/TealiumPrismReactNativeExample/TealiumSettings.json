@@ -1,0 +1,43 @@
+{
+  "core": {
+    "log_level": "debug",
+    "max_queue_size": 100,
+    "expiration": 86400,
+    "refresh_interval": 900,
+    "session_timeout": 1800
+  },
+  "modules": {
+    "Collect": {
+      "module_type": "Collect",
+      "enabled": true
+    },
+    "Lifecycle": {
+      "module_type": "Lifecycle",
+      "enabled": true,
+      "configuration": {
+        "autotracking_enabled": true,
+        "tracked_lifecycle_events": ["launch", "wake", "sleep"],
+        "data_target": "lifecycleEventsOnly"
+      }
+    },
+    "Trace": {
+      "module_type": "Trace",
+      "enabled": true,
+      "configuration": {
+        "track_errors": false
+      }
+    },
+    "DeepLink": {
+      "module_type": "DeepLink",
+      "enabled": true,
+      "configuration": {
+        "deep_link_trace_enabled": true,
+        "send_deep_link_event": false
+      }
+    }
+  },
+  "barriers": {},
+  "load_rules": {},
+  "transformations": {},
+  "consent": null
+}

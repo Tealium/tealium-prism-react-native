@@ -1,97 +1,105 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Tealium Prism React Native – Example
 
-# Getting Started
+Example app for the Tealium Prism React Native SDK.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Wymagania
 
-## Step 1: Start Metro
+- **Node.js** ≥ 20
+- **Yarn** 4.x (używany w repo)
+- **Android**: Android Studio, SDK 35, emulator lub urządzenie
+- **iOS**: Xcode, CocoaPods, symulator lub urządzenie
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Uruchomienie z katalogu głównego repo
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+Wszystkie komendy uruchamiaj w **głównym katalogu** `tealium-prism-react-native` (nie w `example/`).
 
-```sh
-# Using npm
-npm start
+### 1. Zainstaluj zależności
 
-# OR using Yarn
-yarn start
+```bash
+yarn
 ```
 
-## Step 2: Build and run your app
+### 2. Zbuduj bibliotekę
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+yarn prepare
 ```
 
-### iOS
+(lub `yarn bob build` – tworzy katalog `lib/` z modułem).
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+### 3. Uruchom Metro (w jednym terminalu)
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+yarn example start
 ```
 
-Then, and every time you update your native dependencies, run:
+Zostaw ten terminal otwarty.
 
-```sh
-bundle exec pod install
+### 4a. Android (w drugim terminalu)
+
+```bash
+yarn example android
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Albo z głównego katalogu:
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+```bash
+cd example && yarn android
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+**Uwaga:** Pierwszy build Androida może trwać kilka minut (Gradle, pobranie Prism SDK z Maven).
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+### 4b. iOS (w drugim terminalu)
 
-## Step 3: Modify your app
+Najpierw zainstaluj pody w przykładzie:
 
-Now that you have successfully run the app, let's make changes!
+```bash
+cd example/ios && pod install && cd ../..
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Potem uruchom aplikację:
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+```bash
+yarn example ios
+```
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+Albo:
 
-## Congratulations! :tada:
+```bash
+cd example && yarn ios
+```
 
-You've successfully run and modified your React Native App. :partying_face:
+## Szybkie testowanie (Android)
 
-### Now what?
+Z głównego katalogu, w jednej sesji:
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+```bash
+yarn && yarn prepare && yarn example start
+```
 
-# Troubleshooting
+W drugim terminalu:
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+```bash
+cd /Users/sebastian/Projects/tealium-prism-react-native && yarn example android
+```
 
-# Learn More
+## Co przetestować w aplikacji
 
-To learn more about React Native, take a look at the following resources:
+1. **Status** – po starcie powinno być „Initialized” i widoczny Consent (np. unknown).
+2. **Tracking** – TRACK VIEW, TRACK EVENT – sprawdź w logach (np. `adb logcat | grep -i tealium` na Androidzie).
+3. **Data Layer** – ADD DATA (klucz + wartość), GET DATA – czy zwraca zapisaną wartość.
+4. **Visitor** – GET VISITOR ID, RESET VISITOR ID – czy zwraca ID.
+5. **Consent** – OPT IN / OPT OUT, GET CONSENT STATUS.
+6. **Trace** – wpisz trace ID, JOIN TRACE – do debugowania w Tealium Event Stream.
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+## Logi (Android)
+
+```bash
+adb logcat | grep -E "TealiumPrismRN|Tealium"
+```
+
+## Częste problemy
+
+- **Metro nie widzi modułu** – upewnij się, że wykonałeś `yarn prepare` w głównym katalogu.
+- **Android build fail** – sprawdź, że w `example/android` jest `settings.gradle` i że link do biblioteki z `react-native.config.js` jest poprawny.
+- **iOS: pod install** – zawsze z katalogu `example/ios`.

@@ -1,5 +1,6 @@
+#import <React/RCTEventEmitter.h>
 #import <TealiumPrismReactNativeSpec/TealiumPrismReactNativeSpec.h>
 
-@interface TealiumPrismReactNative : NSObject <NativeTealiumPrismReactNativeSpec>
+@interface TealiumPrismReactNative : RCTEventEmitter <NativeTealiumPrismReactNativeSpec>
 
 @end

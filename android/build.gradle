@@ -2,8 +2,8 @@ buildscript {
   ext.TealiumPrismReactNative = [
     kotlinVersion: "2.0.21",
     minSdkVersion: 24,
-    compileSdkVersion: 36,
-    targetSdkVersion: 36
+    compileSdkVersion: 35,
+    targetSdkVersion: 35
   ]
 
   ext.getExtOrDefault = { prop ->
@@ -20,7 +20,8 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.7.2"
+    // Match tealium-prism-kotlin AGP version for composite build compatibility
+    classpath "com.android.tools.build:gradle:8.12.0"
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
@@ -62,6 +63,18 @@ android {
   }
 }
 
+repositories {
+  google()
+  mavenCentral()
+  maven { url = uri("https://maven.tealiumiq.com/android/releases/") }
+}
+
 dependencies {
   implementation "com.facebook.react:react-android"
+
+  // Tealium Prism Kotlin SDK
+  // https://github.com/Tealium/tealium-prism-kotlin
+  implementation "com.tealium.prism:prism-core:0.3.0"
+  implementation "com.tealium.prism:prism-lifecycle:0.2.0"
+  implementation "com.tealium.prism:prism-moments-api:0.1.0"
 }

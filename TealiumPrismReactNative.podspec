@@ -15,6 +15,21 @@ Pod::Spec.new do |s|
 
   s.source_files = "ios/**/*.{h,m,mm,swift,cpp}"
   s.private_header_files = "ios/**/*.h"
+  
+  s.swift_version = "5.0"
+
+  # Enable modules so @import TealiumPrism works in .mm (Objective-C++)
+  s.pod_target_xcconfig = {
+    "CLANG_ENABLE_MODULES" => "YES",
+    "CLANG_ENABLE_OBJC_ARC" => "YES",
+    "OTHER_CPLUSPLUSFLAGS" => "$(inherited) -fcxx-modules"
+  }
+
+  # Tealium Prism Swift SDK
+  # https://github.com/Tealium/tealium-prism-swift
+  s.dependency "tealium-prism/Core", "~> 0.3.0"
+  s.dependency "tealium-prism/Lifecycle", "~> 0.3.0"
+  s.dependency "tealium-prism/MomentsAPI", "~> 0.3.0"
 
   install_modules_dependencies(s)
 end
