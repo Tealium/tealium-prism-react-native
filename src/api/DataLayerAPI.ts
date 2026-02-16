@@ -1,0 +1,222 @@
+/**
+ * DataLayerAPI - Interface for managing persistent data layer
+ *
+ * Mirrors the native DataLayer API from Swift/Kotlin SDKs.
+ * Data added here will be included with every tracking call.
+ */
+
+import { NativeEventEmitter } from 'react-native';
+import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
+import type { Expiry, TrackData } from '../types';
+import { TealiumEvents } from '../types';
+
+/**
+ * Callback for data layer update events.
+ */
+export type DataLayerUpdateCallback = (data: Record<string, unknown>) => void;
+
+/**
+ * Callback for data layer remove events.
+ */
+export type DataLayerRemoveCallback = (keys: string[]) => void;
+
+/**
+ * DataLayerAPI provides methods for managing the persistent data layer.
+ *
+ * Data added to the data layer will be automatically included with every
+ * tracking call sent through Tealium.
+ *
+ * @example
+ * ```typescript
+ * // Add data
+ * Tealium.dataLayer.put({ user_type: 'premium' }, 'session');
+ *
+ * // Get data
+ * const value = await Tealium.dataLayer.get('user_type');
+ *
+ * // Remove data
+ * Tealium.dataLayer.remove('user_type');
+ *
+ * // Subscribe to updates
+ * const subscription = Tealium.dataLayer.onUpdated((data) => {
+ *   console.log('Data updated:', data);
+ * });
+ * ```
+ */
+export class DataLayerAPI {
+  private eventEmitter: NativeEventEmitter;
+  private listenerCount = 0;
+
+  constructor(eventEmitter: NativeEventEmitter) {
+    this.eventEmitter = eventEmitter;
+  }
+
+  /**
+   * Add data to the persistent data layer.
+   *
+   * Supports multiple value types: string, number, boolean, string arrays, and objects.
+   *
+   * @param data - Object containing key-value pairs to add
+   * @param expiry - When the data should expire: 'session', 'forever', or 'untilRestart'
+   *
+   * @example
+   * ```typescript
+   * Tealium.dataLayer.put({
+   *   user_type: 'premium',
+   *   user_id: '12345',
+   *   preferences: { dark_mode: true }
+   * }, 'session');
+   * ```
+   */
+  put(data: Record<string, unknown>, expiry: Expiry = 'session'): void {
+    for (const [key, value] of Object.entries(data)) {
+      if (typeof value === 'string') {
+        NativeTealiumPrism.setDataLayerString(key, value, expiry);
+      } else if (typeof value === 'number') {
+        NativeTealiumPrism.setDataLayerNumber(key, value, expiry);
+      } else if (typeof value === 'boolean') {
+        NativeTealiumPrism.setDataLayerBoolean(key, value, expiry);
+      } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+        NativeTealiumPrism.setDataLayerStringArray(key, value as string[], expiry);
+      } else if (typeof value === 'object' && value !== null) {
+        NativeTealiumPrism.setDataLayerObject(key, value as Object, expiry);
+      }
+    }
+  }
+
+  /**
+   * Get a value from the data layer.
+   *
+   * @param key - Key to retrieve
+   * @returns Promise resolving to the value or null if not found
+   *
+   * @example
+   * ```typescript
+   * const userId = await Tealium.dataLayer.get('user_id');
+   * ```
+   */
+  async get(key: string): Promise<unknown> {
+    const result = await NativeTealiumPrism.getDataLayerValue(key);
+    return result?.value ?? null;
+  }
+
+  /**
+   * Get all data from the data layer.
+   *
+   * @returns Promise resolving with all data layer values
+   *
+   * @example
+   * ```typescript
+   * const allData = await Tealium.dataLayer.getAll();
+   * ```
+   */
+  getAll(): Promise<Record<string, unknown>> {
+    return NativeTealiumPrism.getAllData() as Promise<Record<string, unknown>>;
+  }
+
+  /**
+   * Remove one or more keys from the data layer.
+   *
+   * @param keys - Key or array of keys to remove
+   *
+   * @example
+   * ```typescript
+   * // Remove single key
+   * Tealium.dataLayer.remove('user_id');
+   *
+   * // Remove multiple keys
+   * Tealium.dataLayer.remove(['user_id', 'user_type']);
+   * ```
+   */
+  remove(keys: string | string[]): void {
+    if (Array.isArray(keys)) {
+      NativeTealiumPrism.removeDataLayerValues(keys);
+    } else {
+      NativeTealiumPrism.removeDataLayerValue(keys);
+    }
+  }
+
+  /**
+   * Clear all data from the data layer.
+   *
+   * @returns Promise resolving when clear is complete
+   */
+  clear(): Promise<void> {
+    return NativeTealiumPrism.clearDataLayer();
+  }
+
+  /**
+   * Subscribe to data layer update events.
+   * Called whenever data is added or modified.
+   *
+   * @param callback - Function called with the updated data
+   * @returns Subscription object - call remove() to unsubscribe
+   *
+   * @example
+   * ```typescript
+   * const subscription = Tealium.dataLayer.onUpdated((data) => {
+   *   console.log('Data updated:', data);
+   * });
+   *
+   * // Later, to unsubscribe:
+   * subscription.remove();
+   * ```
+   */
+  onUpdated(callback: DataLayerUpdateCallback): { remove: () => void } {
+    if (this.listenerCount === 0) {
+      NativeTealiumPrism.enableDataLayerEvents();
+    }
+    this.listenerCount++;
+
+    const subscription = this.eventEmitter.addListener(
+      TealiumEvents.DATA_LAYER_UPDATED,
+      callback as (data: unknown) => void
+    );
+
+    let isRemoved = false;
+    return {
+      remove: () => {
+        if (isRemoved) return;
+        isRemoved = true;
+        subscription.remove();
+        this.listenerCount--;
+        if (this.listenerCount === 0) {
+          NativeTealiumPrism.disableDataLayerEvents();
+        }
+      },
+    };
+  }
+
+  /**
+   * Subscribe to data layer remove events.
+   * Called whenever data is removed from the data layer.
+   *
+   * @param callback - Function called with array of removed keys
+   * @returns Subscription object - call remove() to unsubscribe
+   */
+  onRemoved(callback: DataLayerRemoveCallback): { remove: () => void } {
+    if (this.listenerCount === 0) {
+      NativeTealiumPrism.enableDataLayerEvents();
+    }
+    this.listenerCount++;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subscription = this.eventEmitter.addListener(
+      TealiumEvents.DATA_LAYER_REMOVED,
+      (event: any) => callback(event.keys as string[])
+    );
+
+    let isRemoved = false;
+    return {
+      remove: () => {
+        if (isRemoved) return;
+        isRemoved = true;
+        subscription.remove();
+        this.listenerCount--;
+        if (this.listenerCount === 0) {
+          NativeTealiumPrism.disableDataLayerEvents();
+        }
+      },
+    };
+  }
+}

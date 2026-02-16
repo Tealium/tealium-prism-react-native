@@ -17,11 +17,13 @@ import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.pubsub.Disposable
 import com.tealium.prism.core.api.logger.LogLevel
 import com.tealium.prism.core.api.misc.Environment
+import com.tealium.prism.core.api.misc.TimeFrame
 import com.tealium.prism.core.api.persistence.Expiry
 import com.tealium.prism.core.api.tracking.DispatchType
 import com.tealium.prism.lifecycle.lifecycle
 import com.tealium.prism.momentsapi.MomentsApiRegion
 import com.tealium.prism.momentsapi.momentsApi
+import kotlin.time.Duration.Companion.seconds
 
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
@@ -74,15 +76,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 true
             }
 
-            // Configure modules
-            val modules = mutableListOf(
-                Modules.collect(),
-                Modules.appData(),
-                Modules.deviceData(),
-                Modules.connectivityData(),
-                Modules.trace(),
-                Modules.deepLink()
-            )
+            // Configure optional modules (default modules like collect, appData, etc. are added automatically by SDK)
+            val modules = mutableListOf<com.tealium.prism.core.api.modules.ModuleFactory>()
 
             // Add lifecycle module if enabled
             if (lifecycleEnabled) {
@@ -114,21 +109,42 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 environment = environment
             )
 
-            // Apply log level if provided
-            if (config.hasKey("logLevel")) {
-                val logLevelStr = config.getString("logLevel")
-                val logLevel = when (logLevelStr) {
-                    "trace" -> LogLevel.TRACE
-                    "debug" -> LogLevel.DEBUG
-                    "info" -> LogLevel.INFO
-                    "warn" -> LogLevel.WARN
-                    "error" -> LogLevel.ERROR
-                    "silent" -> LogLevel.SILENT
-                    else -> LogLevel.ERROR
-                }
-                configBuilder.configureCoreSettings { settings ->
+            // Configure Core Settings
+            configBuilder.configureCoreSettings { settings ->
+                config.getString("logLevel")?.let { logLevelStr ->
+                    val logLevel = when (logLevelStr) {
+                        "trace" -> LogLevel.TRACE
+                        "debug" -> LogLevel.DEBUG
+                        "info" -> LogLevel.INFO
+                        "warn" -> LogLevel.WARN
+                        "error" -> LogLevel.ERROR
+                        "silent" -> LogLevel.SILENT
+                        else -> LogLevel.ERROR
+                    }
                     settings.setLogLevel(logLevel)
                 }
+
+                config.getString("visitorIdentityKey")?.let {
+                    settings.setVisitorIdentityKey(it)
+                }
+
+                if (config.hasKey("maxQueueSize")) {
+                    settings.setMaxQueueSize(config.getInt("maxQueueSize"))
+                }
+
+                if (config.hasKey("queueExpirationSeconds")) {
+                    settings.setExpiration(config.getInt("queueExpirationSeconds").seconds)
+                }
+
+                if (config.hasKey("refreshIntervalSeconds")) {
+                    settings.setRefreshInterval(config.getInt("refreshIntervalSeconds").seconds)
+                }
+
+                if (config.hasKey("sessionTimeoutSeconds")) {
+                    settings.setSessionTimeout(config.getInt("sessionTimeoutSeconds").seconds)
+                }
+
+                settings
             }
 
             // Apply settings file if provided
@@ -160,16 +176,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 val existingVisitorId = config.getString("existingVisitorId")
                 if (existingVisitorId != null) {
                     configBuilder.setExistingVisitorId(existingVisitorId)
-                }
-            }
-
-            // Apply visitor identity key if provided
-            if (config.hasKey("visitorIdentityKey")) {
-                val visitorIdentityKey = config.getString("visitorIdentityKey")
-                if (visitorIdentityKey != null) {
-                    configBuilder.configureCoreSettings { settings ->
-                        settings.setVisitorIdentityKey(visitorIdentityKey)
-                    }
                 }
             }
 
@@ -292,6 +298,54 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         tealium?.dataLayer?.put(key, list.asDataList(), expiryFromString(expiry))
     }
 
+    override fun getDataLayerValue(key: String, promise: Promise) {
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.get(key).subscribe { result ->
+            val dataItem = result.getOrNull()
+            if (dataItem == null) {
+                promise.resolve(null)
+                return@subscribe
+            }
+
+            val response = Arguments.createMap()
+            when {
+                dataItem.getString() != null -> {
+                    response.putString("type", "string")
+                    response.putString("value", dataItem.getString())
+                }
+                dataItem.getDouble() != null -> {
+                    response.putString("type", "number")
+                    response.putDouble("value", dataItem.getDouble()!!)
+                }
+                dataItem.getBoolean() != null -> {
+                    response.putString("type", "boolean")
+                    response.putBoolean("value", dataItem.getBoolean()!!)
+                }
+                dataItem.getDataList() != null -> {
+                    response.putString("type", "array")
+                    val arr = Arguments.createArray()
+                    dataItem.getDataList()?.forEach { item ->
+                        item.getString()?.let { arr.pushString(it) }
+                    }
+                    response.putArray("value", arr)
+                }
+                dataItem.getDataObject() != null -> {
+                    response.putString("type", "object")
+                    response.putMap("value", dataObjectToMap(dataItem.getDataObject()!!))
+                }
+                else -> {
+                    promise.resolve(null)
+                    return@subscribe
+                }
+            }
+            promise.resolve(response)
+        }
+    }
+
     override fun getDataLayerString(key: String, promise: Promise) {
         tealium?.dataLayer?.getString(key)
             ?.subscribe { result ->
@@ -352,6 +406,50 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
         if (keyList.isNotEmpty()) {
             tealium?.dataLayer?.remove(keyList)
+        }
+    }
+
+    override fun clearDataLayer(promise: Promise) {
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.clear().subscribe { _ ->
+            promise.resolve(null)
+        }
+    }
+
+    override fun getAllData(promise: Promise) {
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(Arguments.createMap())
+            return
+        }
+        teal.dataLayer.getAll().subscribe { result ->
+            val dataObject = result.getOrNull()
+            if (dataObject == null) {
+                promise.resolve(Arguments.createMap())
+            } else {
+                promise.resolve(dataObjectToMap(dataObject))
+            }
+        }
+    }
+
+    // ============================================
+    // Deep Link
+    // ============================================
+
+    override fun handleDeepLink(url: String, referrer: String?, promise: Promise) {
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(false)
+            return
+        }
+        val deepLinkUri = android.net.Uri.parse(url)
+        val referrerUri = referrer?.let { android.net.Uri.parse(it) }
+        teal.deepLink.handle(deepLinkUri, referrerUri).subscribe { result ->
+            promise.resolve(result.isSuccess)
         }
     }
 

@@ -2,68 +2,198 @@
  * Tealium Prism React Native
  *
  * React Native wrapper for the Tealium Prism mobile SDKs (iOS and Android).
- * Provides a unified TypeScript API for event tracking, data layer management,
- * consent handling, and visitor identity management.
+ * Provides a unified TypeScript API that mirrors the native SDK structure.
+ *
+ * The API is designed to closely match the native Swift/Kotlin SDKs:
+ * - `Tealium.dataLayer` - Data layer management
+ * - `Tealium.trace` - Trace/debugging functionality
+ * - `Tealium.deepLink` - Deep link handling
+ * - `Tealium.lifecycle` - Manual lifecycle tracking
+ * - `Tealium.momentsAPI` - Moments API integration
+ * - `Tealium.consent` - Consent management
  */
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from './NativeTealiumPrismReactNative';
-import type { PrismConfigSpec, TrackDataSpec } from './NativeTealiumPrismReactNative';
+import type {
+  TealiumConfigSpec,
+  TrackDataSpec,
+} from './NativeTealiumPrismReactNative';
+
+// Sub-API imports
+import {
+  DataLayerAPI,
+  TraceAPI,
+  DeepLinkAPI,
+  LifecycleAPI,
+  MomentsAPIHandler,
+  ConsentAPI,
+} from './api';
 
 // Re-export types
 export * from './types';
 export { TealiumView, TealiumEvent } from './types';
 
-import type {
-  PrismConfig,
-  TrackOptions,
-  TrackData,
-  Expiry,
-  ConsentStatus,
-  ConsentCategory,
-  EngineResponse,
-  DataLayerUpdateCallback,
-  DataLayerRemoveCallback,
-} from './types';
-import { TealiumEvents } from './types';
+// Re-export API types
+export type { DataLayerUpdateCallback, DataLayerRemoveCallback } from './api';
 
-// Create event emitter for native events
+import type { TealiumConfig, TrackData, DispatchType } from './types';
+
+// Create event emitter for native events (singleton)
 const eventEmitter = new NativeEventEmitter(NativeTealiumPrism as any);
 
 /**
  * Main Tealium Prism class providing the public API.
  *
- * Use this class to initialize Tealium, track events/views,
- * manage the data layer, and handle consent.
+ * The API structure mirrors the native Swift/Kotlin SDKs:
+ * - Sub-modules accessible via lazy getters (dataLayer, trace, deepLink, etc.)
+ * - Core methods directly on the class (track, create, shutdown, etc.)
  *
  * @example
  * ```typescript
- * import Tealium, { TealiumEvent, TealiumView } from 'tealium-prism-react-native';
+ * import Tealium from 'tealium-prism-react-native';
  *
- * // Initialize
- * await Tealium.initialize({
+ * // Create instance (mirrors native: Tealium.create(config:))
+ * await Tealium.create({
  *   account: 'your-account',
  *   profile: 'your-profile',
  *   environment: 'dev',
  * });
  *
- * // Track an event
- * Tealium.track(new TealiumEvent('button_click', { button_id: 'submit' }));
+ * // Track an event (mirrors native: tealium.track(name, type, data))
+ * Tealium.track('button_click', 'event', { button_id: 'submit' });
  *
- * // Track a view
- * Tealium.track(new TealiumView('home_screen'));
+ * // Use data layer (mirrors native: tealium.dataLayer.put(...))
+ * Tealium.dataLayer.put({ user_type: 'premium' }, 'session');
+ *
+ * // Use trace (mirrors native: tealium.trace.join(...))
+ * Tealium.trace.join('abc123');
  * ```
  */
 export default class Tealium {
-  // Track internal initialization state
+  // ============================================
+  // Internal State
+  // ============================================
+
   private static _initialized = false;
 
+  // Lazy-initialized sub-API instances (mirrors native SDK pattern)
+  private static _dataLayer: DataLayerAPI | null = null;
+  private static _trace: TraceAPI | null = null;
+  private static _deepLink: DeepLinkAPI | null = null;
+  private static _lifecycle: LifecycleAPI | null = null;
+  private static _momentsAPI: MomentsAPIHandler | null = null;
+  private static _consent: ConsentAPI | null = null;
+
+  // ============================================
+  // Sub-API Getters (mirrors native SDK)
+  // ============================================
+
   /**
-   * Check if Tealium has been initialized (synchronous).
-   * Use `isInitialized()` for async native check.
+   * Interface for accessing and manipulating the data layer.
+   *
+   * Mirrors native: `tealium.dataLayer`
+   *
+   * @example
+   * ```typescript
+   * Tealium.dataLayer.put({ user_id: '123' }, 'session');
+   * const value = await Tealium.dataLayer.get('user_id');
+   * Tealium.dataLayer.remove('user_id');
+   * ```
    */
-  static get hasInitialized(): boolean {
-    return Tealium._initialized;
+  static get dataLayer(): DataLayerAPI {
+    if (!this._dataLayer) {
+      this._dataLayer = new DataLayerAPI(eventEmitter);
+    }
+    return this._dataLayer;
+  }
+
+  /**
+   * Manager for trace-related functionality.
+   *
+   * Mirrors native: `tealium.trace`
+   *
+   * @example
+   * ```typescript
+   * Tealium.trace.join('trace-id');
+   * Tealium.trace.leave();
+   * Tealium.trace.forceEndOfVisit();
+   * ```
+   */
+  static get trace(): TraceAPI {
+    if (!this._trace) {
+      this._trace = new TraceAPI();
+    }
+    return this._trace;
+  }
+
+  /**
+   * Manager for deep link functionality.
+   *
+   * Mirrors native: `tealium.deepLink`
+   *
+   * @example
+   * ```typescript
+   * await Tealium.deepLink.handle('myapp://product/123');
+   * ```
+   */
+  static get deepLink(): DeepLinkAPI {
+    if (!this._deepLink) {
+      this._deepLink = new DeepLinkAPI();
+    }
+    return this._deepLink;
+  }
+
+  /**
+   * Manager for manual lifecycle tracking.
+   *
+   * Mirrors native: `tealium.lifecycle()`
+   *
+   * @example
+   * ```typescript
+   * await Tealium.lifecycle.launch();
+   * await Tealium.lifecycle.wake();
+   * await Tealium.lifecycle.sleep();
+   * ```
+   */
+  static get lifecycle(): LifecycleAPI {
+    if (!this._lifecycle) {
+      this._lifecycle = new LifecycleAPI();
+    }
+    return this._lifecycle;
+  }
+
+  /**
+   * Manager for Moments API integration.
+   *
+   * Mirrors native: `tealium.momentsAPI()`
+   *
+   * @example
+   * ```typescript
+   * const response = await Tealium.momentsAPI.fetchEngineResponse('engine-id');
+   * ```
+   */
+  static get momentsAPI(): MomentsAPIHandler {
+    if (!this._momentsAPI) {
+      this._momentsAPI = new MomentsAPIHandler();
+    }
+    return this._momentsAPI;
+  }
+
+  /**
+   * Manager for consent handling.
+   *
+   * @example
+   * ```typescript
+   * Tealium.consent.setStatus('consented');
+   * Tealium.consent.setCategories(['analytics', 'personalization']);
+   * ```
+   */
+  static get consent(): ConsentAPI {
+    if (!this._consent) {
+      this._consent = new ConsentAPI();
+    }
+    return this._consent;
   }
 
   // ============================================
@@ -71,15 +201,24 @@ export default class Tealium {
   // ============================================
 
   /**
-   * Initialize the Tealium Prism SDK with the provided configuration.
+   * Check if Tealium has been initialized (synchronous).
+   */
+  static get isReady(): boolean {
+    return Tealium._initialized;
+  }
+
+  /**
+   * Creates a new Tealium instance with the provided configuration.
+   *
+   * Mirrors native: `Tealium.create(config:)`
    *
    * @param config - Configuration object with account, profile, environment, and optional settings
-   * @returns Promise resolving to true when initialization is complete
-   * @throws Error if initialization fails
+   * @returns Promise resolving to true when creation is complete
+   * @throws Error if creation fails
    *
    * @example
    * ```typescript
-   * const success = await Tealium.initialize({
+   * const success = await Tealium.create({
    *   account: 'tealiummobile',
    *   profile: 'demo',
    *   environment: 'dev',
@@ -87,32 +226,22 @@ export default class Tealium {
    * });
    * ```
    */
-  static async initialize(config: PrismConfig): Promise<boolean> {
-    const nativeConfig: PrismConfigSpec = {
-      account: config.account,
-      profile: config.profile,
-      environment: config.environment,
-      dataSource: config.dataSource,
-      logLevel: config.logLevel,
-      settingsFile: config.settingsFile,
-      settingsUrl: config.settingsUrl,
-      existingVisitorId: config.existingVisitorId,
-      visitorIdentityKey: config.visitorIdentityKey,
-      momentsApiRegion: config.momentsApiRegion,
-      lifecycleEnabled: config.lifecycleEnabled,
-    };
-
-    const result = await NativeTealiumPrism.initialize(nativeConfig);
+  static async create(config: TealiumConfig): Promise<boolean> {
+    // Pass config directly - all fields are mapped 1:1
+    const result = await NativeTealiumPrism.initialize(
+      config as TealiumConfigSpec
+    );
     Tealium._initialized = result;
 
     // Add plugin metadata to data layer
     if (result) {
-      NativeTealiumPrism.setDataLayerString(
-        'plugin_name',
-        'Tealium-Prism-ReactNative',
+      this.dataLayer.put(
+        {
+          plugin_name: 'Tealium-Prism-ReactNative',
+          plugin_version: '0.1.0',
+        },
         'forever'
       );
-      NativeTealiumPrism.setDataLayerString('plugin_version', '0.1.0', 'forever');
     }
 
     return result;
@@ -120,20 +249,22 @@ export default class Tealium {
 
   /**
    * Shutdown the Tealium instance and release all resources.
-   * After calling this, you must call initialize() again to use Tealium.
+   *
+   * Mirrors native: `tealium.shutdown()` (Kotlin) / deinit (Swift)
+   *
+   * After calling this, you must call create() again to use Tealium.
    */
   static shutdown(): void {
     NativeTealiumPrism.shutdown();
     Tealium._initialized = false;
-  }
 
-  /**
-   * Check if Tealium is currently initialized.
-   *
-   * @returns Promise resolving to true if Tealium is initialized
-   */
-  static async isInitialized(): Promise<boolean> {
-    return NativeTealiumPrism.isInitialized();
+    // Reset lazy instances
+    this._dataLayer = null;
+    this._trace = null;
+    this._deepLink = null;
+    this._lifecycle = null;
+    this._momentsAPI = null;
+    this._consent = null;
   }
 
   // ============================================
@@ -143,161 +274,47 @@ export default class Tealium {
   /**
    * Track an event or view.
    *
-   * @param dispatch - TrackOptions object or TealiumEvent/TealiumView instance
+   * Mirrors native: `tealium.track(name, type, data)`
+   *
+   * @param name - Name of the event or view
+   * @param type - Type of dispatch: 'event' or 'view' (default: 'event')
+   * @param data - Optional additional data payload
    * @returns Promise resolving when tracking is complete
    *
    * @example
    * ```typescript
-   * // Using TealiumEvent class
-   * await Tealium.track(new TealiumEvent('purchase', { order_id: '12345' }));
+   * // Track an event
+   * await Tealium.track('button_click', 'event', { button_id: 'submit' });
    *
-   * // Using TealiumView class
-   * await Tealium.track(new TealiumView('product_detail', { product_id: 'abc' }));
+   * // Track a view
+   * await Tealium.track('product_detail', 'view', { product_id: 'abc' });
    *
-   * // Using plain object
-   * await Tealium.track({ name: 'custom_event', type: 'event', data: { key: 'value' } });
+   * // Simple event (type defaults to 'event')
+   * await Tealium.track('user_login');
    * ```
    */
-  static async track(dispatch: TrackOptions): Promise<void> {
+  static async track(
+    name: string,
+    type: DispatchType = 'event',
+    data?: TrackData
+  ): Promise<void> {
     const trackData: TrackDataSpec = {
-      name: dispatch.name,
-      type: dispatch.type ?? 'event',
-      data: dispatch.data as Object | undefined,
+      name,
+      type,
+      data: data as Object | undefined,
     };
     return NativeTealiumPrism.track(trackData);
   }
 
   /**
-   * Convenience method to track a view.
-   *
-   * @param viewName - Name of the view/screen
-   * @param data - Optional additional data
-   * @returns Promise resolving when tracking is complete
-   */
-  static async trackView(viewName: string, data?: TrackData): Promise<void> {
-    return Tealium.track({ name: viewName, type: 'view', data });
-  }
-
-  /**
-   * Convenience method to track an event.
-   *
-   * @param eventName - Name of the event
-   * @param data - Optional additional data
-   * @returns Promise resolving when tracking is complete
-   */
-  static async trackEvent(eventName: string, data?: TrackData): Promise<void> {
-    return Tealium.track({ name: eventName, type: 'event', data });
-  }
-
-  /**
    * Flush any queued events immediately.
-   * Useful when you need to ensure events are sent before the app closes.
+   *
+   * Mirrors native: `tealium.flushEventQueue()`
    *
    * @returns Promise resolving when flush is initiated
    */
-  static async flushEventQueue(): Promise<void> {
+  static flushEventQueue(): Promise<void> {
     return NativeTealiumPrism.flushEventQueue();
-  }
-
-  // ============================================
-  // Data Layer
-  // ============================================
-
-  /**
-   * Add data to the persistent data layer.
-   * Data added here will be included with every tracking call.
-   *
-   * @param data - Object containing key-value pairs to add
-   * @param expiry - Expiry option: 'session', 'forever', or 'untilRestart'
-   *
-   * @example
-   * ```typescript
-   * Tealium.addData({
-   *   user_type: 'premium',
-   *   user_id: '12345',
-   * }, 'session');
-   * ```
-   */
-  static addData(data: Record<string, unknown>, expiry: Expiry = 'session'): void {
-    for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'string') {
-        NativeTealiumPrism.setDataLayerString(key, value, expiry);
-      } else if (typeof value === 'number') {
-        NativeTealiumPrism.setDataLayerNumber(key, value, expiry);
-      } else if (typeof value === 'boolean') {
-        NativeTealiumPrism.setDataLayerBoolean(key, value, expiry);
-      } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
-        NativeTealiumPrism.setDataLayerStringArray(key, value as string[], expiry);
-      } else if (typeof value === 'object' && value !== null) {
-        NativeTealiumPrism.setDataLayerObject(key, value as Object, expiry);
-      }
-    }
-  }
-
-  /**
-   * Get a value from the data layer.
-   *
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the value or null if not found
-   */
-  static async getData(key: string): Promise<unknown> {
-    // Try different types in order of likelihood
-    const stringValue = await NativeTealiumPrism.getDataLayerString(key);
-    if (stringValue !== null) return stringValue;
-
-    const numberValue = await NativeTealiumPrism.getDataLayerNumber(key);
-    if (numberValue !== null) return numberValue;
-
-    const boolValue = await NativeTealiumPrism.getDataLayerBoolean(key);
-    if (boolValue !== null) return boolValue;
-
-    const arrayValue = await NativeTealiumPrism.getDataLayerStringArray(key);
-    if (arrayValue !== null) return arrayValue;
-
-    const objectValue = await NativeTealiumPrism.getDataLayerObject(key);
-    if (objectValue !== null) return objectValue;
-
-    return null;
-  }
-
-  /**
-   * Remove a value from the data layer.
-   *
-   * @param keys - Key or array of keys to remove
-   */
-  static removeData(keys: string | string[]): void {
-    if (Array.isArray(keys)) {
-      NativeTealiumPrism.removeDataLayerValues(keys);
-    } else {
-      NativeTealiumPrism.removeDataLayerValue(keys);
-    }
-  }
-
-  // ============================================
-  // Trace
-  // ============================================
-
-  /**
-   * Join a trace session for debugging in Tealium's Event Stream Live.
-   *
-   * @param traceId - The trace ID to join
-   *
-   * @example
-   * ```typescript
-   * Tealium.joinTrace('abc123');
-   * // ... track events ...
-   * Tealium.leaveTrace();
-   * ```
-   */
-  static joinTrace(traceId: string): void {
-    NativeTealiumPrism.joinTrace(traceId);
-  }
-
-  /**
-   * Leave the current trace session.
-   */
-  static leaveTrace(): void {
-    NativeTealiumPrism.leaveTrace();
   }
 
   // ============================================
@@ -309,242 +326,33 @@ export default class Tealium {
    *
    * @returns Promise resolving to the visitor ID or null
    */
-  static async getVisitorId(): Promise<string | null> {
+  static getVisitorId(): Promise<string | null> {
     return NativeTealiumPrism.getVisitorId();
   }
 
   /**
    * Reset the visitor ID to a new anonymous ID.
+   *
+   * Mirrors native: `tealium.resetVisitorId()`
+   *
    * The new ID will still be associated with any current identity.
    *
    * @returns Promise resolving to the new visitor ID
    */
-  static async resetVisitorId(): Promise<string> {
+  static resetVisitorId(): Promise<string> {
     return NativeTealiumPrism.resetVisitorId();
   }
 
   /**
    * Clear all stored visitor IDs and generate a new anonymous ID.
+   *
+   * Mirrors native: `tealium.clearStoredVisitorIds()`
+   *
    * This effectively creates a new anonymous visitor.
    *
    * @returns Promise resolving to the new visitor ID
    */
-  static async clearStoredVisitorIds(): Promise<string> {
+  static clearStoredVisitorIds(): Promise<string> {
     return NativeTealiumPrism.clearStoredVisitorIds();
-  }
-
-  // ============================================
-  // Consent
-  // ============================================
-
-  /**
-   * Set the user's consent status.
-   *
-   * @param status - Consent status: 'consented', 'notConsented', or 'unknown'
-   */
-  static setConsentStatus(status: ConsentStatus): void {
-    NativeTealiumPrism.setConsentStatus(status);
-  }
-
-  /**
-   * Get the current consent status.
-   *
-   * @returns Promise resolving to the consent status
-   */
-  static async getConsentStatus(): Promise<ConsentStatus> {
-    const status = await NativeTealiumPrism.getConsentStatus();
-    return status as ConsentStatus;
-  }
-
-  /**
-   * Set the consented categories.
-   *
-   * @param categories - Array of consent category strings
-   */
-  static setConsentCategories(categories: ConsentCategory[]): void {
-    NativeTealiumPrism.setConsentCategories(categories);
-  }
-
-  /**
-   * Get the current consent categories.
-   *
-   * @returns Promise resolving to array of consent category strings
-   */
-  static async getConsentCategories(): Promise<ConsentCategory[]> {
-    const categories = await NativeTealiumPrism.getConsentCategories();
-    return categories as ConsentCategory[];
-  }
-
-  // ============================================
-  // MomentsAPI
-  // ============================================
-
-  /**
-   * Fetch the engine response for the current visitor from MomentsAPI.
-   * Returns personalization data including audiences, badges, and attributes.
-   *
-   * @param engineId - The engine ID to fetch data from
-   * @returns Promise resolving to EngineResponse or null if not available
-   *
-   * @example
-   * ```typescript
-   * const response = await Tealium.fetchEngineResponse('my-engine-id');
-   * if (response) {
-   *   console.log('Audiences:', response.audiences);
-   *   console.log('Badges:', response.badges);
-   * }
-   * ```
-   */
-  static async fetchEngineResponse(engineId: string): Promise<EngineResponse | null> {
-    const response = await NativeTealiumPrism.fetchEngineResponse(engineId);
-    return response as EngineResponse | null;
-  }
-
-  // ============================================
-  // Trace (Extended)
-  // ============================================
-
-  /**
-   * Force end of the current visitor session.
-   * This triggers the end of visit processing in Tealium.
-   */
-  static forceEndOfVisit(): void {
-    NativeTealiumPrism.forceEndOfVisit();
-  }
-
-  // ============================================
-  // Lifecycle (Manual)
-  // ============================================
-
-  /**
-   * Manually track a launch lifecycle event.
-   * Use this when lifecycle tracking is in manual mode.
-   *
-   * @param data - Optional additional data to include with the event
-   * @returns Promise resolving when tracking is complete
-   *
-   * @example
-   * ```typescript
-   * // Track launch with custom data
-   * await Tealium.lifecycleLaunch({ launch_source: 'deeplink' });
-   * ```
-   */
-  static async lifecycleLaunch(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleLaunch(data as Object | undefined);
-  }
-
-  /**
-   * Manually track a wake lifecycle event.
-   * Use this when lifecycle tracking is in manual mode.
-   *
-   * @param data - Optional additional data to include with the event
-   * @returns Promise resolving when tracking is complete
-   */
-  static async lifecycleWake(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleWake(data as Object | undefined);
-  }
-
-  /**
-   * Manually track a sleep lifecycle event.
-   * Use this when lifecycle tracking is in manual mode.
-   *
-   * @param data - Optional additional data to include with the event
-   * @returns Promise resolving when tracking is complete
-   */
-  static async lifecycleSleep(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleSleep(data as Object | undefined);
-  }
-
-  // ============================================
-  // DataLayer Events
-  // ============================================
-
-  // Store subscriptions for cleanup
-  private static _dataLayerUpdateSubscription: any = null;
-  private static _dataLayerRemoveSubscription: any = null;
-
-  /**
-   * Subscribe to data layer update events.
-   * Called whenever data is added or modified in the data layer.
-   *
-   * @param callback - Function called with the updated data
-   * @returns Subscription object - call remove() to unsubscribe
-   *
-   * @example
-   * ```typescript
-   * const subscription = Tealium.onDataUpdated((data) => {
-   *   console.log('Data updated:', data);
-   * });
-   *
-   * // Later, to unsubscribe:
-   * subscription.remove();
-   * ```
-   */
-  static onDataUpdated(callback: DataLayerUpdateCallback): { remove: () => void } {
-    // Enable native events if this is the first listener
-    if (!Tealium._dataLayerUpdateSubscription) {
-      NativeTealiumPrism.enableDataLayerEvents();
-    }
-
-    const subscription = eventEmitter.addListener(
-      TealiumEvents.DATA_LAYER_UPDATED,
-      callback as (data: unknown) => void
-    );
-
-    Tealium._dataLayerUpdateSubscription = subscription;
-
-    return {
-      remove: () => {
-        subscription.remove();
-        Tealium._dataLayerUpdateSubscription = null;
-        // Disable native events if no more listeners
-        if (!Tealium._dataLayerRemoveSubscription) {
-          NativeTealiumPrism.disableDataLayerEvents();
-        }
-      },
-    };
-  }
-
-  /**
-   * Subscribe to data layer remove events.
-   * Called whenever data is removed from the data layer.
-   *
-   * @param callback - Function called with array of removed keys
-   * @returns Subscription object - call remove() to unsubscribe
-   *
-   * @example
-   * ```typescript
-   * const subscription = Tealium.onDataRemoved((keys) => {
-   *   console.log('Keys removed:', keys);
-   * });
-   *
-   * // Later, to unsubscribe:
-   * subscription.remove();
-   * ```
-   */
-  static onDataRemoved(callback: DataLayerRemoveCallback): { remove: () => void } {
-    // Enable native events if this is the first listener
-    if (!Tealium._dataLayerRemoveSubscription) {
-      NativeTealiumPrism.enableDataLayerEvents();
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const subscription = eventEmitter.addListener(
-      TealiumEvents.DATA_LAYER_REMOVED,
-      (event: any) => callback(event.keys as string[])
-    );
-
-    Tealium._dataLayerRemoveSubscription = subscription;
-
-    return {
-      remove: () => {
-        subscription.remove();
-        Tealium._dataLayerRemoveSubscription = null;
-        // Disable native events if no more listeners
-        if (!Tealium._dataLayerUpdateSubscription) {
-          NativeTealiumPrism.disableDataLayerEvents();
-        }
-      },
-    };
   }
 }

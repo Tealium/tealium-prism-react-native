@@ -1,9 +1,10 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
 
 /**
- * Configuration object for initializing Tealium Prism.
+ * Configuration object for initializing Tealium (TurboModule spec).
+ * Mirrors native: TealiumConfig
  */
-export interface PrismConfigSpec {
+export interface TealiumConfigSpec {
   /** Tealium account name */
   account: string;
   /** Tealium profile name */
@@ -26,6 +27,14 @@ export interface PrismConfigSpec {
   momentsApiRegion?: string;
   /** Enable lifecycle tracking */
   lifecycleEnabled?: boolean;
+  /** Maximum queue size for offline events */
+  maxQueueSize?: number;
+  /** Queue expiration in seconds */
+  queueExpirationSeconds?: number;
+  /** Remote settings refresh interval in seconds */
+  refreshIntervalSeconds?: number;
+  /** Session timeout in seconds */
+  sessionTimeoutSeconds?: number;
 }
 
 /**
@@ -55,7 +64,7 @@ export interface Spec extends TurboModule {
    * @param config - Configuration object
    * @returns Promise resolving to true when initialization is complete
    */
-  initialize(config: PrismConfigSpec): Promise<boolean>;
+  initialize(config: TealiumConfigSpec): Promise<boolean>;
 
   /**
    * Shutdown the Tealium instance and release resources.
@@ -130,6 +139,15 @@ export interface Spec extends TurboModule {
   setDataLayerStringArray(key: string, value: string[], expiry: string): void;
 
   /**
+   * Get any value from the data layer with type information.
+   * @param key - Key to retrieve
+   * @returns Promise resolving with object containing type and value, or null
+   */
+  getDataLayerValue(
+    key: string
+  ): Promise<{ type: string; value: unknown } | null>;
+
+  /**
    * Get a string value from the data layer.
    * @param key - Key to retrieve
    * @returns Promise resolving to the string value or null
@@ -175,6 +193,30 @@ export interface Spec extends TurboModule {
    * @param keys - Array of keys to remove
    */
   removeDataLayerValues(keys: string[]): void;
+
+  /**
+   * Clear all data from the data layer.
+   * @returns Promise resolving when clear is complete
+   */
+  clearDataLayer(): Promise<void>;
+
+  /**
+   * Get all data from the data layer.
+   * @returns Promise resolving with all data layer values as an object
+   */
+  getAllData(): Promise<Object>;
+
+  // ============================================
+  // Deep Link
+  // ============================================
+
+  /**
+   * Handle a deep link URL for attribution and trace management.
+   * @param url - The deep link URL to handle
+   * @param referrer - Optional referrer URL
+   * @returns Promise resolving to true if handled successfully
+   */
+  handleDeepLink(url: string, referrer: string | null): Promise<boolean>;
 
   // ============================================
   // Trace
@@ -317,4 +359,6 @@ export interface Spec extends TurboModule {
   removeListeners(count: number): void;
 }
 
-export default TurboModuleRegistry.getEnforcing<Spec>('TealiumPrismReactNative');
+export default TurboModuleRegistry.getEnforcing<Spec>(
+  'TealiumPrismReactNative'
+);

@@ -56,20 +56,36 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public static let shared = TealiumPrismBridge()
 
+    /// Creates a Tealium instance from a configuration dictionary.
+    /// This approach allows easy extension without changing method signatures.
     @objc public func create(
-        account: String,
-        profile: String,
-        environment: String,
-        logLevel: String?,
-        dataSource: String?,
-        settingsFile: String?,
-        settingsUrl: String?,
-        existingVisitorId: String?,
-        visitorIdentityKey: String?,
-        momentsApiRegion: String?,
-        lifecycleEnabled: Bool,
+        config: NSDictionary,
         completion: @escaping (Bool) -> Void
     ) {
+        // Required parameters
+        guard let account = config["account"] as? String,
+              let profile = config["profile"] as? String,
+              let environment = config["environment"] as? String else {
+            completion(false)
+            return
+        }
+
+        // Optional parameters
+        let logLevel = config["logLevel"] as? String
+        let dataSource = config["dataSource"] as? String
+        let settingsFile = config["settingsFile"] as? String
+        let settingsUrl = config["settingsUrl"] as? String
+        let existingVisitorId = config["existingVisitorId"] as? String
+        let visitorIdentityKey = config["visitorIdentityKey"] as? String
+        let momentsApiRegion = config["momentsApiRegion"] as? String
+        let lifecycleEnabled = config["lifecycleEnabled"] as? Bool ?? true
+
+        // Core Settings
+        let maxQueueSize = config["maxQueueSize"] as? Int
+        let queueExpirationSeconds = config["queueExpirationSeconds"] as? Int
+        let refreshIntervalSeconds = config["refreshIntervalSeconds"] as? Int
+        let sessionTimeoutSeconds = config["sessionTimeoutSeconds"] as? Int
+
         let minLogLevel = LogLevel.Minimum(from: logLevel) ?? .error
 
         // Configure modules
@@ -85,7 +101,7 @@ public class TealiumPrismBridge: NSObject {
             modules.append(Modules.momentsAPI(forcingSettings: { $0.setRegion(region) }))
         }
 
-        var config = TealiumConfig(
+        var tealiumConfig = TealiumConfig(
             account: account,
             profile: profile,
             environment: environment,
@@ -95,15 +111,29 @@ public class TealiumPrismBridge: NSObject {
             settingsUrl: settingsUrl,
             forcingSettings: { builder in
                 var b = builder.setMinLogLevel(minLogLevel)
+                
                 if let key = visitorIdentityKey {
                     b = b.setVisitorIdentityKey(key)
                 }
+                if let queueSize = maxQueueSize {
+                    b = b.setMaxQueueSize(queueSize)
+                }
+                if let expiration = queueExpirationSeconds {
+                    b = b.setQueueExpiration(TimeFrame(unit: .seconds, interval: Int64(expiration)))
+                }
+                if let refresh = refreshIntervalSeconds {
+                    b = b.setRefreshInterval(TimeFrame(unit: .seconds, interval: Int64(refresh)))
+                }
+                if let timeout = sessionTimeoutSeconds {
+                    b = b.setSessionTimeout(TimeFrame(unit: .seconds, interval: Int64(timeout)))
+                }
+                
                 return b
             }
         )
-        config.existingVisitorId = existingVisitorId
+        tealiumConfig.existingVisitorId = existingVisitorId
 
-        _ = Tealium.create(config: config) { [weak self] result in
+        _ = Tealium.create(config: tealiumConfig) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let instance):
@@ -118,6 +148,10 @@ public class TealiumPrismBridge: NSObject {
     }
 
     @objc public func shutdown() {
+        // Cleanup data layer event subscriptions
+        disableDataLayerEvents()
+        onDataUpdated = nil
+        onDataRemoved = nil
         tealium = nil
     }
 
@@ -160,6 +194,50 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public func setDataLayerStringArray(key: String, value: [String], expiry: String?) {
         tealium?.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe { _ in }
+    }
+
+    @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
+        guard let tealium = tealium else { completion(nil); return }
+
+        // Try to get the raw DataItem and determine its type
+        tealium.dataLayer.getDataItem(key: key).subscribe { result in
+            DispatchQueue.main.async {
+                guard case .success(let dataItem) = result, let item = dataItem else {
+                    completion(nil)
+                    return
+                }
+
+                let response = NSMutableDictionary()
+
+                if let str = item.get(as: String.self) {
+                    response["type"] = "string"
+                    response["value"] = str
+                } else if let num = item.get(as: Double.self) {
+                    response["type"] = "number"
+                    response["value"] = num
+                } else if let b = item.get(as: Bool.self) {
+                    response["type"] = "boolean"
+                    response["value"] = b
+                } else if let arr: [String] = item.get(as: [String].self) {
+                    response["type"] = "array"
+                    response["value"] = arr
+                } else if let dict = item.get(as: DataObject.self) {
+                    response["type"] = "object"
+                    let out = NSMutableDictionary()
+                    for k in dict.keys {
+                        if let s: String = dict.get(key: k) { out[k] = s }
+                        else if let n: Double = dict.get(key: k) { out[k] = n }
+                        else if let bl: Bool = dict.get(key: k) { out[k] = bl }
+                    }
+                    response["value"] = out
+                } else {
+                    completion(nil)
+                    return
+                }
+
+                completion(response)
+            }
+        }
     }
 
     @objc public func getDataLayerString(key: String, completion: @escaping (String?) -> Void) {
@@ -224,6 +302,56 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public func removeDataLayerValues(keys: [String]) {
         tealium?.dataLayer.remove(keys: keys).subscribe { _ in }
+    }
+
+    @objc public func clearDataLayer(completion: @escaping () -> Void) {
+        guard let tealium = tealium else { completion(); return }
+        tealium.dataLayer.clear().subscribe { _ in
+            DispatchQueue.main.async { completion() }
+        }
+    }
+
+    @objc public func getAllData(completion: @escaping (NSDictionary?) -> Void) {
+        guard let tealium = tealium else { completion(nil); return }
+        tealium.dataLayer.getAll().subscribe { result in
+            DispatchQueue.main.async {
+                guard case .success(let dataObject) = result else {
+                    completion(nil)
+                    return
+                }
+                let out = NSMutableDictionary()
+                for key in dataObject.keys {
+                    if let str: String = dataObject.get(key: key) {
+                        out[key] = str
+                    } else if let num: Double = dataObject.get(key: key) {
+                        out[key] = num
+                    } else if let b: Bool = dataObject.get(key: key) {
+                        out[key] = b
+                    } else if let arr: [String] = dataObject.get(key: key) {
+                        out[key] = arr
+                    }
+                }
+                completion(out)
+            }
+        }
+    }
+
+    // MARK: - Deep Link
+
+    @objc public func handleDeepLink(url: String, referrer: String?, completion: @escaping (Bool) -> Void) {
+        guard let tealium = tealium, let deepLinkUrl = URL(string: url) else {
+            completion(false)
+            return
+        }
+        let ref: Referrer? = referrer.flatMap { URL(string: $0) }.map { .url($0) }
+        tealium.deepLink.handle(link: deepLinkUrl, referrer: ref).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true)
+                case .failure: completion(false)
+                }
+            }
+        }
     }
 
     // MARK: - Trace

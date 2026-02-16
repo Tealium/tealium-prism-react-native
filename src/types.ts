@@ -94,9 +94,10 @@ export interface EngineResponse {
 }
 
 /**
- * Configuration object for initializing Tealium Prism.
+ * Configuration object for initializing Tealium.
+ * Mirrors native: TealiumConfig (Swift/Kotlin)
  */
-export interface PrismConfig {
+export interface TealiumConfig {
   /**
    * Tealium account name.
    * @required
@@ -160,6 +161,38 @@ export interface PrismConfig {
    * @default true
    */
   lifecycleEnabled?: boolean;
+
+  // ============================================
+  // Core Settings (Advanced)
+  // ============================================
+
+  /**
+   * Maximum number of events to store in the queue when offline.
+   * When this limit is reached, oldest events are removed first (FIFO).
+   * @default 100
+   */
+  maxQueueSize?: number;
+
+  /**
+   * Maximum time in seconds an event can remain in the queue.
+   * Events older than this are removed without being sent.
+   * @default 86400 (1 day)
+   */
+  queueExpirationSeconds?: number;
+
+  /**
+   * Minimum time in seconds between remote settings refreshes.
+   * Settings are always refreshed on app startup if settingsUrl is provided.
+   * @default 900 (15 minutes)
+   */
+  refreshIntervalSeconds?: number;
+
+  /**
+   * Session timeout in seconds. Time of inactivity before session ends.
+   * Value is coerced between 5 seconds and 30 minutes.
+   * @default 300 (5 minutes)
+   */
+  sessionTimeoutSeconds?: number;
 }
 
 /**
@@ -260,21 +293,13 @@ export interface InitializationResult {
 export type LifecycleEventType = 'launch' | 'wake' | 'sleep';
 
 /**
- * Callback for data layer update events.
- */
-export type DataLayerUpdateCallback = (data: Record<string, unknown>) => void;
-
-/**
- * Callback for data layer remove events.
- */
-export type DataLayerRemoveCallback = (keys: string[]) => void;
-
-/**
  * Event names emitted by the native module.
+ * @internal
  */
 export const TealiumEvents = {
   DATA_LAYER_UPDATED: 'TealiumDataLayerUpdated',
   DATA_LAYER_REMOVED: 'TealiumDataLayerRemoved',
 } as const;
 
+/** @internal */
 export type TealiumEventName = (typeof TealiumEvents)[keyof typeof TealiumEvents];

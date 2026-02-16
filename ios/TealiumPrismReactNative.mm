@@ -32,27 +32,61 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 // MARK: - Initialization & Lifecycle
 
-- (void)initialize:(JS::NativeTealiumPrismReactNative::PrismConfigSpec &)config
+- (void)initialize:(JS::NativeTealiumPrismReactNative::TealiumConfigSpec &)config
            resolve:(RCTPromiseResolveBlock)resolve
             reject:(RCTPromiseRejectBlock)reject {
     @try {
         TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
 
-        // Get lifecycle enabled (default true)
-        BOOL lifecycleEnabled = config.lifecycleEnabled().has_value() ? config.lifecycleEnabled().value() : YES;
+        // Build config dictionary from spec
+        NSMutableDictionary *configDict = [NSMutableDictionary dictionary];
 
-        [bridge createWithAccount:config.account()
-                          profile:config.profile()
-                      environment:config.environment()
-                         logLevel:config.logLevel()
-                       dataSource:config.dataSource()
-                     settingsFile:config.settingsFile()
-                      settingsUrl:config.settingsUrl()
-                existingVisitorId:config.existingVisitorId()
-               visitorIdentityKey:config.visitorIdentityKey()
-                 momentsApiRegion:config.momentsApiRegion()
-                 lifecycleEnabled:lifecycleEnabled
-                       completion:^(BOOL success) {
+        // Required parameters
+        configDict[@"account"] = config.account();
+        configDict[@"profile"] = config.profile();
+        configDict[@"environment"] = config.environment();
+
+        // Optional parameters
+        if (config.logLevel()) {
+            configDict[@"logLevel"] = config.logLevel();
+        }
+        if (config.dataSource()) {
+            configDict[@"dataSource"] = config.dataSource();
+        }
+        if (config.settingsFile()) {
+            configDict[@"settingsFile"] = config.settingsFile();
+        }
+        if (config.settingsUrl()) {
+            configDict[@"settingsUrl"] = config.settingsUrl();
+        }
+        if (config.existingVisitorId()) {
+            configDict[@"existingVisitorId"] = config.existingVisitorId();
+        }
+        if (config.visitorIdentityKey()) {
+            configDict[@"visitorIdentityKey"] = config.visitorIdentityKey();
+        }
+        if (config.momentsApiRegion()) {
+            configDict[@"momentsApiRegion"] = config.momentsApiRegion();
+        }
+
+        // Lifecycle (default true)
+        configDict[@"lifecycleEnabled"] = @(config.lifecycleEnabled().has_value() ? config.lifecycleEnabled().value() : YES);
+
+        // Core Settings (optional)
+        if (config.maxQueueSize().has_value()) {
+            configDict[@"maxQueueSize"] = @(config.maxQueueSize().value());
+        }
+        if (config.queueExpirationSeconds().has_value()) {
+            configDict[@"queueExpirationSeconds"] = @(config.queueExpirationSeconds().value());
+        }
+        if (config.refreshIntervalSeconds().has_value()) {
+            configDict[@"refreshIntervalSeconds"] = @(config.refreshIntervalSeconds().value());
+        }
+        if (config.sessionTimeoutSeconds().has_value()) {
+            configDict[@"sessionTimeoutSeconds"] = @(config.sessionTimeoutSeconds().value());
+        }
+
+        [bridge createWithConfig:configDict completion:^(BOOL success) {
             resolve(success ? @YES : @NO);
         }];
     } @catch (NSException *exception) {
@@ -128,6 +162,14 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     [[TealiumPrismBridge shared] setDataLayerStringArrayWithKey:key value:value expiry:expiry];
 }
 
+- (void)getDataLayerValue:(NSString *)key
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getDataLayerValueWithKey:key completion:^(NSDictionary *result) {
+        resolve(result ?: [NSNull null]);
+    }];
+}
+
 - (void)getDataLayerString:(NSString *)key
                    resolve:(RCTPromiseResolveBlock)resolve
                     reject:(RCTPromiseRejectBlock)reject {
@@ -174,6 +216,31 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)removeDataLayerValues:(NSArray<NSString *> *)keys {
     [[TealiumPrismBridge shared] removeDataLayerValuesWithKeys:keys];
+}
+
+- (void)clearDataLayer:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] clearDataLayerWithCompletion:^{
+        resolve(nil);
+    }];
+}
+
+- (void)getAllData:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getAllDataWithCompletion:^(NSDictionary *data) {
+        resolve(data ?: @{});
+    }];
+}
+
+// MARK: - Deep Link
+
+- (void)handleDeepLink:(NSString *)url
+              referrer:(NSString *)referrer
+               resolve:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] handleDeepLinkWithUrl:url referrer:referrer completion:^(BOOL success) {
+        resolve(@(success));
+    }];
 }
 
 // MARK: - Trace
