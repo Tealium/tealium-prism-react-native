@@ -7,7 +7,11 @@
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
-import type { Expiry, TrackData } from '../types';
+import type {
+  Expiry,
+  TransactionContext,
+  DataLayerOperation,
+} from '../types';
 import { TealiumEvents } from '../types';
 
 /**
@@ -218,5 +222,74 @@ export class DataLayerAPI {
         }
       },
     };
+  }
+
+  /**
+   * Execute multiple data layer operations atomically.
+   *
+   * The callback receives a TransactionContext that allows:
+   * - get(key): Read current values (reads happen before writes)
+   * - put(key, value, expiry): Queue a put operation
+   * - remove(key): Queue a remove operation
+   *
+   * All operations are committed atomically after the callback returns.
+   *
+   * @param block - Function that receives a TransactionContext to build the transaction
+   * @param keysToRead - Array of keys to pre-read before executing the transaction
+   * @returns Promise resolving when the transaction is complete
+   *
+   * @example
+   * ```typescript
+   * await Tealium.dataLayer.transactionally(
+   *   (ctx) => {
+   *     ctx.put('key', 'value', 'forever');
+   *     ctx.remove('key3');
+   *     const count = (ctx.get('key4') as number) ?? 0;
+   *     ctx.put('key4', count + 1, 'forever');
+   *   },
+   *   ['key4'] // keys to pre-read
+   * );
+   * ```
+   */
+  async transactionally(
+    block: (context: TransactionContext) => void,
+    keysToRead: string[] = []
+  ): Promise<void> {
+    // Collect operations from the block
+    const operations: DataLayerOperation[] = [];
+    let preReadValues: Record<string, unknown> = {};
+
+    // First, execute the native call to get pre-read values and apply operations
+    // We need to build the operations list first by executing the block with a mock context
+    // that uses empty pre-read values, then we can determine which keys we actually need
+
+    // Create a context that collects operations
+    const context: TransactionContext = {
+      get: (key: string): unknown => {
+        return preReadValues[key];
+      },
+      put: (key: string, value: unknown, expiry: Expiry = 'session'): void => {
+        operations.push({ type: 'put', key, value, expiry });
+      },
+      remove: (key: string): void => {
+        operations.push({ type: 'remove', key });
+      },
+    };
+
+    // Call native to pre-read keys first, then we'll execute the block
+    // and send operations to native
+    const result = await NativeTealiumPrism.dataLayerTransactionalUpdate(
+      keysToRead,
+      [] // Empty operations first to get pre-read values
+    );
+    preReadValues = (result as Record<string, unknown>) ?? {};
+
+    // Now execute the block with the pre-read values
+    block(context);
+
+    // If there are operations, execute them
+    if (operations.length > 0) {
+      await NativeTealiumPrism.dataLayerTransactionalUpdate([], operations);
+    }
   }
 }

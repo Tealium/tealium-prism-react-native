@@ -1,13 +1,9 @@
 /**
  * Tealium Prism React Native Example App
  *
- * Demonstrates all features of the Tealium Prism SDK wrapper:
- * - Initialization
- * - Event and View tracking
- * - Data Layer operations
- * - Trace/debugging
- * - Visitor management
- * - Consent management
+ * Demonstrates: Start/Stop SDK, tracking (view/event), flush, data layer,
+ * trace, visitor identity (email), Moments API, deep links,
+ * and consent (CMP) management with decision type and purposes.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -20,9 +16,17 @@ import {
   TextInput,
   Platform,
   Animated,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Tealium, {
+  type EngineResponse,
+  type TransactionContext,
+  type ConsentDecision,
+  type ConsentDecisionType,
+} from 'tealium-prism-react-native';
 import TealiumHelper from './TealiumHelper';
 
 // ============================================
@@ -33,6 +37,7 @@ interface ButtonProps {
   title: string;
   onPress: () => void;
   color?: string;
+  disabled?: boolean;
 }
 
 interface SectionProps {
@@ -48,12 +53,20 @@ const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
   color = '#007CC1',
+  disabled = false,
 }) => (
   <TouchableOpacity
-    style={[styles.button, { backgroundColor: color }]}
+    style={[
+      styles.button,
+      { backgroundColor: color },
+      disabled && styles.buttonDisabled,
+    ]}
     onPress={onPress}
+    disabled={disabled}
   >
-    <Text style={styles.buttonText}>{title}</Text>
+    <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]}>
+      {title}
+    </Text>
   </TouchableOpacity>
 );
 
@@ -104,8 +117,21 @@ export default function App() {
   const [traceId, setTraceId] = useState('demo-trace');
   const [dataKey, setDataKey] = useState('example_key');
   const [dataValue, setDataValue] = useState('example_value');
+  const [email, setEmail] = useState('');
   const [engineId, setEngineId] = useState('');
+  const [engineResponse, setEngineResponse] = useState<EngineResponse | null>(
+    null
+  );
+  const [engineLoading, setEngineLoading] = useState(false);
   const [dataLayerEventsEnabled, setDataLayerEventsEnabled] = useState(false);
+  
+  // Consent state
+  const [consentDecisionType, setConsentDecisionType] = useState<ConsentDecisionType>('implicit');
+  const [consentPurposes, setConsentPurposes] = useState<string[]>([]);
+  const [allPurposes, setAllPurposes] = useState<string[]>([]);
+  const [savedConsentDecision, setSavedConsentDecision] = useState<ConsentDecision | null>(null);
+  const [consentHasUnsavedChanges, setConsentHasUnsavedChanges] = useState(false);
+  
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -113,31 +139,86 @@ export default function App() {
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataUpdateSubscription = useRef<{ remove: () => void } | null>(null);
   const dataRemoveSubscription = useRef<{ remove: () => void } | null>(null);
+  const consentSubscription = useRef<(() => void) | null>(null);
 
-  // Initialize Tealium on mount
   useEffect(() => {
     initializeTealium();
     return () => {
-      TealiumHelper.shutdown();
+      TealiumHelper.stopTealium();
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       dataUpdateSubscription.current?.remove();
       dataRemoveSubscription.current?.remove();
+      consentSubscription.current?.();
     };
   }, []);
 
-  const initializeTealium = async () => {
-    const success = await TealiumHelper.initialize({
-      account: 'tealiummobile',
-      profile: 'demo',
-      environment: 'dev',
-      settingsFile:
-        Platform.OS === 'android' ? 'TealiumSettings.json' : 'TealiumSettings',
+  // Load consent data when initialized
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const loadConsentData = async () => {
+      const purposes = await Tealium.consent.getAllPurposes();
+      setAllPurposes(purposes);
+      
+      const decision = await Tealium.consent.getDecision();
+      if (decision) {
+        setConsentDecisionType(decision.decisionType);
+        setConsentPurposes(decision.purposes);
+        setSavedConsentDecision(decision);
+      }
+    };
+    
+    loadConsentData();
+    
+    // Subscribe to consent changes
+    consentSubscription.current = Tealium.consent.onDecisionChanged((decision) => {
+      if (decision) {
+        setConsentDecisionType(decision.decisionType);
+        setConsentPurposes(decision.purposes);
+        setSavedConsentDecision(decision);
+        setConsentHasUnsavedChanges(false);
+      }
     });
+    
+    return () => {
+      consentSubscription.current?.();
+      consentSubscription.current = null;
+    };
+  }, [isInitialized]);
+
+  // Forward incoming deep links (tealium://, myapp://) to Prism for attribution and trace
+  useEffect(() => {
+    const handleUrl = (event: { url: string }) => {
+      if (TealiumHelper.isEnabled) {
+        TealiumHelper.handleDeepLink(event.url);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+    return () => subscription.remove();
+  }, []);
+
+  // Handle app launch from a deep link (process URL after SDK is ready)
+  useEffect(() => {
+    if (!isInitialized) return;
+    Linking.getInitialURL().then((url) => {
+      if (url) TealiumHelper.handleDeepLink(url);
+    });
+  }, [isInitialized]);
+
+  const initializeTealium = async () => {
+    const config =
+      Platform.OS === 'android'
+        ? { settingsFile: 'TealiumSettings.json' as const }
+        : undefined;
+    const success = await TealiumHelper.startTealium(config);
 
     setIsInitialized(success);
 
     if (success) {
       TealiumHelper.trackView('app_launched');
+      const storedEmail = await TealiumHelper.getData('email');
+      setEmail(typeof storedEmail === 'string' ? storedEmail : '');
     }
   };
 
@@ -193,19 +274,17 @@ export default function App() {
   // ============================================
 
   const handleTrackView = useCallback(() => {
-    TealiumHelper.trackView('example_screen', {
-      screen_name: 'Example Screen',
-      timestamp: new Date().toISOString(),
-    });
-    showToast('View tracked: example_screen');
+    TealiumHelper.trackView('screen_view');
+    showToast('View tracked: screen_view');
   }, [showToast]);
 
   const handleTrackEvent = useCallback(() => {
-    TealiumHelper.trackEvent('button_click', {
-      button_id: 'track_event_button',
-      timestamp: new Date().toISOString(),
+    TealiumHelper.trackEvent('button_tapped', {
+      event_category: 'example',
+      event_action: 'tap',
+      event_label: 'Track Event',
     });
-    showToast('Event tracked: button_click');
+    showToast('Event tracked: button_tapped');
   }, [showToast]);
 
   const handleFlush = useCallback(async () => {
@@ -248,6 +327,33 @@ export default function App() {
   }, [dataKey, showToast]);
 
   // ============================================
+  // Transactional Operations
+  // ============================================
+
+  const handleTransactionalUpdate = useCallback(async () => {
+    try {
+      await Tealium.dataLayer.transactionally(
+        (ctx: TransactionContext) => {
+          ctx.put('tx_key1', 'value1', 'session');
+          ctx.put('tx_key2', 'value2', 'forever');
+          ctx.remove('tx_key3');
+          const count = (ctx.get('tx_counter') as number) ?? 0;
+          ctx.put('tx_counter', count + 1, 'forever');
+        },
+        ['tx_counter']
+      );
+      showToast('Transactional update completed');
+    } catch (error) {
+      showToast('Transactional update failed');
+    }
+  }, [showToast]);
+
+  const handleGetTransactionCounter = useCallback(async () => {
+    const count = await Tealium.dataLayer.get('tx_counter');
+    showToast(`tx_counter = ${count ?? 'null'}`);
+  }, [showToast]);
+
+  // ============================================
   // Trace Actions
   // ============================================
 
@@ -267,12 +373,24 @@ export default function App() {
   }, [showToast]);
 
   // ============================================
-  // Visitor Actions
+  // Visitor Identity & Visitor ID
   // ============================================
 
-  const handleGetVisitorId = useCallback(async () => {
-    const vid = await TealiumHelper.getVisitorId();
-    showToast(`Visitor ID: ${vid ?? 'null'}`);
+  const handleSetEmail = useCallback(() => {
+    if (email.trim()) {
+      TealiumHelper.addData({ email: email.trim() }, 'forever');
+      showToast('Email set in data layer');
+    } else {
+      TealiumHelper.removeData('email');
+      setEmail('');
+      showToast('Email cleared from data layer');
+    }
+  }, [email, showToast]);
+
+  const handleClearEmail = useCallback(() => {
+    TealiumHelper.removeData('email');
+    setEmail('');
+    showToast('Email cleared from data layer');
   }, [showToast]);
 
   const handleResetVisitorId = useCallback(async () => {
@@ -286,45 +404,6 @@ export default function App() {
   }, [showToast]);
 
   // ============================================
-  // Consent Actions
-  // ============================================
-
-  const handleSetConsented = useCallback(() => {
-    TealiumHelper.setConsentStatus('consented');
-    showToast('Consent status: consented');
-  }, [showToast]);
-
-  const handleSetNotConsented = useCallback(() => {
-    TealiumHelper.setConsentStatus('notConsented');
-    showToast('Consent status: notConsented');
-  }, [showToast]);
-
-  const handleResetConsent = useCallback(() => {
-    TealiumHelper.setConsentStatus('unknown');
-    showToast('Consent status: unknown');
-  }, [showToast]);
-
-  const handleGetConsentStatus = useCallback(async () => {
-    const status = await TealiumHelper.getConsentStatus();
-    showToast(`Consent status: ${status}`);
-  }, [showToast]);
-
-  const handleSetConsentCategories = useCallback(() => {
-    const categories = ['analytics', 'personalization', 'social'] as const;
-    TealiumHelper.setConsentCategories([...categories]);
-    showToast(`Set categories: ${categories.join(', ')}`);
-  }, [showToast]);
-
-  const handleGetConsentCategories = useCallback(async () => {
-    const categories = await TealiumHelper.getConsentCategories();
-    if (categories.length > 0) {
-      showToast(`Categories: ${categories.join(', ')}`);
-    } else {
-      showToast('No consent categories set');
-    }
-  }, [showToast]);
-
-  // ============================================
   // MomentsAPI Actions
   // ============================================
 
@@ -334,39 +413,17 @@ export default function App() {
       return;
     }
 
+    setEngineLoading(true);
+    setEngineResponse(null);
     const response = await TealiumHelper.fetchEngineResponse(engineId);
+    setEngineLoading(false);
     if (response) {
-      const summary = [];
-      if (response.audiences?.length) {
-        summary.push(`Audiences: ${response.audiences.length}`);
-      }
-      if (response.badges?.length) {
-        summary.push(`Badges: ${response.badges.length}`);
-      }
-      showToast(`Engine Response: ${summary.join(', ') || 'Empty'}`);
+      setEngineResponse(response);
+      showToast('Engine response loaded');
     } else {
       showToast('No engine response (MomentsAPI may not be configured)');
     }
   }, [engineId, showToast]);
-
-  // ============================================
-  // Lifecycle Manual Actions
-  // ============================================
-
-  const handleLifecycleLaunch = useCallback(async () => {
-    await TealiumHelper.lifecycleLaunch({ manual_launch: true });
-    showToast('Lifecycle launch tracked');
-  }, [showToast]);
-
-  const handleLifecycleWake = useCallback(async () => {
-    await TealiumHelper.lifecycleWake({ manual_wake: true });
-    showToast('Lifecycle wake tracked');
-  }, [showToast]);
-
-  const handleLifecycleSleep = useCallback(async () => {
-    await TealiumHelper.lifecycleSleep({ manual_sleep: true });
-    showToast('Lifecycle sleep tracked');
-  }, [showToast]);
 
   // ============================================
   // Trace Extended Actions
@@ -404,13 +461,62 @@ export default function App() {
   }, [dataLayerEventsEnabled, showToast]);
 
   // ============================================
+  // Consent Actions
+  // ============================================
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (!savedConsentDecision) {
+      setConsentHasUnsavedChanges(false);
+      return;
+    }
+    
+    const typeChanged = consentDecisionType !== savedConsentDecision.decisionType;
+    const purposesChanged = 
+      consentPurposes.length !== savedConsentDecision.purposes.length ||
+      !consentPurposes.every(p => savedConsentDecision.purposes.includes(p));
+    
+    setConsentHasUnsavedChanges(typeChanged || purposesChanged);
+  }, [consentDecisionType, consentPurposes, savedConsentDecision]);
+
+  const handleToggleConsentPurpose = useCallback((purpose: string) => {
+    setConsentPurposes(prev => 
+      prev.includes(purpose) 
+        ? prev.filter(p => p !== purpose)
+        : [...prev, purpose]
+    );
+  }, []);
+
+  const handleSaveConsent = useCallback(async () => {
+    const decision: ConsentDecision = {
+      decisionType: consentDecisionType,
+      purposes: consentPurposes,
+    };
+    
+    await Tealium.consent.setDecision(decision);
+    setSavedConsentDecision(decision);
+    setConsentHasUnsavedChanges(false);
+    showToast('Consent settings saved');
+  }, [consentDecisionType, consentPurposes, showToast]);
+
+  const handleDiscardConsentChanges = useCallback(() => {
+    if (savedConsentDecision) {
+      setConsentDecisionType(savedConsentDecision.decisionType);
+      setConsentPurposes(savedConsentDecision.purposes);
+    }
+    setConsentHasUnsavedChanges(false);
+    showToast('Consent changes discarded');
+  }, [savedConsentDecision, showToast]);
+
+  // ============================================
   // Misc Actions
   // ============================================
 
   const handleShutdown = useCallback(() => {
-    TealiumHelper.shutdown();
+    TealiumHelper.stopTealium();
     setIsInitialized(false);
-    showToast('Tealium shutdown');
+    setEngineResponse(null);
+    showToast('Tealium stopped');
   }, [showToast]);
 
   const handleReinitialize = useCallback(async () => {
@@ -430,23 +536,114 @@ export default function App() {
       >
         <Text style={styles.title}>Tealium Prism React Native</Text>
 
-        {/* Instance – Initialize first */}
         <Section title="Instance">
           <Button
-            title={isInitialized ? 'SHUTDOWN' : 'INITIALIZE'}
+            title={isInitialized ? 'Stop Tealium' : 'Start Tealium'}
             onPress={isInitialized ? handleShutdown : handleReinitialize}
             color={isInitialized ? '#dc3545' : '#28a745'}
           />
         </Section>
 
-        {/* Tracking Section */}
         <Section title="Tracking">
-          <Button title="TRACK VIEW" onPress={handleTrackView} />
-          <Button title="TRACK EVENT" onPress={handleTrackEvent} />
-          <Button title="FLUSH QUEUE" onPress={handleFlush} />
+          <Button title="Track View" onPress={handleTrackView} />
+          <Button title="Track Event" onPress={handleTrackEvent} />
+          <Button title="Flush Event Queue" onPress={handleFlush} />
         </Section>
 
-        {/* Data Layer Section */}
+        <Section title="Consent (CMP)">
+          {allPurposes.length > 0 ? (
+            <>
+              {/* Decision Type Toggle */}
+              <View style={styles.consentToggleRow}>
+                <Text style={styles.consentLabel}>Decision Type:</Text>
+                <View style={styles.consentToggleButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.consentToggleButton,
+                      consentDecisionType === 'implicit' && styles.consentToggleButtonActive,
+                    ]}
+                    onPress={() => setConsentDecisionType('implicit')}
+                  >
+                    <Text style={[
+                      styles.consentToggleText,
+                      consentDecisionType === 'implicit' && styles.consentToggleTextActive,
+                    ]}>Implicit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.consentToggleButton,
+                      consentDecisionType === 'explicit' && styles.consentToggleButtonActive,
+                    ]}
+                    onPress={() => setConsentDecisionType('explicit')}
+                  >
+                    <Text style={[
+                      styles.consentToggleText,
+                      consentDecisionType === 'explicit' && styles.consentToggleTextActive,
+                    ]}>Explicit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Purposes Checkboxes */}
+              <Text style={styles.consentLabel}>Purposes:</Text>
+              {allPurposes.map((purpose) => (
+                <TouchableOpacity
+                  key={purpose}
+                  style={styles.consentCheckboxRow}
+                  onPress={() => handleToggleConsentPurpose(purpose)}
+                >
+                  <View style={[
+                    styles.consentCheckbox,
+                    consentPurposes.includes(purpose) && styles.consentCheckboxChecked,
+                  ]}>
+                    {consentPurposes.includes(purpose) && (
+                      <Text style={styles.consentCheckmark}>✓</Text>
+                    )}
+                  </View>
+                  <Text style={styles.consentPurposeText}>{purpose}</Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* Unsaved Changes Warning */}
+              {consentHasUnsavedChanges && (
+                <View style={styles.consentWarning}>
+                  <Text style={styles.consentWarningText}>
+                    You have unsaved changes
+                  </Text>
+                </View>
+              )}
+
+              {/* Save/Discard Buttons */}
+              <View style={styles.consentButtonRow}>
+                <TouchableOpacity
+                  style={[styles.consentButton, styles.consentSaveButton]}
+                  onPress={handleSaveConsent}
+                >
+                  <Text style={styles.consentButtonText}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.consentButton,
+                    styles.consentDiscardButton,
+                    !consentHasUnsavedChanges && styles.consentButtonDisabled,
+                  ]}
+                  onPress={handleDiscardConsentChanges}
+                  disabled={!consentHasUnsavedChanges}
+                >
+                  <Text style={[
+                    styles.consentButtonText,
+                    !consentHasUnsavedChanges && styles.consentButtonTextDisabled,
+                  ]}>Discard</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.helperText}>
+              Consent is not configured. Enable consent in TealiumHelper config.
+            </Text>
+          )}
+        </Section>
+
         <Section title="Data Layer">
           <TextInput
             style={styles.input}
@@ -462,12 +659,26 @@ export default function App() {
             value={dataValue}
             onChangeText={setDataValue}
           />
-          <Button title="ADD DATA" onPress={handleAddData} />
-          <Button title="GET DATA" onPress={handleGetData} />
-          <Button title="REMOVE DATA" onPress={handleRemoveData} />
+          <Button title="Add Data" onPress={handleAddData} />
+          <Button title="Get Data" onPress={handleGetData} />
+          <Button title="Remove Data" onPress={handleRemoveData} />
         </Section>
 
-        {/* Trace Section */}
+        <Section title="Transactional Operations">
+          <Button
+            title="Transactional Update"
+            onPress={handleTransactionalUpdate}
+          />
+          <Button
+            title="Get Transaction Counter"
+            onPress={handleGetTransactionCounter}
+          />
+          <Text style={styles.helperText}>
+            Atomically updates multiple keys: tx_key1, tx_key2, removes tx_key3,
+            and increments tx_counter.
+          </Text>
+        </Section>
+
         <Section title="Trace">
           <TextInput
             style={styles.input}
@@ -477,43 +688,30 @@ export default function App() {
             onChangeText={setTraceId}
             autoCapitalize="none"
           />
-          <Button title="JOIN TRACE" onPress={handleJoinTrace} />
-          <Button title="LEAVE TRACE" onPress={handleLeaveTrace} />
+          <Button title="Start Trace" onPress={handleJoinTrace} />
+          <Button title="Leave Trace" onPress={handleLeaveTrace} />
         </Section>
 
-        {/* Visitor Section */}
+        <Section title="Visitor Identity (Email)">
+          <TextInput
+            style={styles.input}
+            placeholder="Enter email (visitor identity key)"
+            placeholderTextColor="#666"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Button title="Set Email" onPress={handleSetEmail} />
+          <Button title="Clear Email" onPress={handleClearEmail} />
+        </Section>
+
         <Section title="Visitor">
-          <Button title="GET VISITOR ID" onPress={handleGetVisitorId} />
-          <Button title="RESET VISITOR ID" onPress={handleResetVisitorId} />
-          <Button title="CLEAR STORED IDS" onPress={handleClearVisitorIds} />
+          <Button title="Reset Visitor ID" onPress={handleResetVisitorId} />
+          <Button title="Clear Stored IDs" onPress={handleClearVisitorIds} />
         </Section>
 
-        {/* Consent Section */}
-        <Section title="Consent">
-          <Button
-            title="OPT IN (CONSENTED)"
-            onPress={handleSetConsented}
-            color="#28a745"
-          />
-          <Button
-            title="OPT OUT (NOT CONSENTED)"
-            onPress={handleSetNotConsented}
-            color="#dc3545"
-          />
-          <Button title="RESET CONSENT" onPress={handleResetConsent} />
-          <Button title="GET CONSENT STATUS" onPress={handleGetConsentStatus} />
-          <Button
-            title="SET CONSENT CATEGORIES"
-            onPress={handleSetConsentCategories}
-          />
-          <Button
-            title="GET CONSENT CATEGORIES"
-            onPress={handleGetConsentCategories}
-          />
-        </Section>
-
-        {/* MomentsAPI Section */}
-        <Section title="MomentsAPI">
+        <Section title="Moments API">
           <TextInput
             style={styles.input}
             placeholder="Enter engine ID"
@@ -523,31 +721,112 @@ export default function App() {
             autoCapitalize="none"
           />
           <Button
-            title="FETCH ENGINE RESPONSE"
+            title="Fetch Engine Response"
             onPress={handleFetchEngineResponse}
+            disabled={engineLoading}
           />
+          {engineLoading && (
+            <ActivityIndicator
+              style={styles.loader}
+              size="small"
+              color="#007CC1"
+            />
+          )}
+          {engineResponse && (
+            <View style={styles.engineResponse}>
+              {engineResponse.audiences?.length ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Audiences</Text>
+                  <Text style={styles.engineValue}>
+                    {engineResponse.audiences.join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {engineResponse.badges?.length ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Badges</Text>
+                  <Text style={styles.engineValue}>
+                    {engineResponse.badges.join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {engineResponse.properties &&
+              Object.keys(engineResponse.properties).length > 0 ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Properties</Text>
+                  <Text style={styles.engineValue}>
+                    {Object.entries(engineResponse.properties)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {engineResponse.metrics &&
+              Object.keys(engineResponse.metrics).length > 0 ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Metrics</Text>
+                  <Text style={styles.engineValue}>
+                    {Object.entries(engineResponse.metrics)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {engineResponse.flags &&
+              Object.keys(engineResponse.flags).length > 0 ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Flags</Text>
+                  <Text style={styles.engineValue}>
+                    {Object.entries(engineResponse.flags)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {engineResponse.dates &&
+              Object.keys(engineResponse.dates).length > 0 ? (
+                <View style={styles.engineRow}>
+                  <Text style={styles.engineLabel}>Dates</Text>
+                  <Text style={styles.engineValue}>
+                    {Object.entries(engineResponse.dates)
+                      .map(([k, v]) => `${k}: ${new Date(v).toLocaleString()}`)
+                      .join('\n')}
+                  </Text>
+                </View>
+              ) : null}
+              {!engineResponse.audiences?.length &&
+                !engineResponse.badges?.length &&
+                !(
+                  engineResponse.properties &&
+                  Object.keys(engineResponse.properties).length > 0
+                ) &&
+                !(
+                  engineResponse.metrics &&
+                  Object.keys(engineResponse.metrics).length > 0
+                ) &&
+                !(
+                  engineResponse.flags &&
+                  Object.keys(engineResponse.flags).length > 0
+                ) &&
+                !(
+                  engineResponse.dates &&
+                  Object.keys(engineResponse.dates).length > 0
+                ) && <Text style={styles.engineValue}>Empty response</Text>}
+            </View>
+          )}
         </Section>
 
-        {/* Lifecycle Manual Section */}
-        <Section title="Lifecycle (Manual)">
-          <Button title="LAUNCH" onPress={handleLifecycleLaunch} />
-          <Button title="WAKE" onPress={handleLifecycleWake} />
-          <Button title="SLEEP" onPress={handleLifecycleSleep} />
-        </Section>
-
-        {/* Trace Extended Section */}
         <Section title="Trace (Extended)">
           <Button
-            title="FORCE END OF VISIT"
+            title="Force End of Visit"
             onPress={handleForceEndOfVisit}
             color="#dc3545"
           />
         </Section>
 
-        {/* DataLayer Events Section */}
         <Section title="DataLayer Events">
           <Button
-            title={dataLayerEventsEnabled ? 'DISABLE EVENTS' : 'ENABLE EVENTS'}
+            title={dataLayerEventsEnabled ? 'Disable Events' : 'Enable Events'}
             onPress={handleToggleDataLayerEvents}
             color={dataLayerEventsEnabled ? '#dc3545' : '#28a745'}
           />
@@ -654,6 +933,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonTextDisabled: {
+    color: 'rgba(255,255,255,0.8)',
+  },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -679,5 +964,131 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 5,
+  },
+  loader: {
+    marginVertical: 8,
+  },
+  engineResponse: {
+    marginTop: 12,
+    backgroundColor: '#e8e8e8',
+    borderRadius: 8,
+    padding: 12,
+  },
+  engineRow: {
+    marginBottom: 12,
+  },
+  engineLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007CC1',
+    marginBottom: 4,
+  },
+  engineValue: {
+    fontSize: 13,
+    color: '#333',
+    paddingLeft: 8,
+  },
+  // Consent styles
+  consentToggleRow: {
+    marginBottom: 15,
+  },
+  consentLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  consentToggleButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  consentToggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007CC1',
+    backgroundColor: '#fff',
+  },
+  consentToggleButtonActive: {
+    backgroundColor: '#007CC1',
+  },
+  consentToggleText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#007CC1',
+    fontWeight: '500',
+  },
+  consentToggleTextActive: {
+    color: '#fff',
+  },
+  consentCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+  },
+  consentCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#007CC1',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  consentCheckboxChecked: {
+    backgroundColor: '#007CC1',
+  },
+  consentCheckmark: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  consentPurposeText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  consentWarning: {
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginVertical: 10,
+  },
+  consentWarningText: {
+    color: '#856404',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  consentButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  consentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  consentSaveButton: {
+    backgroundColor: '#28a745',
+  },
+  consentDiscardButton: {
+    backgroundColor: '#dc3545',
+  },
+  consentButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  consentButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  consentButtonTextDisabled: {
+    color: '#999',
   },
 });

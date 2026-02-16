@@ -1,18 +1,15 @@
 /**
- * TealiumHelper - Singleton for managing Tealium Prism SDK instance
+ * TealiumHelper - Singleton for managing the Tealium Prism SDK.
  *
- * This helper provides a centralized way to initialize and interact with
- * the Tealium Prism SDK in React Native applications.
- *
- * Uses the new object-oriented API that mirrors the native Swift/Kotlin SDKs.
+ * Use startTealium() to create the instance and apply initial data layer;
+ * stopTealium() to shut down; flush() to send the event queue.
+ * Consent (CMP) is now available via Tealium.consent API.
  */
 
 import Tealium, {
   type TealiumConfig,
   type TrackData,
   type Expiry,
-  type ConsentStatus,
-  type ConsentCategory,
   type EngineResponse,
 } from 'tealium-prism-react-native';
 
@@ -24,12 +21,27 @@ interface TealiumHelperConfig extends TealiumConfig {
 }
 
 /**
- * Default configuration for development/testing.
+ * Default config: remote settings URL, trace logging, visitor identity key "email".
+ * Override with startTealium({ ... }) or initialize({ ... }).
  */
 const DEFAULT_CONFIG: TealiumHelperConfig = {
   account: 'tealiummobile',
   profile: 'demo',
   environment: 'dev',
+  settingsFile: 'TealiumSettings',
+  settingsUrl:
+    'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
+  logLevel: 'trace',
+  visitorIdentityKey: 'email',
+  consent: {
+    enabled: true,
+    allPurposes: ['tealium', 'tracking', 'functional'],
+    defaultDecision: {
+      decisionType: 'implicit',
+      purposes: ['tealium'],
+    },
+    tealiumPurposeId: 'tealium',
+  },
 };
 
 /**
@@ -37,20 +49,9 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
  *
  * @example
  * ```typescript
- * // Initialize with custom config
- * await TealiumHelper.initialize({
- *   account: 'your-account',
- *   profile: 'your-profile',
- *   environment: 'prod',
- * });
- *
- * // Track events (mirrors native: tealium.track(name, type, data))
- * TealiumHelper.trackEvent('button_click', { button_id: 'submit' });
- *
- * // Track views
+ * await TealiumHelper.startTealium();
  * TealiumHelper.trackView('home_screen');
- *
- * // Use data layer (mirrors native: tealium.dataLayer)
+ * TealiumHelper.trackEvent('button_click', { button_id: 'submit' });
  * TealiumHelper.addData({ user_type: 'premium' }, 'session');
  * ```
  */
@@ -88,11 +89,9 @@ class TealiumHelper {
   }
 
   /**
-   * Initialize Tealium with the provided configuration.
-   * Mirrors native: Tealium.create(config:)
-   *
-   * @param config - Configuration options (uses defaults if not provided)
-   * @returns Promise resolving to true if initialization was successful
+   * Create the SDK instance with the given config (merged with defaults).
+   * @param config - Optional overrides; omit to use DEFAULT_CONFIG
+   * @returns true if creation succeeded
    */
   async initialize(config?: Partial<TealiumHelperConfig>): Promise<boolean> {
     const mergedConfig: TealiumHelperConfig = {
@@ -143,8 +142,38 @@ class TealiumHelper {
   }
 
   /**
-   * Shutdown and disable Tealium.
-   * Mirrors native: tealium.shutdown()
+   * Create the SDK and apply initial data layer (key, key2, key3 removed, key4 incremented).
+   * Use this for a one-shot "start" that matches the usual demo setup.
+   * Uses transactionally() for atomic updates (mirrors Swift/Kotlin examples).
+   */
+  async startTealium(config?: Partial<TealiumHelperConfig>): Promise<boolean> {
+    const success = await this.initialize(config ?? DEFAULT_CONFIG);
+    if (!success) return false;
+
+    // Use transactionally for atomic updates (mirrors Swift/Kotlin example)
+    await Tealium.dataLayer.transactionally(
+      (ctx) => {
+        ctx.put('key', 'value', 'forever');
+        ctx.put('key2', 'value2', 'forever');
+        ctx.remove('key3');
+        const count = (ctx.get('key4') as number) ?? 0;
+        ctx.put('key4', count + 1, 'forever');
+      },
+      ['key4']
+    );
+
+    return true;
+  }
+
+  /**
+   * Shut down the SDK and clear the instance.
+   */
+  stopTealium(): void {
+    this.shutdown();
+  }
+
+  /**
+   * Shutdown the SDK and release resources. Call create/startTealium again to reuse.
    */
   shutdown(): void {
     if (this._isEnabled) {
@@ -156,15 +185,11 @@ class TealiumHelper {
   }
 
   // ============================================
-  // Tracking (mirrors native: tealium.track())
+  // Tracking
   // ============================================
 
   /**
-   * Track a view/screen.
-   * Mirrors native: tealium.track(name, .view, data)
-   *
-   * @param viewName - Name of the view/screen
-   * @param data - Optional additional data
+   * Track a screen/view. Data is attached to the dispatch.
    */
   trackView(viewName: string, data?: TrackData): void {
     if (!this._isEnabled) {
@@ -177,11 +202,7 @@ class TealiumHelper {
   }
 
   /**
-   * Track an event.
-   * Mirrors native: tealium.track(name, .event, data)
-   *
-   * @param eventName - Name of the event
-   * @param data - Optional additional data
+   * Track an event with optional payload.
    */
   trackEvent(eventName: string, data?: TrackData): void {
     if (!this._isEnabled) {
@@ -194,8 +215,7 @@ class TealiumHelper {
   }
 
   /**
-   * Flush the event queue.
-   * Mirrors native: tealium.flushEventQueue()
+   * Send the event queue immediately (e.g. before backgrounding).
    */
   async flush(): Promise<void> {
     if (!this._isEnabled) {
@@ -207,15 +227,12 @@ class TealiumHelper {
   }
 
   // ============================================
-  // Data Layer (mirrors native: tealium.dataLayer)
+  // Data Layer
   // ============================================
 
   /**
-   * Add data to the persistent data layer.
-   * Mirrors native: tealium.dataLayer.put(data, expiry)
-   *
-   * @param data - Key-value pairs to add
-   * @param expiry - Expiry option (default: 'session')
+   * Add key-value pairs to the data layer. Included on every subsequent dispatch.
+   * @param expiry - 'session' | 'forever' | 'untilRestart'
    */
   addData(data: Record<string, unknown>, expiry: Expiry = 'session'): void {
     if (!this._isEnabled) {
@@ -227,11 +244,7 @@ class TealiumHelper {
   }
 
   /**
-   * Get a value from the data layer.
-   * Mirrors native: tealium.dataLayer.get(key)
-   *
-   * @param key - Key to retrieve
-   * @returns The value or null
+   * Read a value from the data layer by key.
    */
   async getData(key: string): Promise<unknown> {
     if (!this._isEnabled) {
@@ -242,10 +255,7 @@ class TealiumHelper {
   }
 
   /**
-   * Remove data from the data layer.
-   * Mirrors native: tealium.dataLayer.remove(key)
-   *
-   * @param keys - Key or array of keys to remove
+   * Remove one or more keys from the data layer.
    */
   removeData(keys: string | string[]): void {
     if (!this._isEnabled) {
@@ -256,13 +266,11 @@ class TealiumHelper {
   }
 
   /**
-   * Subscribe to data layer update events.
-   * Mirrors native: tealium.dataLayer.onDataUpdated
-   *
-   * @param callback - Function to call when data is updated
-   * @returns Subscription with remove() method
+   * Subscribe to data layer updates. Call remove() on the returned object to unsubscribe.
    */
-  onDataUpdated(callback: (data: Record<string, unknown>) => void): { remove: () => void } {
+  onDataUpdated(callback: (data: Record<string, unknown>) => void): {
+    remove: () => void;
+  } {
     if (!this._isEnabled) {
       return { remove: () => {} };
     }
@@ -272,13 +280,11 @@ class TealiumHelper {
   }
 
   /**
-   * Subscribe to data layer remove events.
-   * Mirrors native: tealium.dataLayer.onDataRemoved
-   *
-   * @param callback - Function to call when data is removed
-   * @returns Subscription with remove() method
+   * Subscribe to data layer removals. Call remove() on the returned object to unsubscribe.
    */
-  onDataRemoved(callback: (keys: string[]) => void): { remove: () => void } {
+  onDataRemoved(callback: (keys: string[]) => void): {
+    remove: () => void;
+  } {
     if (!this._isEnabled) {
       return { remove: () => {} };
     }
@@ -288,14 +294,11 @@ class TealiumHelper {
   }
 
   // ============================================
-  // Trace (mirrors native: tealium.trace)
+  // Trace
   // ============================================
 
   /**
-   * Join a trace session for debugging.
-   * Mirrors native: tealium.trace.join(id)
-   *
-   * @param traceId - The trace ID to join
+   * Join a trace session (e.g. for Tealium iQ debugging).
    */
   joinTrace(traceId: string): void {
     if (!this._isEnabled) {
@@ -312,7 +315,6 @@ class TealiumHelper {
 
   /**
    * Leave the current trace session.
-   * Mirrors native: tealium.trace.leave()
    */
   leaveTrace(): void {
     if (!this._isEnabled) {
@@ -324,8 +326,7 @@ class TealiumHelper {
   }
 
   /**
-   * Force end of visitor session.
-   * Mirrors native: tealium.trace.forceEndOfVisit()
+   * Force end of the current visit (e.g. for trace/testing).
    */
   forceEndOfVisit(): void {
     if (!this._isEnabled) {
@@ -341,19 +342,7 @@ class TealiumHelper {
   // ============================================
 
   /**
-   * Get the current visitor ID.
-   */
-  async getVisitorId(): Promise<string | null> {
-    if (!this._isEnabled) {
-      return null;
-    }
-
-    return Tealium.getVisitorId();
-  }
-
-  /**
-   * Reset the visitor ID.
-   * Mirrors native: tealium.resetVisitorId()
+   * Generate a new visitor ID (existing identity associations remain).
    */
   async resetVisitorId(): Promise<string | null> {
     if (!this._isEnabled) {
@@ -365,8 +354,7 @@ class TealiumHelper {
   }
 
   /**
-   * Clear all stored visitor IDs.
-   * Mirrors native: tealium.clearStoredVisitorIds()
+   * Clear stored visitor IDs and get a new anonymous ID.
    */
   async clearStoredVisitorIds(): Promise<string | null> {
     if (!this._isEnabled) {
@@ -378,66 +366,28 @@ class TealiumHelper {
   }
 
   // ============================================
-  // Consent (mirrors native: tealium.consent)
+  // Deep Link
   // ============================================
 
   /**
-   * Set consent status.
-   * Mirrors native: (stored in dataLayer for now)
+   * Pass a deep link URL to Prism for attribution and trace. Call when the app receives a link.
+   * @returns true if the URL was handled
    */
-  setConsentStatus(status: ConsentStatus): void {
+  async handleDeepLink(url: string, referrer?: string | null): Promise<boolean> {
     if (!this._isEnabled) {
-      return;
+      return false;
     }
 
-    console.log('[TealiumHelper] Setting consent status:', status);
-    Tealium.consent.setStatus(status);
-  }
-
-  /**
-   * Get current consent status.
-   */
-  async getConsentStatus(): Promise<ConsentStatus> {
-    if (!this._isEnabled) {
-      return 'unknown';
-    }
-
-    return Tealium.consent.getStatus();
-  }
-
-  /**
-   * Set consent categories.
-   */
-  setConsentCategories(categories: ConsentCategory[]): void {
-    if (!this._isEnabled) {
-      return;
-    }
-
-    console.log('[TealiumHelper] Setting consent categories:', categories);
-    Tealium.consent.setCategories(categories);
-  }
-
-  /**
-   * Get current consent categories.
-   */
-  async getConsentCategories(): Promise<ConsentCategory[]> {
-    if (!this._isEnabled) {
-      return [];
-    }
-
-    return Tealium.consent.getCategories();
+    return Tealium.deepLink.handle(url, referrer ?? undefined);
   }
 
   // ============================================
-  // MomentsAPI (mirrors native: tealium.momentsAPI())
+  // MomentsAPI
   // ============================================
 
   /**
-   * Fetch engine response from MomentsAPI.
-   * Mirrors native: tealium.momentsAPI().fetchEngineResponse(engineId)
-   *
-   * @param engineId - The engine ID to fetch
-   * @returns The engine response or null
+   * Fetch the Moments API engine response for the given engine ID.
+   * Requires MomentsAPI module and region configured in settings.
    */
   async fetchEngineResponse(engineId: string): Promise<EngineResponse | null> {
     if (!this._isEnabled) {
@@ -449,14 +399,11 @@ class TealiumHelper {
   }
 
   // ============================================
-  // Lifecycle (mirrors native: tealium.lifecycle())
+  // Lifecycle (manual)
   // ============================================
 
   /**
-   * Manually track a launch lifecycle event.
-   * Mirrors native: tealium.lifecycle().launch(data)
-   *
-   * @param data - Optional additional data
+   * Manually fire a launch lifecycle event (e.g. when auto-tracking is off).
    */
   async lifecycleLaunch(data?: TrackData): Promise<void> {
     if (!this._isEnabled) {
@@ -468,10 +415,7 @@ class TealiumHelper {
   }
 
   /**
-   * Manually track a wake lifecycle event.
-   * Mirrors native: tealium.lifecycle().wake(data)
-   *
-   * @param data - Optional additional data
+   * Manually fire a wake lifecycle event.
    */
   async lifecycleWake(data?: TrackData): Promise<void> {
     if (!this._isEnabled) {
@@ -483,10 +427,7 @@ class TealiumHelper {
   }
 
   /**
-   * Manually track a sleep lifecycle event.
-   * Mirrors native: tealium.lifecycle().sleep(data)
-   *
-   * @param data - Optional additional data
+   * Manually fire a sleep lifecycle event.
    */
   async lifecycleSleep(data?: TrackData): Promise<void> {
     if (!this._isEnabled) {

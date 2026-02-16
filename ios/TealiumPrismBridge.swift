@@ -367,10 +367,6 @@ public class TealiumPrismBridge: NSObject {
 
     // MARK: - Visitor
 
-    @objc public func getVisitorId(completion: @escaping (String?) -> Void) {
-        getDataLayerString(key: "tealium_visitor_id", completion: completion)
-    }
-
     @objc public func resetVisitorId(completion: @escaping (String?, Error?) -> Void) {
         guard let tealium = tealium else { completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"])); return }
         tealium.resetVisitorId().subscribe { result in
@@ -393,24 +389,6 @@ public class TealiumPrismBridge: NSObject {
                 }
             }
         }
-    }
-
-    // MARK: - Consent
-
-    @objc public func setConsentStatus(_ status: String) {
-        setDataLayerString(key: "consent_status", value: status, expiry: "forever")
-    }
-
-    @objc public func getConsentStatus(completion: @escaping (String?) -> Void) {
-        getDataLayerString(key: "consent_status", completion: completion)
-    }
-
-    @objc public func setConsentCategories(_ categories: [String]) {
-        setDataLayerStringArray(key: "consent_categories", value: categories, expiry: "forever")
-    }
-
-    @objc public func getConsentCategories(completion: @escaping ([String]?) -> Void) {
-        getDataLayerStringArray(key: "consent_categories", completion: completion)
     }
 
     // MARK: - MomentsAPI
@@ -540,5 +518,86 @@ public class TealiumPrismBridge: NSObject {
         dataRemoveSubscription?.dispose()
         dataUpdateSubscription = nil
         dataRemoveSubscription = nil
+    }
+
+    // MARK: - DataLayer Transactional Operations
+
+    @objc public func dataLayerTransactionalUpdate(
+        keysToRead: [String],
+        operations: [[String: Any]],
+        completion: @escaping (NSDictionary?) -> Void
+    ) {
+        guard let tealium = tealium else {
+            completion(nil)
+            return
+        }
+
+        // If only pre-reading (no operations), just read and return
+        if operations.isEmpty && !keysToRead.isEmpty {
+            var preReadValues: [String: Any] = [:]
+            let group = DispatchGroup()
+
+            for key in keysToRead {
+                group.enter()
+                tealium.dataLayer.getDataItem(key: key).subscribe { result in
+                    if case .success(let item) = result, let dataItem = item {
+                        if let str = dataItem.get(as: String.self) {
+                            preReadValues[key] = str
+                        } else if let num = dataItem.get(as: Double.self) {
+                            preReadValues[key] = num
+                        } else if let intNum = dataItem.get(as: Int.self) {
+                            preReadValues[key] = intNum
+                        } else if let b = dataItem.get(as: Bool.self) {
+                            preReadValues[key] = b
+                        }
+                    }
+                    group.leave()
+                }
+            }
+
+            group.notify(queue: .main) {
+                completion(preReadValues as NSDictionary)
+            }
+            return
+        }
+
+        // If there are operations, execute them transactionally
+        if !operations.isEmpty {
+            tealium.dataLayer.transactionally { apply, _, commit in
+                for op in operations {
+                    guard let type = op["type"] as? String,
+                          let key = op["key"] as? String else { continue }
+
+                    if type == "put" {
+                        let expiry = expiryFromString(op["expiry"] as? String)
+                        if let value = op["value"] {
+                            if let str = value as? String {
+                                apply(.put(key: key, value: str, expiry: expiry))
+                            } else if let b = value as? Bool {
+                                apply(.put(key: key, value: b, expiry: expiry))
+                            } else if let num = value as? NSNumber {
+                                // Check if it's an integer or double
+                                if CFNumberIsFloatType(num) {
+                                    apply(.put(key: key, value: num.doubleValue, expiry: expiry))
+                                } else {
+                                    apply(.put(key: key, value: num.intValue, expiry: expiry))
+                                }
+                            }
+                        }
+                    } else if type == "remove" {
+                        apply(.remove(key: key))
+                    }
+                }
+                try? commit()
+            }.subscribe { _ in
+                DispatchQueue.main.async {
+                    completion([:] as NSDictionary)
+                }
+            }
+            return
+        }
+
+        // Empty call (no keys to read, no operations)
+        completion([:] as NSDictionary)
     }
 }

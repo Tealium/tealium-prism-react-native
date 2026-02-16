@@ -469,13 +469,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Visitor / Identity
     // ============================================
 
-    override fun getVisitorId(promise: Promise) {
-        tealium?.dataLayer?.getString("tealium_visitor_id")
-            ?.subscribe { result ->
-                promise.resolve(result.getOrNull())
-            } ?: promise.resolve(null)
-    }
-
     override fun resetVisitorId(promise: Promise) {
         val teal = tealium
         if (teal == null) {
@@ -510,45 +503,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.reject("CLEAR_ERROR", error.message, error)
                 }
             }
-    }
-
-    // ============================================
-    // Consent
-    // ============================================
-
-    override fun setConsentStatus(status: String) {
-        // Consent in Prism is managed through CMP adapters
-        // This is a basic implementation storing in data layer
-        tealium?.dataLayer?.put("consent_status", status, Expiry.FOREVER)
-    }
-
-    override fun getConsentStatus(promise: Promise) {
-        tealium?.dataLayer?.getString("consent_status")
-            ?.subscribe { result ->
-                promise.resolve(result.getOrNull() ?: "unknown")
-            } ?: promise.resolve("unknown")
-    }
-
-    override fun setConsentCategories(categories: ReadableArray) {
-        val list = mutableListOf<String>()
-        for (i in 0 until categories.size()) {
-            categories.getString(i)?.let { list.add(it) }
-        }
-        tealium?.dataLayer?.put("consent_categories", list.asDataList(), Expiry.FOREVER)
-    }
-
-    override fun getConsentCategories(promise: Promise) {
-        tealium?.dataLayer?.getDataList("consent_categories")
-            ?.subscribe { result ->
-                val array = com.facebook.react.bridge.Arguments.createArray()
-                val categories = result.getOrNull()
-                if (categories != null) {
-                    for (item in categories) {
-                        item.getString()?.let { array.pushString(it) }
-                    }
-                }
-                promise.resolve(array)
-            } ?: promise.resolve(com.facebook.react.bridge.Arguments.createArray())
     }
 
     // ============================================
@@ -856,6 +810,99 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         dataRemoveSubscription?.dispose()
         dataUpdateSubscription = null
         dataRemoveSubscription = null
+    }
+
+    // ============================================
+    // DataLayer Transactional Operations
+    // ============================================
+
+    override fun dataLayerTransactionalUpdate(
+        keysToRead: ReadableArray,
+        operations: ReadableArray,
+        promise: Promise
+    ) {
+        val teal = tealium
+        if (teal == null) {
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
+            return
+        }
+
+        // Convert keysToRead to list
+        val keysToReadList = mutableListOf<String>()
+        for (i in 0 until keysToRead.size()) {
+            keysToRead.getString(i)?.let { keysToReadList.add(it) }
+        }
+
+        // If only pre-reading (no operations), just read and return
+        if (operations.size() == 0 && keysToReadList.isNotEmpty()) {
+            val preReadValues = Arguments.createMap()
+            val readLatch = java.util.concurrent.CountDownLatch(keysToReadList.size)
+
+            for (key in keysToReadList) {
+                teal.dataLayer.get(key).subscribe { result ->
+                    result.getOrNull()?.let { dataItem ->
+                        when {
+                            dataItem.getString() != null ->
+                                synchronized(preReadValues) { preReadValues.putString(key, dataItem.getString()) }
+                            dataItem.getDouble() != null ->
+                                synchronized(preReadValues) { preReadValues.putDouble(key, dataItem.getDouble()!!) }
+                            dataItem.getInt() != null ->
+                                synchronized(preReadValues) { preReadValues.putInt(key, dataItem.getInt()!!) }
+                            dataItem.getBoolean() != null ->
+                                synchronized(preReadValues) { preReadValues.putBoolean(key, dataItem.getBoolean()!!) }
+                        }
+                    }
+                    readLatch.countDown()
+                }
+            }
+
+            // Wait for all reads to complete and resolve
+            Thread {
+                readLatch.await()
+                promise.resolve(preReadValues)
+            }.start()
+            return
+        }
+
+        // If there are operations, execute them transactionally
+        if (operations.size() > 0) {
+            teal.dataLayer.transactionally { editor ->
+                for (i in 0 until operations.size()) {
+                    val op = operations.getMap(i) ?: continue
+                    val type = op.getString("type") ?: continue
+                    val key = op.getString("key") ?: continue
+
+                    when (type) {
+                        "put" -> {
+                            val expiry = expiryFromString(op.getString("expiry") ?: "session")
+                            if (op.hasKey("value")) {
+                                when (op.getType("value")) {
+                                    ReadableType.String ->
+                                        editor.put(key, op.getString("value")!!, expiry)
+                                    ReadableType.Number ->
+                                        editor.put(key, op.getDouble("value"), expiry)
+                                    ReadableType.Boolean ->
+                                        editor.put(key, op.getBoolean("value"), expiry)
+                                    else -> { /* Skip unsupported types */ }
+                                }
+                            }
+                        }
+                        "remove" -> editor.remove(key)
+                    }
+                }
+                editor.commit()
+            }.subscribe { result ->
+                if (result.isSuccess) {
+                    promise.resolve(Arguments.createMap())
+                } else {
+                    promise.reject("TRANSACTION_ERROR", "Transaction failed")
+                }
+            }
+            return
+        }
+
+        // Empty call (no keys to read, no operations)
+        promise.resolve(Arguments.createMap())
     }
 
     override fun addListener(eventType: String) {

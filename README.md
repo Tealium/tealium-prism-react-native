@@ -2,7 +2,7 @@
 
 React Native wrapper for the Tealium Prism mobile SDKs (iOS and Android).
 
-Provides a unified TypeScript API for event tracking, data layer management, consent handling, and visitor identity management.
+Provides a unified TypeScript API for event tracking, data layer management, and visitor identity management.
 
 ## Features
 
@@ -11,7 +11,6 @@ Provides a unified TypeScript API for event tracking, data layer management, con
 - **Data Layer** - Persistent key-value storage with expiry options
 - **Trace** - Debug mode for real-time event monitoring
 - **Visitor Identity** - Manage visitor IDs and identity
-- **Consent** - Basic consent status and category management
 
 ## Installation
 
@@ -126,32 +125,11 @@ Tealium.leaveTrace();
 ### Visitor Identity
 
 ```typescript
-// Get visitor ID
-const visitorId = await Tealium.getVisitorId();
-
 // Reset visitor ID (generates new anonymous ID)
 const newId = await Tealium.resetVisitorId();
 
 // Clear all stored visitor IDs
 const freshId = await Tealium.clearStoredVisitorIds();
-```
-
-### Consent
-
-```typescript
-// Set consent status
-Tealium.setConsentStatus('consented');    // User opted in
-Tealium.setConsentStatus('notConsented'); // User opted out
-Tealium.setConsentStatus('unknown');      // Reset
-
-// Get consent status
-const status = await Tealium.getConsentStatus();
-
-// Set consent categories
-Tealium.setConsentCategories(['analytics', 'personalization']);
-
-// Get consent categories
-const categories = await Tealium.getConsentCategories();
 ```
 
 ## Types
@@ -160,12 +138,6 @@ const categories = await Tealium.getConsentCategories();
 type Environment = 'dev' | 'qa' | 'prod';
 type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
 type Expiry = 'session' | 'forever' | 'untilRestart';
-type ConsentStatus = 'consented' | 'notConsented' | 'unknown';
-type ConsentCategory = 
-  | 'analytics' | 'affiliates' | 'displayAds' | 'email'
-  | 'personalization' | 'search' | 'social' | 'bigData'
-  | 'mobile' | 'engagement' | 'monitoring' | 'crm'
-  | 'cdp' | 'cookieMatch' | 'misc';
 ```
 
 ## Example App

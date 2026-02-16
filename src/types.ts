@@ -23,31 +23,6 @@ export type Expiry = 'session' | 'forever' | 'untilRestart';
 export type DispatchType = 'event' | 'view';
 
 /**
- * Consent status options.
- */
-export type ConsentStatus = 'consented' | 'notConsented' | 'unknown';
-
-/**
- * Consent categories that can be set.
- */
-export type ConsentCategory =
-  | 'analytics'
-  | 'affiliates'
-  | 'displayAds'
-  | 'email'
-  | 'personalization'
-  | 'search'
-  | 'social'
-  | 'bigData'
-  | 'mobile'
-  | 'engagement'
-  | 'monitoring'
-  | 'crm'
-  | 'cdp'
-  | 'cookieMatch'
-  | 'misc';
-
-/**
  * MomentsAPI region options.
  */
 export type MomentsApiRegion =
@@ -303,3 +278,63 @@ export const TealiumEvents = {
 
 /** @internal */
 export type TealiumEventName = (typeof TealiumEvents)[keyof typeof TealiumEvents];
+
+// ============================================
+// DataLayer Transactional Operations
+// ============================================
+
+/**
+ * Type of operation in a transactional update.
+ */
+export type DataLayerOperationType = 'put' | 'remove';
+
+/**
+ * A put operation for transactional data layer updates.
+ */
+export interface DataLayerPutOperation {
+  type: 'put';
+  key: string;
+  value: unknown;
+  expiry?: Expiry;
+}
+
+/**
+ * A remove operation for transactional data layer updates.
+ */
+export interface DataLayerRemoveOperation {
+  type: 'remove';
+  key: string;
+}
+
+/**
+ * Union type for all data layer operations.
+ */
+export type DataLayerOperation = DataLayerPutOperation | DataLayerRemoveOperation;
+
+/**
+ * Context object passed to the transactionally() callback.
+ * Provides methods to read current values and queue operations.
+ */
+export interface TransactionContext {
+  /**
+   * Get a value from the data layer.
+   * Note: This returns pre-read values, not pending changes from this transaction.
+   * @param key - Key to retrieve
+   * @returns The current value or undefined if not found
+   */
+  get(key: string): unknown;
+
+  /**
+   * Queue a put operation to store a value.
+   * @param key - Key to store the value under
+   * @param value - Value to store
+   * @param expiry - Expiry option (default: 'session')
+   */
+  put(key: string, value: unknown, expiry?: Expiry): void;
+
+  /**
+   * Queue a remove operation to delete a value.
+   * @param key - Key to remove
+   */
+  remove(key: string): void;
+}

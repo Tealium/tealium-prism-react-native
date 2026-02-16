@@ -238,12 +238,6 @@ export interface Spec extends TurboModule {
   // ============================================
 
   /**
-   * Get the current visitor ID.
-   * @returns Promise resolving to the visitor ID or null
-   */
-  getVisitorId(): Promise<string | null>;
-
-  /**
    * Reset the visitor ID to a new anonymous ID.
    * @returns Promise resolving to the new visitor ID
    */
@@ -254,34 +248,6 @@ export interface Spec extends TurboModule {
    * @returns Promise resolving to the new visitor ID
    */
   clearStoredVisitorIds(): Promise<string>;
-
-  // ============================================
-  // Consent (Basic)
-  // ============================================
-
-  /**
-   * Set the consent status.
-   * @param status - Consent status: 'consented', 'notConsented', or 'unknown'
-   */
-  setConsentStatus(status: string): void;
-
-  /**
-   * Get the current consent status.
-   * @returns Promise resolving to the consent status
-   */
-  getConsentStatus(): Promise<string>;
-
-  /**
-   * Set consent categories.
-   * @param categories - Array of consented category strings
-   */
-  setConsentCategories(categories: string[]): void;
-
-  /**
-   * Get the current consent categories.
-   * @returns Promise resolving to array of category strings
-   */
-  getConsentCategories(): Promise<string[]>;
 
   // ============================================
   // MomentsAPI
@@ -357,6 +323,21 @@ export interface Spec extends TurboModule {
    * Remove listeners (required for TurboModules with EventEmitter).
    */
   removeListeners(count: number): void;
+
+  // ============================================
+  // DataLayer Transactional Operations
+  // ============================================
+
+  /**
+   * Execute a batch of data layer operations atomically.
+   * @param keysToRead - Keys to pre-read before executing operations
+   * @param operations - Array of put/remove operations
+   * @returns Promise with pre-read values as object
+   */
+  dataLayerTransactionalUpdate(
+    keysToRead: string[],
+    operations: Object[]
+  ): Promise<Object>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>(

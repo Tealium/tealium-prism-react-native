@@ -1,16 +1,25 @@
 {
   "core": {
-    "log_level": "debug",
+    "log_level": "trace",
     "max_queue_size": 100,
     "expiration": 86400,
     "refresh_interval": 900,
     "session_timeout": 1800
   },
   "modules": {
-    "Collect": {
-      "module_type": "Collect",
-      "enabled": true
+    "AppData": {"module_type": "AppData", "enabled": true},
+    "Collect": {"module_type": "Collect", "enabled": true},
+    "ConnectivityData": {"module_type": "ConnectivityData", "enabled": true},
+    "DataLayer": {"module_type": "DataLayer", "enabled": true},
+    "DeepLink": {
+      "module_type": "DeepLink",
+      "enabled": true,
+      "configuration": {"deep_link_trace_enabled": true, "send_deep_link_event": false}
     },
+    "DeviceData": {"module_type": "DeviceData", "enabled": true},
+    "TealiumData": {"module_type": "TealiumData", "enabled": true},
+    "TimeData": {"module_type": "TimeData", "enabled": true},
+    "Trace": {"module_type": "Trace", "enabled": true, "configuration": {"track_errors": false}},
     "Lifecycle": {
       "module_type": "Lifecycle",
       "enabled": true,
@@ -20,20 +29,10 @@
         "data_target": "lifecycleEventsOnly"
       }
     },
-    "Trace": {
-      "module_type": "Trace",
+    "MomentsAPI": {
+      "module_type": "MomentsAPI",
       "enabled": true,
-      "configuration": {
-        "track_errors": false
-      }
-    },
-    "DeepLink": {
-      "module_type": "DeepLink",
-      "enabled": true,
-      "configuration": {
-        "deep_link_trace_enabled": true,
-        "send_deep_link_event": false
-      }
+      "configuration": {"moments_api_region": "us-east-1"}
     }
   },
   "barriers": {},

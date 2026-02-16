@@ -86,6 +86,42 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             configDict[@"sessionTimeoutSeconds"] = @(config.sessionTimeoutSeconds().value());
         }
 
+        // Consent configuration
+        if (config.consent().has_value()) {
+            auto consentConfig = config.consent().value();
+            NSMutableDictionary *consentDict = [NSMutableDictionary dictionary];
+            
+            consentDict[@"enabled"] = @(consentConfig.enabled());
+            
+            if (!consentConfig.allPurposes().empty()) {
+                NSMutableArray *purposes = [NSMutableArray array];
+                for (const auto &purpose : consentConfig.allPurposes()) {
+                    [purposes addObject:[NSString stringWithUTF8String:purpose.c_str()]];
+                }
+                consentDict[@"allPurposes"] = purposes;
+            }
+            
+            if (consentConfig.defaultDecision().has_value()) {
+                auto defaultDecision = consentConfig.defaultDecision().value();
+                NSMutableDictionary *defaultDecisionDict = [NSMutableDictionary dictionary];
+                defaultDecisionDict[@"decisionType"] = [NSString stringWithUTF8String:defaultDecision.decisionType().c_str()];
+                
+                NSMutableArray *decisionPurposes = [NSMutableArray array];
+                for (const auto &purpose : defaultDecision.purposes()) {
+                    [decisionPurposes addObject:[NSString stringWithUTF8String:purpose.c_str()]];
+                }
+                defaultDecisionDict[@"purposes"] = decisionPurposes;
+                
+                consentDict[@"defaultDecision"] = defaultDecisionDict;
+            }
+            
+            if (consentConfig.tealiumPurposeId().has_value()) {
+                consentDict[@"tealiumPurposeId"] = [NSString stringWithUTF8String:consentConfig.tealiumPurposeId().value().c_str()];
+            }
+            
+            configDict[@"consent"] = consentDict;
+        }
+
         [bridge createWithConfig:configDict completion:^(BOOL success) {
             resolve(success ? @YES : @NO);
         }];
@@ -232,6 +268,17 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     }];
 }
 
+- (void)dataLayerTransactionalUpdate:(NSArray<NSString *> *)keysToRead
+                          operations:(NSArray<NSDictionary *> *)operations
+                             resolve:(RCTPromiseResolveBlock)resolve
+                              reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] dataLayerTransactionalUpdateWithKeysToRead:keysToRead
+                                                                 operations:operations
+                                                                 completion:^(NSDictionary *result) {
+        resolve(result ?: @{});
+    }];
+}
+
 // MARK: - Deep Link
 
 - (void)handleDeepLink:(NSString *)url
@@ -255,13 +302,6 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 // MARK: - Visitor / Identity
 
-- (void)getVisitorId:(RCTPromiseResolveBlock)resolve
-              reject:(RCTPromiseRejectBlock)reject {
-    [[TealiumPrismBridge shared] getVisitorIdWithCompletion:^(NSString *visitorId) {
-        resolve(visitorId ?: [NSNull null]);
-    }];
-}
-
 - (void)resetVisitorId:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
     [[TealiumPrismBridge shared] resetVisitorIdWithCompletion:^(NSString *visitorId, NSError *error) {
@@ -281,30 +321,6 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         } else {
             resolve(visitorId);
         }
-    }];
-}
-
-// MARK: - Consent
-
-- (void)setConsentStatus:(NSString *)status {
-    [[TealiumPrismBridge shared] setConsentStatus:status];
-}
-
-- (void)getConsentStatus:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject {
-    [[TealiumPrismBridge shared] getConsentStatusWithCompletion:^(NSString *status) {
-        resolve(status ?: @"unknown");
-    }];
-}
-
-- (void)setConsentCategories:(NSArray<NSString *> *)categories {
-    [[TealiumPrismBridge shared] setConsentCategories:categories];
-}
-
-- (void)getConsentCategories:(RCTPromiseResolveBlock)resolve
-                      reject:(RCTPromiseRejectBlock)reject {
-    [[TealiumPrismBridge shared] getConsentCategoriesWithCompletion:^(NSArray<NSString *> *categories) {
-        resolve(categories ?: @[]);
     }];
 }
 
