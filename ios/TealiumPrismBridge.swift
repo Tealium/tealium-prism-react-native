@@ -119,13 +119,13 @@ public class TealiumPrismBridge: NSObject {
                     b = b.setMaxQueueSize(queueSize)
                 }
                 if let expiration = queueExpirationSeconds {
-                    b = b.setQueueExpiration(TimeFrame(unit: .seconds, interval: Int64(expiration)))
+                    b = b.setQueueExpiration(Int64(expiration).seconds)
                 }
                 if let refresh = refreshIntervalSeconds {
-                    b = b.setRefreshInterval(TimeFrame(unit: .seconds, interval: Int64(refresh)))
+                    b = b.setRefreshInterval(Int64(refresh).seconds)
                 }
                 if let timeout = sessionTimeoutSeconds {
-                    b = b.setSessionTimeout(TimeFrame(unit: .seconds, interval: Int64(timeout)))
+                    b = b.setSessionTimeout(Int64(timeout).seconds)
                 }
                 
                 return b
@@ -218,12 +218,13 @@ public class TealiumPrismBridge: NSObject {
                 } else if let b = item.get(as: Bool.self) {
                     response["type"] = "boolean"
                     response["value"] = b
-                } else if let arr: [String] = item.get(as: [String].self) {
+                } else if let arr = item.getArray(of: String.self) {
                     response["type"] = "array"
-                    response["value"] = arr
-                } else if let dict = item.get(as: DataObject.self) {
+                    response["value"] = arr.compactMap { $0 }
+                } else if let dictItems = item.getDataDictionary() {
                     response["type"] = "object"
                     let out = NSMutableDictionary()
+                    let dict = dictItems.toDataObject()
                     for k in dict.keys {
                         if let s: String = dict.get(key: k) { out[k] = s }
                         else if let n: Double = dict.get(key: k) { out[k] = n }
@@ -327,8 +328,8 @@ public class TealiumPrismBridge: NSObject {
                         out[key] = num
                     } else if let b: Bool = dataObject.get(key: key) {
                         out[key] = b
-                    } else if let arr: [String] = dataObject.get(key: key) {
-                        out[key] = arr
+                    } else if let arr = dataObject.getArray(key: key, of: String.self) {
+                        out[key] = arr.compactMap { $0 }
                     }
                 }
                 completion(out)

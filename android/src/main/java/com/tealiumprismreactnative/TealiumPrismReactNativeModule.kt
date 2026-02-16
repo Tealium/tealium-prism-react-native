@@ -18,12 +18,12 @@ import com.tealium.prism.core.api.pubsub.Disposable
 import com.tealium.prism.core.api.logger.LogLevel
 import com.tealium.prism.core.api.misc.Environment
 import com.tealium.prism.core.api.misc.TimeFrame
+import com.tealium.prism.core.api.misc.TimeFrameUtils.seconds
 import com.tealium.prism.core.api.persistence.Expiry
 import com.tealium.prism.core.api.tracking.DispatchType
 import com.tealium.prism.lifecycle.lifecycle
 import com.tealium.prism.momentsapi.MomentsApiRegion
 import com.tealium.prism.momentsapi.momentsApi
-import kotlin.time.Duration.Companion.seconds
 
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
@@ -448,7 +448,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
         val deepLinkUri = android.net.Uri.parse(url)
         val referrerUri = referrer?.let { android.net.Uri.parse(it) }
-        teal.deepLink.handle(deepLinkUri, referrerUri).subscribe { result ->
+        teal.deeplink.handle(deepLinkUri, referrerUri).subscribe { result ->
             promise.resolve(result.isSuccess)
         }
     }
