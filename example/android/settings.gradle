@@ -4,12 +4,3 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autoli
 rootProject.name = 'tealiumprismreactnative.example'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
-
-// Include local tealium-prism-kotlin SDK with dependency substitution
-includeBuild('/Users/sebastian/Projects/tealium-prism-kotlin') {
-    dependencySubstitution {
-        substitute module('com.tealium.prism:prism-core') using project(':core')
-        substitute module('com.tealium.prism:prism-lifecycle') using project(':lifecycle')
-        substitute module('com.tealium.prism:prism-moments-api') using project(':momentsapi')
-    }
-}

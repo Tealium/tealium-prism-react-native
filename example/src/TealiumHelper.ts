@@ -3,7 +3,6 @@
  *
  * Use startTealium() to create the instance and apply initial data layer;
  * stopTealium() to shut down; flush() to send the event queue.
- * Consent (CMP) is now available via Tealium.consent API.
  */
 
 import Tealium, {
@@ -31,17 +30,8 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
   settingsFile: 'TealiumSettings',
   settingsUrl:
     'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
-  logLevel: 'trace',
+  logLevel: 'debug',
   visitorIdentityKey: 'email',
-  consent: {
-    enabled: true,
-    allPurposes: ['tealium', 'tracking', 'functional'],
-    defaultDecision: {
-      decisionType: 'implicit',
-      purposes: ['tealium'],
-    },
-    tealiumPurposeId: 'tealium',
-  },
 };
 
 /**
@@ -373,7 +363,10 @@ class TealiumHelper {
    * Pass a deep link URL to Prism for attribution and trace. Call when the app receives a link.
    * @returns true if the URL was handled
    */
-  async handleDeepLink(url: string, referrer?: string | null): Promise<boolean> {
+  async handleDeepLink(
+    url: string,
+    referrer?: string | null
+  ): Promise<boolean> {
     if (!this._isEnabled) {
       return false;
     }

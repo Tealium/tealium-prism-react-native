@@ -274,28 +274,33 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // ============================================
 
     override fun setDataLayerString(key: String, value: String, expiry: String) {
-        tealium?.dataLayer?.put(key, value, expiryFromString(expiry))
+        val teal = tealium ?: return
+        teal.dataLayer.put(key, value, expiryFromString(expiry))
     }
 
     override fun setDataLayerNumber(key: String, value: Double, expiry: String) {
-        tealium?.dataLayer?.put(key, value, expiryFromString(expiry))
+        val teal = tealium ?: return
+        teal.dataLayer.put(key, value, expiryFromString(expiry))
     }
 
     override fun setDataLayerBoolean(key: String, value: Boolean, expiry: String) {
-        tealium?.dataLayer?.put(key, value, expiryFromString(expiry))
+        val teal = tealium ?: return
+        teal.dataLayer.put(key, value, expiryFromString(expiry))
     }
 
     override fun setDataLayerObject(key: String, value: ReadableMap, expiry: String) {
+        val teal = tealium ?: return
         val dataObject = readableMapToDataObject(value)
-        tealium?.dataLayer?.put(key, dataObject, expiryFromString(expiry))
+        teal.dataLayer.put(key, dataObject, expiryFromString(expiry))
     }
 
     override fun setDataLayerStringArray(key: String, value: ReadableArray, expiry: String) {
+        val teal = tealium ?: return
         val list = mutableListOf<String>()
         for (i in 0 until value.size()) {
             value.getString(i)?.let { list.add(it) }
         }
-        tealium?.dataLayer?.put(key, list.asDataList(), expiryFromString(expiry))
+        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
     }
 
     override fun getDataLayerValue(key: String, promise: Promise) {
@@ -321,6 +326,14 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     response.putString("type", "number")
                     response.putDouble("value", dataItem.getDouble()!!)
                 }
+                dataItem.getLong() != null -> {
+                    response.putString("type", "number")
+                    response.putDouble("value", dataItem.getLong()!!.toDouble())
+                }
+                dataItem.getInt() != null -> {
+                    response.putString("type", "number")
+                    response.putDouble("value", dataItem.getInt()!!.toDouble())
+                }
                 dataItem.getBoolean() != null -> {
                     response.putString("type", "boolean")
                     response.putBoolean("value", dataItem.getBoolean()!!)
@@ -329,7 +342,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     response.putString("type", "array")
                     val arr = Arguments.createArray()
                     dataItem.getDataList()?.forEach { item ->
-                        item.getString()?.let { arr.pushString(it) }
+                        when {
+                            item.isString() -> item.getString()?.let { arr.pushString(it) }
+                            item.isNumber() -> item.getDouble()?.let { arr.pushDouble(it) }
+                            item.isBoolean() -> item.getBoolean()?.let { arr.pushBoolean(it) }
+                        }
                     }
                     response.putArray("value", arr)
                 }
@@ -347,65 +364,91 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     override fun getDataLayerString(key: String, promise: Promise) {
-        tealium?.dataLayer?.getString(key)
-            ?.subscribe { result ->
-                promise.resolve(result.getOrNull())
-            } ?: promise.resolve(null)
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.getString(key).subscribe { result ->
+            promise.resolve(result.getOrNull())
+        }
     }
 
     override fun getDataLayerNumber(key: String, promise: Promise) {
-        tealium?.dataLayer?.getDouble(key)
-            ?.subscribe { result ->
-                promise.resolve(result.getOrNull())
-            } ?: promise.resolve(null)
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.getDouble(key).subscribe { result ->
+            promise.resolve(result.getOrNull())
+        }
     }
 
     override fun getDataLayerBoolean(key: String, promise: Promise) {
-        tealium?.dataLayer?.getBoolean(key)
-            ?.subscribe { result ->
-                promise.resolve(result.getOrNull())
-            } ?: promise.resolve(null)
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.getBoolean(key).subscribe { result ->
+            promise.resolve(result.getOrNull())
+        }
     }
 
     override fun getDataLayerObject(key: String, promise: Promise) {
-        tealium?.dataLayer?.getDataObject(key)
-            ?.subscribe { result ->
-                val dataObject = result.getOrNull()
-                if (dataObject != null) {
-                    promise.resolve(dataObjectToMap(dataObject))
-                } else {
-                    promise.resolve(null)
-                }
-            } ?: promise.resolve(null)
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.getDataObject(key).subscribe { result ->
+            val dataObject = result.getOrNull()
+            if (dataObject != null) {
+                promise.resolve(dataObjectToMap(dataObject))
+            } else {
+                promise.resolve(null)
+            }
+        }
     }
 
     override fun getDataLayerStringArray(key: String, promise: Promise) {
-        tealium?.dataLayer?.getDataList(key)
-            ?.subscribe { result ->
-                val dataList = result.getOrNull()
-                if (dataList != null) {
-                    val array = com.facebook.react.bridge.Arguments.createArray()
-                    for (item in dataList) {
-                        item.getString()?.let { array.pushString(it) }
+        val teal = tealium
+        if (teal == null) {
+            promise.resolve(null)
+            return
+        }
+        teal.dataLayer.getDataList(key).subscribe { result ->
+            val dataList = result.getOrNull()
+            if (dataList != null) {
+                val array = Arguments.createArray()
+                for (item in dataList) {
+                    when {
+                        item.isString() -> item.getString()?.let { array.pushString(it) }
+                        item.isNumber() -> item.getDouble()?.let { array.pushDouble(it) }
+                        item.isBoolean() -> item.getBoolean()?.let { array.pushBoolean(it) }
                     }
-                    promise.resolve(array)
-                } else {
-                    promise.resolve(null)
                 }
-            } ?: promise.resolve(null)
+                promise.resolve(array)
+            } else {
+                promise.resolve(null)
+            }
+        }
     }
 
     override fun removeDataLayerValue(key: String) {
-        tealium?.dataLayer?.remove(key)
+        val teal = tealium ?: return
+        teal.dataLayer.remove(key)
     }
 
     override fun removeDataLayerValues(keys: ReadableArray) {
+        val teal = tealium ?: return
         val keyList = mutableListOf<String>()
         for (i in 0 until keys.size()) {
             keys.getString(i)?.let { keyList.add(it) }
         }
         if (keyList.isNotEmpty()) {
-            tealium?.dataLayer?.remove(keyList)
+            teal.dataLayer.remove(keyList)
         }
     }
 
@@ -458,11 +501,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // ============================================
 
     override fun joinTrace(traceId: String) {
-        tealium?.trace?.join(traceId)
+        val teal = tealium ?: return
+        teal.trace.join(traceId)
     }
 
     override fun leaveTrace() {
-        tealium?.trace?.leave()
+        val teal = tealium ?: return
+        teal.trace.leave()
     }
 
     // ============================================
@@ -520,9 +565,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     private fun expiryFromString(expiry: String): Expiry {
-        return when (expiry) {
+        return when (expiry.lowercase()) {
             "forever" -> Expiry.FOREVER
-            "untilRestart" -> Expiry.UNTIL_RESTART
+            "untilrestart" -> Expiry.UNTIL_RESTART
             else -> Expiry.SESSION
         }
     }
@@ -569,9 +614,21 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                                 }
                                 builder.put(key, list.asDataList())
                             }
-                            else -> {
-                                // Mixed or complex arrays - serialize as JSON string
+                            ReadableType.Boolean -> {
+                                val list = mutableListOf<Boolean>()
+                                for (i in 0 until array.size()) {
+                                    list.add(array.getBoolean(i))
+                                }
+                                builder.put(key, list.asDataList())
                             }
+                            ReadableType.Map -> {
+                                val list = mutableListOf<DataObject>()
+                                for (i in 0 until array.size()) {
+                                    array.getMap(i)?.let { list.add(readableMapToDataObject(it)) }
+                                }
+                                builder.put(key, list.asDataList())
+                            }
+                            else -> {}
                         }
                     }
                 }
@@ -583,7 +640,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     private fun dataObjectToMap(dataObject: DataObject): com.facebook.react.bridge.WritableMap {
-        val map = com.facebook.react.bridge.Arguments.createMap()
+        val map = Arguments.createMap()
         for ((key, dataItem) in dataObject) {
             when {
                 dataItem.isString() -> map.putString(key, dataItem.getString())
@@ -596,12 +653,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 dataItem.isDataList() -> {
                     val dataList = dataItem.getDataList()
                     if (dataList != null) {
-                        val array = com.facebook.react.bridge.Arguments.createArray()
+                        val array = Arguments.createArray()
                         for (item in dataList) {
                             when {
                                 item.isString() -> item.getString()?.let { array.pushString(it) }
                                 item.isNumber() -> item.getDouble()?.let { array.pushDouble(it) }
                                 item.isBoolean() -> item.getBoolean()?.let { array.pushBoolean(it) }
+                                item.isDataObject() -> item.getDataObject()?.let { array.pushMap(dataObjectToMap(it)) }
                             }
                         }
                         map.putArray(key, array)
@@ -696,7 +754,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // ============================================
 
     override fun forceEndOfVisit() {
-        tealium?.trace?.forceEndOfVisit()
+        val teal = tealium ?: return
+        teal.trace.forceEndOfVisit()
     }
 
     // ============================================
@@ -712,7 +771,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         val lifecycle = teal.lifecycle
         if (lifecycle == null) {
-            promise.reject("LIFECYCLE_NOT_CONFIGURED", "Lifecycle module is not configured")
+            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
             return
         }
 
@@ -724,7 +783,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.resolve(null)
                 } catch (error: Exception) {
                     Log.e(TAG, "Lifecycle launch failed", error)
-                    promise.resolve(null)
+                    promise.reject("LIFECYCLE_ERROR", error.message, error)
                 }
             }
     }
@@ -738,7 +797,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         val lifecycle = teal.lifecycle
         if (lifecycle == null) {
-            promise.reject("LIFECYCLE_NOT_CONFIGURED", "Lifecycle module is not configured")
+            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
             return
         }
 
@@ -750,7 +809,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.resolve(null)
                 } catch (error: Exception) {
                     Log.e(TAG, "Lifecycle wake failed", error)
-                    promise.resolve(null)
+                    promise.reject("LIFECYCLE_ERROR", error.message, error)
                 }
             }
     }
@@ -764,7 +823,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         val lifecycle = teal.lifecycle
         if (lifecycle == null) {
-            promise.reject("LIFECYCLE_NOT_CONFIGURED", "Lifecycle module is not configured")
+            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
             return
         }
 
@@ -776,7 +835,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.resolve(null)
                 } catch (error: Exception) {
                     Log.e(TAG, "Lifecycle sleep failed", error)
-                    promise.resolve(null)
+                    promise.reject("LIFECYCLE_ERROR", error.message, error)
                 }
             }
     }
@@ -787,9 +846,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     override fun enableDataLayerEvents() {
         if (dataLayerEventsEnabled) return
+        val teal = tealium ?: return
         dataLayerEventsEnabled = true
 
-        val dataLayer = tealium?.dataLayer ?: return
+        val dataLayer = teal.dataLayer
 
         dataUpdateSubscription = dataLayer.onDataUpdated.subscribe { dataObject ->
             sendEvent(EVENT_DATA_LAYER_UPDATED, dataObjectToMap(dataObject))
@@ -827,13 +887,16 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             return
         }
 
-        // Convert keysToRead to list
         val keysToReadList = mutableListOf<String>()
         for (i in 0 until keysToRead.size()) {
             keysToRead.getString(i)?.let { keysToReadList.add(it) }
         }
 
-        // If only pre-reading (no operations), just read and return
+        if (operations.size() == 0 && keysToReadList.isEmpty()) {
+            promise.resolve(Arguments.createMap())
+            return
+        }
+
         if (operations.size() == 0 && keysToReadList.isNotEmpty()) {
             val preReadValues = Arguments.createMap()
             val readLatch = java.util.concurrent.CountDownLatch(keysToReadList.size)
@@ -841,22 +904,36 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             for (key in keysToReadList) {
                 teal.dataLayer.get(key).subscribe { result ->
                     result.getOrNull()?.let { dataItem ->
-                        when {
-                            dataItem.getString() != null ->
-                                synchronized(preReadValues) { preReadValues.putString(key, dataItem.getString()) }
-                            dataItem.getDouble() != null ->
-                                synchronized(preReadValues) { preReadValues.putDouble(key, dataItem.getDouble()!!) }
-                            dataItem.getInt() != null ->
-                                synchronized(preReadValues) { preReadValues.putInt(key, dataItem.getInt()!!) }
-                            dataItem.getBoolean() != null ->
-                                synchronized(preReadValues) { preReadValues.putBoolean(key, dataItem.getBoolean()!!) }
+                        synchronized(preReadValues) {
+                            when {
+                                dataItem.getString() != null ->
+                                    preReadValues.putString(key, dataItem.getString())
+                                dataItem.getDouble() != null ->
+                                    preReadValues.putDouble(key, dataItem.getDouble()!!)
+                                dataItem.getInt() != null ->
+                                    preReadValues.putInt(key, dataItem.getInt()!!)
+                                dataItem.getBoolean() != null ->
+                                    preReadValues.putBoolean(key, dataItem.getBoolean()!!)
+                                dataItem.getDataObject() != null ->
+                                    preReadValues.putMap(key, dataObjectToMap(dataItem.getDataObject()!!))
+                                dataItem.getDataList() != null -> {
+                                    val arr = Arguments.createArray()
+                                    dataItem.getDataList()?.forEach { item ->
+                                        when {
+                                            item.isString() -> item.getString()?.let { arr.pushString(it) }
+                                            item.isNumber() -> item.getDouble()?.let { arr.pushDouble(it) }
+                                            item.isBoolean() -> item.getBoolean()?.let { arr.pushBoolean(it) }
+                                        }
+                                    }
+                                    preReadValues.putArray(key, arr)
+                                }
+                            }
                         }
                     }
                     readLatch.countDown()
                 }
             }
 
-            // Wait for all reads to complete and resolve
             Thread {
                 readLatch.await()
                 promise.resolve(preReadValues)
@@ -864,45 +941,54 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             return
         }
 
-        // If there are operations, execute them transactionally
-        if (operations.size() > 0) {
-            teal.dataLayer.transactionally { editor ->
-                for (i in 0 until operations.size()) {
-                    val op = operations.getMap(i) ?: continue
-                    val type = op.getString("type") ?: continue
-                    val key = op.getString("key") ?: continue
+        teal.dataLayer.transactionally { editor ->
+            for (i in 0 until operations.size()) {
+                val op = operations.getMap(i) ?: continue
+                val type = op.getString("type") ?: continue
+                val key = op.getString("key") ?: continue
 
-                    when (type) {
-                        "put" -> {
-                            val expiry = expiryFromString(op.getString("expiry") ?: "session")
-                            if (op.hasKey("value")) {
-                                when (op.getType("value")) {
-                                    ReadableType.String ->
-                                        editor.put(key, op.getString("value")!!, expiry)
-                                    ReadableType.Number ->
-                                        editor.put(key, op.getDouble("value"), expiry)
-                                    ReadableType.Boolean ->
-                                        editor.put(key, op.getBoolean("value"), expiry)
-                                    else -> { /* Skip unsupported types */ }
+                when (type) {
+                    "put" -> {
+                        val expiry = expiryFromString(op.getString("expiry") ?: "session")
+                        if (op.hasKey("value")) {
+                            when (op.getType("value")) {
+                                ReadableType.String ->
+                                    editor.put(key, op.getString("value")!!, expiry)
+                                ReadableType.Number ->
+                                    editor.put(key, op.getDouble("value"), expiry)
+                                ReadableType.Boolean ->
+                                    editor.put(key, op.getBoolean("value"), expiry)
+                                ReadableType.Map -> {
+                                    val nestedMap = op.getMap("value")
+                                    if (nestedMap != null) {
+                                        editor.put(key, readableMapToDataObject(nestedMap), expiry)
+                                    }
                                 }
+                                ReadableType.Array -> {
+                                    val arr = op.getArray("value")
+                                    if (arr != null && arr.size() > 0) {
+                                        val list = mutableListOf<String>()
+                                        for (j in 0 until arr.size()) {
+                                            arr.getString(j)?.let { list.add(it) }
+                                        }
+                                        editor.put(key, list.asDataList(), expiry)
+                                    }
+                                }
+                                else -> {}
                             }
                         }
-                        "remove" -> editor.remove(key)
                     }
-                }
-                editor.commit()
-            }.subscribe { result ->
-                if (result.isSuccess) {
-                    promise.resolve(Arguments.createMap())
-                } else {
-                    promise.reject("TRANSACTION_ERROR", "Transaction failed")
+                    "remove" -> editor.remove(key)
                 }
             }
-            return
+            editor.commit()
+        }.subscribe { result ->
+            if (result.isSuccess) {
+                promise.resolve(Arguments.createMap())
+            } else {
+                promise.reject("TRANSACTION_ERROR", "Transaction failed")
+            }
         }
-
-        // Empty call (no keys to read, no operations)
-        promise.resolve(Arguments.createMap())
     }
 
     override fun addListener(eventType: String) {

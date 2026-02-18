@@ -182,10 +182,24 @@ export default class Tealium {
   // ============================================
 
   /**
-   * Check if Tealium has been initialized (synchronous).
+   * Check if Tealium has been initialized (synchronous, based on local state).
+   * For authoritative native state, use `isInitialized()`.
    */
   static get isReady(): boolean {
     return Tealium._initialized;
+  }
+
+  /**
+   * Check if Tealium is initialized by querying the native module.
+   *
+   * Mirrors native: checks whether a Tealium instance exists.
+   *
+   * @returns Promise resolving to true if initialized on native side
+   */
+  static async isInitialized(): Promise<boolean> {
+    const nativeState = await NativeTealiumPrism.isInitialized();
+    Tealium._initialized = nativeState;
+    return nativeState;
   }
 
   /**

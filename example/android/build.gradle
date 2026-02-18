@@ -19,3 +19,10 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        mavenLocal()
+        maven { url = uri("https://maven.tealiumiq.com/android/releases/") }
+    }
+}

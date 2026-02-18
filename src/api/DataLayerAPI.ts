@@ -255,15 +255,17 @@ export class DataLayerAPI {
     block: (context: TransactionContext) => void,
     keysToRead: string[] = []
   ): Promise<void> {
-    // Collect operations from the block
     const operations: DataLayerOperation[] = [];
     let preReadValues: Record<string, unknown> = {};
 
-    // First, execute the native call to get pre-read values and apply operations
-    // We need to build the operations list first by executing the block with a mock context
-    // that uses empty pre-read values, then we can determine which keys we actually need
+    if (keysToRead.length > 0) {
+      const result = await NativeTealiumPrism.dataLayerTransactionalUpdate(
+        keysToRead,
+        []
+      );
+      preReadValues = (result as Record<string, unknown>) ?? {};
+    }
 
-    // Create a context that collects operations
     const context: TransactionContext = {
       get: (key: string): unknown => {
         return preReadValues[key];
@@ -276,20 +278,13 @@ export class DataLayerAPI {
       },
     };
 
-    // Call native to pre-read keys first, then we'll execute the block
-    // and send operations to native
-    const result = await NativeTealiumPrism.dataLayerTransactionalUpdate(
-      keysToRead,
-      [] // Empty operations first to get pre-read values
-    );
-    preReadValues = (result as Record<string, unknown>) ?? {};
-
-    // Now execute the block with the pre-read values
     block(context);
 
-    // If there are operations, execute them
     if (operations.length > 0) {
-      await NativeTealiumPrism.dataLayerTransactionalUpdate([], operations);
+      await NativeTealiumPrism.dataLayerTransactionalUpdate(
+        [],
+        operations
+      );
     }
   }
 }

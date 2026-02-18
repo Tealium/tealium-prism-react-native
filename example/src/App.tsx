@@ -2,8 +2,7 @@
  * Tealium Prism React Native Example App
  *
  * Demonstrates: Start/Stop SDK, tracking (view/event), flush, data layer,
- * trace, visitor identity (email), Moments API, deep links,
- * and consent (CMP) management with decision type and purposes.
+ * trace, visitor identity (email), Moments API, and deep links.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -24,8 +23,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Tealium, {
   type EngineResponse,
   type TransactionContext,
-  type ConsentDecision,
-  type ConsentDecisionType,
 } from 'tealium-prism-react-native';
 import TealiumHelper from './TealiumHelper';
 
@@ -124,14 +121,6 @@ export default function App() {
   );
   const [engineLoading, setEngineLoading] = useState(false);
   const [dataLayerEventsEnabled, setDataLayerEventsEnabled] = useState(false);
-  
-  // Consent state
-  const [consentDecisionType, setConsentDecisionType] = useState<ConsentDecisionType>('implicit');
-  const [consentPurposes, setConsentPurposes] = useState<string[]>([]);
-  const [allPurposes, setAllPurposes] = useState<string[]>([]);
-  const [savedConsentDecision, setSavedConsentDecision] = useState<ConsentDecision | null>(null);
-  const [consentHasUnsavedChanges, setConsentHasUnsavedChanges] = useState(false);
-  
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -139,7 +128,6 @@ export default function App() {
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataUpdateSubscription = useRef<{ remove: () => void } | null>(null);
   const dataRemoveSubscription = useRef<{ remove: () => void } | null>(null);
-  const consentSubscription = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     initializeTealium();
@@ -148,43 +136,8 @@ export default function App() {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       dataUpdateSubscription.current?.remove();
       dataRemoveSubscription.current?.remove();
-      consentSubscription.current?.();
     };
   }, []);
-
-  // Load consent data when initialized
-  useEffect(() => {
-    if (!isInitialized) return;
-    
-    const loadConsentData = async () => {
-      const purposes = await Tealium.consent.getAllPurposes();
-      setAllPurposes(purposes);
-      
-      const decision = await Tealium.consent.getDecision();
-      if (decision) {
-        setConsentDecisionType(decision.decisionType);
-        setConsentPurposes(decision.purposes);
-        setSavedConsentDecision(decision);
-      }
-    };
-    
-    loadConsentData();
-    
-    // Subscribe to consent changes
-    consentSubscription.current = Tealium.consent.onDecisionChanged((decision) => {
-      if (decision) {
-        setConsentDecisionType(decision.decisionType);
-        setConsentPurposes(decision.purposes);
-        setSavedConsentDecision(decision);
-        setConsentHasUnsavedChanges(false);
-      }
-    });
-    
-    return () => {
-      consentSubscription.current?.();
-      consentSubscription.current = null;
-    };
-  }, [isInitialized]);
 
   // Forward incoming deep links (tealium://, myapp://) to Prism for attribution and trace
   useEffect(() => {
@@ -461,54 +414,6 @@ export default function App() {
   }, [dataLayerEventsEnabled, showToast]);
 
   // ============================================
-  // Consent Actions
-  // ============================================
-
-  // Track unsaved changes
-  useEffect(() => {
-    if (!savedConsentDecision) {
-      setConsentHasUnsavedChanges(false);
-      return;
-    }
-    
-    const typeChanged = consentDecisionType !== savedConsentDecision.decisionType;
-    const purposesChanged = 
-      consentPurposes.length !== savedConsentDecision.purposes.length ||
-      !consentPurposes.every(p => savedConsentDecision.purposes.includes(p));
-    
-    setConsentHasUnsavedChanges(typeChanged || purposesChanged);
-  }, [consentDecisionType, consentPurposes, savedConsentDecision]);
-
-  const handleToggleConsentPurpose = useCallback((purpose: string) => {
-    setConsentPurposes(prev => 
-      prev.includes(purpose) 
-        ? prev.filter(p => p !== purpose)
-        : [...prev, purpose]
-    );
-  }, []);
-
-  const handleSaveConsent = useCallback(async () => {
-    const decision: ConsentDecision = {
-      decisionType: consentDecisionType,
-      purposes: consentPurposes,
-    };
-    
-    await Tealium.consent.setDecision(decision);
-    setSavedConsentDecision(decision);
-    setConsentHasUnsavedChanges(false);
-    showToast('Consent settings saved');
-  }, [consentDecisionType, consentPurposes, showToast]);
-
-  const handleDiscardConsentChanges = useCallback(() => {
-    if (savedConsentDecision) {
-      setConsentDecisionType(savedConsentDecision.decisionType);
-      setConsentPurposes(savedConsentDecision.purposes);
-    }
-    setConsentHasUnsavedChanges(false);
-    showToast('Consent changes discarded');
-  }, [savedConsentDecision, showToast]);
-
-  // ============================================
   // Misc Actions
   // ============================================
 
@@ -548,100 +453,6 @@ export default function App() {
           <Button title="Track View" onPress={handleTrackView} />
           <Button title="Track Event" onPress={handleTrackEvent} />
           <Button title="Flush Event Queue" onPress={handleFlush} />
-        </Section>
-
-        <Section title="Consent (CMP)">
-          {allPurposes.length > 0 ? (
-            <>
-              {/* Decision Type Toggle */}
-              <View style={styles.consentToggleRow}>
-                <Text style={styles.consentLabel}>Decision Type:</Text>
-                <View style={styles.consentToggleButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.consentToggleButton,
-                      consentDecisionType === 'implicit' && styles.consentToggleButtonActive,
-                    ]}
-                    onPress={() => setConsentDecisionType('implicit')}
-                  >
-                    <Text style={[
-                      styles.consentToggleText,
-                      consentDecisionType === 'implicit' && styles.consentToggleTextActive,
-                    ]}>Implicit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.consentToggleButton,
-                      consentDecisionType === 'explicit' && styles.consentToggleButtonActive,
-                    ]}
-                    onPress={() => setConsentDecisionType('explicit')}
-                  >
-                    <Text style={[
-                      styles.consentToggleText,
-                      consentDecisionType === 'explicit' && styles.consentToggleTextActive,
-                    ]}>Explicit</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Purposes Checkboxes */}
-              <Text style={styles.consentLabel}>Purposes:</Text>
-              {allPurposes.map((purpose) => (
-                <TouchableOpacity
-                  key={purpose}
-                  style={styles.consentCheckboxRow}
-                  onPress={() => handleToggleConsentPurpose(purpose)}
-                >
-                  <View style={[
-                    styles.consentCheckbox,
-                    consentPurposes.includes(purpose) && styles.consentCheckboxChecked,
-                  ]}>
-                    {consentPurposes.includes(purpose) && (
-                      <Text style={styles.consentCheckmark}>✓</Text>
-                    )}
-                  </View>
-                  <Text style={styles.consentPurposeText}>{purpose}</Text>
-                </TouchableOpacity>
-              ))}
-
-              {/* Unsaved Changes Warning */}
-              {consentHasUnsavedChanges && (
-                <View style={styles.consentWarning}>
-                  <Text style={styles.consentWarningText}>
-                    You have unsaved changes
-                  </Text>
-                </View>
-              )}
-
-              {/* Save/Discard Buttons */}
-              <View style={styles.consentButtonRow}>
-                <TouchableOpacity
-                  style={[styles.consentButton, styles.consentSaveButton]}
-                  onPress={handleSaveConsent}
-                >
-                  <Text style={styles.consentButtonText}>Save</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.consentButton,
-                    styles.consentDiscardButton,
-                    !consentHasUnsavedChanges && styles.consentButtonDisabled,
-                  ]}
-                  onPress={handleDiscardConsentChanges}
-                  disabled={!consentHasUnsavedChanges}
-                >
-                  <Text style={[
-                    styles.consentButtonText,
-                    !consentHasUnsavedChanges && styles.consentButtonTextDisabled,
-                  ]}>Discard</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.helperText}>
-              Consent is not configured. Enable consent in TealiumHelper config.
-            </Text>
-          )}
         </Section>
 
         <Section title="Data Layer">
@@ -987,108 +798,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     paddingLeft: 8,
-  },
-  // Consent styles
-  consentToggleRow: {
-    marginBottom: 15,
-  },
-  consentLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  consentToggleButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  consentToggleButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007CC1',
-    backgroundColor: '#fff',
-  },
-  consentToggleButtonActive: {
-    backgroundColor: '#007CC1',
-  },
-  consentToggleText: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#007CC1',
-    fontWeight: '500',
-  },
-  consentToggleTextActive: {
-    color: '#fff',
-  },
-  consentCheckboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-  },
-  consentCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#007CC1',
-    marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  consentCheckboxChecked: {
-    backgroundColor: '#007CC1',
-  },
-  consentCheckmark: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  consentPurposeText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  consentWarning: {
-    backgroundColor: '#fff3cd',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginVertical: 10,
-  },
-  consentWarningText: {
-    color: '#856404',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  consentButtonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  consentButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  consentSaveButton: {
-    backgroundColor: '#28a745',
-  },
-  consentDiscardButton: {
-    backgroundColor: '#dc3545',
-  },
-  consentButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  consentButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  consentButtonTextDisabled: {
-    color: '#999',
   },
 });

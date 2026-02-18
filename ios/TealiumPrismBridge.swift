@@ -33,12 +33,19 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
     for (key, value) in dict {
         if let str = value as? String {
             result.set(converting: str, key: key)
+        } else if let b = value as? Bool {
+            result.set(converting: b, key: key)
         } else if let num = value as? NSNumber {
             result.set(converting: num, key: key)
         } else if let nested = value as? [String: Any] {
             result.set(converting: dataObject(from: nested), key: key)
         } else if let arr = value as? [String] {
             result.set(converting: arr, key: key)
+        } else if let arr = value as? [NSNumber] {
+            result.set(converting: arr, key: key)
+        } else if let arr = value as? [[String: Any]] {
+            let dataObjects = arr.map { dataObject(from: $0) }
+            result.set(converting: dataObjects, key: key)
         }
     }
     return result
@@ -81,12 +88,11 @@ public class TealiumPrismBridge: NSObject {
         let lifecycleEnabled = config["lifecycleEnabled"] as? Bool ?? true
 
         // Core Settings
+        let minLogLevel = logLevel.flatMap { LogLevel.Minimum(from: $0) }
         let maxQueueSize = config["maxQueueSize"] as? Int
         let queueExpirationSeconds = config["queueExpirationSeconds"] as? Int
         let refreshIntervalSeconds = config["refreshIntervalSeconds"] as? Int
         let sessionTimeoutSeconds = config["sessionTimeoutSeconds"] as? Int
-
-        let minLogLevel = LogLevel.Minimum(from: logLevel) ?? .error
 
         // Configure modules
         var modules: [any ModuleFactory] = []
@@ -101,6 +107,23 @@ public class TealiumPrismBridge: NSObject {
             modules.append(Modules.momentsAPI(forcingSettings: { $0.setRegion(region) }))
         }
 
+        let hasAnyCoreSetting = minLogLevel != nil || visitorIdentityKey != nil
+            || maxQueueSize != nil || queueExpirationSeconds != nil
+            || refreshIntervalSeconds != nil || sessionTimeoutSeconds != nil
+
+        let coreSettingsBlock: ((CoreSettingsBuilder) -> CoreSettingsBuilder)? = hasAnyCoreSetting
+            ? { builder in
+                var b = builder
+                if let level = minLogLevel             { b = b.setMinLogLevel(level) }
+                if let key = visitorIdentityKey        { b = b.setVisitorIdentityKey(key) }
+                if let size = maxQueueSize             { b = b.setMaxQueueSize(size) }
+                if let exp = queueExpirationSeconds    { b = b.setQueueExpiration(Int64(exp).seconds) }
+                if let ref = refreshIntervalSeconds    { b = b.setRefreshInterval(Int64(ref).seconds) }
+                if let timeout = sessionTimeoutSeconds { b = b.setSessionTimeout(Int64(timeout).seconds) }
+                return b
+            }
+            : nil
+
         var tealiumConfig = TealiumConfig(
             account: account,
             profile: profile,
@@ -109,27 +132,7 @@ public class TealiumPrismBridge: NSObject {
             modules: modules,
             settingsFile: settingsFile,
             settingsUrl: settingsUrl,
-            forcingSettings: { builder in
-                var b = builder.setMinLogLevel(minLogLevel)
-                
-                if let key = visitorIdentityKey {
-                    b = b.setVisitorIdentityKey(key)
-                }
-                if let queueSize = maxQueueSize {
-                    b = b.setMaxQueueSize(queueSize)
-                }
-                if let expiration = queueExpirationSeconds {
-                    b = b.setQueueExpiration(Int64(expiration).seconds)
-                }
-                if let refresh = refreshIntervalSeconds {
-                    b = b.setRefreshInterval(Int64(refresh).seconds)
-                }
-                if let timeout = sessionTimeoutSeconds {
-                    b = b.setSessionTimeout(Int64(timeout).seconds)
-                }
-                
-                return b
-            }
+            forcingSettings: coreSettingsBlock
         )
         tealiumConfig.existingVisitorId = existingVisitorId
 
@@ -212,23 +215,35 @@ public class TealiumPrismBridge: NSObject {
                 if let str = item.get(as: String.self) {
                     response["type"] = "string"
                     response["value"] = str
-                } else if let num = item.get(as: Double.self) {
-                    response["type"] = "number"
-                    response["value"] = num
                 } else if let b = item.get(as: Bool.self) {
                     response["type"] = "boolean"
                     response["value"] = b
+                } else if let num = item.get(as: Int.self) {
+                    response["type"] = "number"
+                    response["value"] = num
+                } else if let num = item.get(as: Double.self) {
+                    response["type"] = "number"
+                    response["value"] = num
                 } else if let arr = item.getArray(of: String.self) {
                     response["type"] = "array"
                     response["value"] = arr.compactMap { $0 }
+                } else if let arr = item.getDataArray() {
+                    response["type"] = "array"
+                    var values: [Any] = []
+                    for element in arr {
+                        if let s = element.get(as: String.self) { values.append(s) }
+                        else if let n = element.get(as: Double.self) { values.append(n) }
+                        else if let b = element.get(as: Bool.self) { values.append(b) }
+                    }
+                    response["value"] = values
                 } else if let dictItems = item.getDataDictionary() {
                     response["type"] = "object"
                     let out = NSMutableDictionary()
                     let dict = dictItems.toDataObject()
                     for k in dict.keys {
                         if let s: String = dict.get(key: k) { out[k] = s }
-                        else if let n: Double = dict.get(key: k) { out[k] = n }
                         else if let bl: Bool = dict.get(key: k) { out[k] = bl }
+                        else if let n: Double = dict.get(key: k) { out[k] = n }
                     }
                     response["value"] = out
                 } else {
@@ -320,21 +335,25 @@ public class TealiumPrismBridge: NSObject {
                     completion(nil)
                     return
                 }
-                let out = NSMutableDictionary()
-                for key in dataObject.keys {
-                    if let str: String = dataObject.get(key: key) {
-                        out[key] = str
-                    } else if let num: Double = dataObject.get(key: key) {
-                        out[key] = num
-                    } else if let b: Bool = dataObject.get(key: key) {
-                        out[key] = b
-                    } else if let arr = dataObject.getArray(key: key, of: String.self) {
-                        out[key] = arr.compactMap { $0 }
-                    }
-                }
-                completion(out)
+                completion(self.dataObjectToDict(dataObject) as NSDictionary)
             }
         }
+    }
+
+    private func dataObjectToDict(_ dataObject: DataObject) -> [String: Any] {
+        var out: [String: Any] = [:]
+        for key in dataObject.keys {
+            if let str: String = dataObject.get(key: key) {
+                out[key] = str
+            } else if let b: Bool = dataObject.get(key: key) {
+                out[key] = b
+            } else if let num: Double = dataObject.get(key: key) {
+                out[key] = num
+            } else if let arr = dataObject.getArray(key: key, of: String.self) {
+                out[key] = arr.compactMap { $0 }
+            }
+        }
+        return out
     }
 
     // MARK: - Deep Link
@@ -453,33 +472,54 @@ public class TealiumPrismBridge: NSObject {
 
     // MARK: - Lifecycle (Manual)
 
-    @objc public func lifecycleLaunch(data: NSDictionary?, completion: @escaping () -> Void) {
-        guard let tealium = tealium else { completion(); return }
+    @objc public func lifecycleLaunch(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
         let lifecycle = tealium.lifecycle()
-
         let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.launch(dataObj).subscribe { _ in
-            DispatchQueue.main.async { completion() }
+        lifecycle.launch(dataObj).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
         }
     }
 
-    @objc public func lifecycleWake(data: NSDictionary?, completion: @escaping () -> Void) {
-        guard let tealium = tealium else { completion(); return }
+    @objc public func lifecycleWake(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
         let lifecycle = tealium.lifecycle()
-
         let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.wake(dataObj).subscribe { _ in
-            DispatchQueue.main.async { completion() }
+        lifecycle.wake(dataObj).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
         }
     }
 
-    @objc public func lifecycleSleep(data: NSDictionary?, completion: @escaping () -> Void) {
-        guard let tealium = tealium else { completion(); return }
+    @objc public func lifecycleSleep(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
         let lifecycle = tealium.lifecycle()
-
         let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.sleep(dataObj).subscribe { _ in
-            DispatchQueue.main.async { completion() }
+        lifecycle.sleep(dataObj).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
         }
     }
 
@@ -561,7 +601,6 @@ public class TealiumPrismBridge: NSObject {
             return
         }
 
-        // If there are operations, execute them transactionally
         if !operations.isEmpty {
             tealium.dataLayer.transactionally { apply, _, commit in
                 for op in operations {
@@ -576,19 +615,26 @@ public class TealiumPrismBridge: NSObject {
                             } else if let b = value as? Bool {
                                 apply(.put(key: key, value: b, expiry: expiry))
                             } else if let num = value as? NSNumber {
-                                // Check if it's an integer or double
                                 if CFNumberIsFloatType(num) {
                                     apply(.put(key: key, value: num.doubleValue, expiry: expiry))
                                 } else {
                                     apply(.put(key: key, value: num.intValue, expiry: expiry))
                                 }
+                            } else if let arr = value as? [String] {
+                                apply(.put(key: key, value: arr.toDataInput(), expiry: expiry))
+                            } else if let dict = value as? [String: Any] {
+                                apply(.put(key: key, value: dataObject(from: dict).toDataInput(), expiry: expiry))
                             }
                         }
                     } else if type == "remove" {
                         apply(.remove(key: key))
                     }
                 }
-                try? commit()
+                do {
+                    try commit()
+                } catch {
+                    // commit failed - logged by SDK internally
+                }
             }.subscribe { _ in
                 DispatchQueue.main.async {
                     completion([:] as NSDictionary)

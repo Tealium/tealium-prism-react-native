@@ -2,104 +2,98 @@
 
 Example app for the Tealium Prism React Native SDK.
 
-## Wymagania
+## Requirements
 
 - **Node.js** ≥ 20
-- **Yarn** 4.x (używany w repo)
-- **Android**: Android Studio, SDK 35, emulator lub urządzenie
-- **iOS**: Xcode, CocoaPods, symulator lub urządzenie
+- **Yarn** 4.x (used in this repo)
+- **Android**: Android Studio, SDK 35, emulator or device
+- **iOS**: Xcode, CocoaPods, simulator or device
 
-## Uruchomienie z katalogu głównego repo
+## Running from the repo root
 
-Wszystkie komendy uruchamiaj w **głównym katalogu** `tealium-prism-react-native` (nie w `example/`).
+Run all commands from the **root directory** `tealium-prism-react-native` (not from `example/`).
 
-### 1. Zainstaluj zależności
+### 1. Install dependencies
 
 ```bash
 yarn
 ```
 
-### 2. Zbuduj bibliotekę
+### 2. Build the library
 
 ```bash
 yarn prepare
 ```
 
-(lub `yarn bob build` – tworzy katalog `lib/` z modułem).
+(or `yarn bob build` – creates the `lib/` directory with the module).
 
-### 3. Uruchom Metro (w jednym terminalu)
+### 3. Start Metro (in one terminal)
 
 ```bash
 yarn example start
 ```
 
-Zostaw ten terminal otwarty.
+Keep this terminal open.
 
-### 4a. Android (w drugim terminalu)
+### 4a. Android (in a second terminal)
 
 ```bash
 yarn example android
 ```
 
-Albo z głównego katalogu:
+Or from the root directory:
 
 ```bash
 cd example && yarn android
 ```
 
-**Uwaga:** Pierwszy build Androida może trwać kilka minut (Gradle, pobranie Prism SDK z Maven).
+**Note:** The first Android build may take a few minutes (Gradle, downloading the Prism SDK from Maven).
 
-### 4b. iOS (w drugim terminalu)
+### 4b. iOS (in a second terminal)
 
-Najpierw zainstaluj pody w przykładzie:
+First install pods for the example:
 
 ```bash
 cd example/ios && pod install && cd ../..
 ```
 
-Potem uruchom aplikację:
+Then run the app:
 
 ```bash
 yarn example ios
 ```
 
-Albo:
+Or:
 
 ```bash
 cd example && yarn ios
 ```
 
-## Szybkie testowanie (Android)
+## Quick testing (Android)
 
-Z głównego katalogu, w jednej sesji:
+From the root directory, in one session:
 
 ```bash
 yarn && yarn prepare && yarn example start
 ```
 
-W drugim terminalu:
+In a second terminal:
 
 ```bash
 cd /Users/sebastian/Projects/tealium-prism-react-native && yarn example android
 ```
 
-## Co przetestować w aplikacji
+## What to test in the app
 
-1. **Status** – po starcie powinno być „Initialized” i widoczny Consent (np. unknown).
-2. **Tracking** – TRACK VIEW, TRACK EVENT – sprawdź w logach (np. `adb logcat | grep -i tealium` na Androidzie).
-3. **Data Layer** – ADD DATA (klucz + wartość), GET DATA – czy zwraca zapisaną wartość.
-4. **Visitor** – GET VISITOR ID, RESET VISITOR ID – czy zwraca ID.
-5. **Consent** – OPT IN / OPT OUT, GET CONSENT STATUS.
-6. **Trace** – wpisz trace ID, JOIN TRACE – do debugowania w Tealium Event Stream.
+1. **Status** – after launch it should show "Initialized".
+2. **Tracking** – TRACK VIEW, TRACK EVENT – check logs (e.g. `adb logcat | grep -i tealium` on Android).
+3. **Data Layer** – ADD DATA (key + value), GET DATA – verify the stored value is returned.
+4. **Visitor** – GET VISITOR ID, RESET VISITOR ID – verify an ID is returned.
+5. **Trace** – enter a trace ID, JOIN TRACE – for debugging in Tealium Event Stream.
 
-## Logi (Android)
+## Logs (Android)
 
 ```bash
 adb logcat | grep -E "TealiumPrismRN|Tealium"
 ```
 
-## Częste problemy
-
-- **Metro nie widzi modułu** – upewnij się, że wykonałeś `yarn prepare` w głównym katalogu.
-- **Android build fail** – sprawdź, że w `example/android` jest `settings.gradle` i że link do biblioteki z `react-native.config.js` jest poprawny.
-- **iOS: pod install** – zawsze z katalogu `example/ios`.

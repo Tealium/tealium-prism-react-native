@@ -86,42 +86,6 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             configDict[@"sessionTimeoutSeconds"] = @(config.sessionTimeoutSeconds().value());
         }
 
-        // Consent configuration
-        if (config.consent().has_value()) {
-            auto consentConfig = config.consent().value();
-            NSMutableDictionary *consentDict = [NSMutableDictionary dictionary];
-            
-            consentDict[@"enabled"] = @(consentConfig.enabled());
-            
-            if (!consentConfig.allPurposes().empty()) {
-                NSMutableArray *purposes = [NSMutableArray array];
-                for (const auto &purpose : consentConfig.allPurposes()) {
-                    [purposes addObject:[NSString stringWithUTF8String:purpose.c_str()]];
-                }
-                consentDict[@"allPurposes"] = purposes;
-            }
-            
-            if (consentConfig.defaultDecision().has_value()) {
-                auto defaultDecision = consentConfig.defaultDecision().value();
-                NSMutableDictionary *defaultDecisionDict = [NSMutableDictionary dictionary];
-                defaultDecisionDict[@"decisionType"] = [NSString stringWithUTF8String:defaultDecision.decisionType().c_str()];
-                
-                NSMutableArray *decisionPurposes = [NSMutableArray array];
-                for (const auto &purpose : defaultDecision.purposes()) {
-                    [decisionPurposes addObject:[NSString stringWithUTF8String:purpose.c_str()]];
-                }
-                defaultDecisionDict[@"purposes"] = decisionPurposes;
-                
-                consentDict[@"defaultDecision"] = defaultDecisionDict;
-            }
-            
-            if (consentConfig.tealiumPurposeId().has_value()) {
-                consentDict[@"tealiumPurposeId"] = [NSString stringWithUTF8String:consentConfig.tealiumPurposeId().value().c_str()];
-            }
-            
-            configDict[@"consent"] = consentDict;
-        }
-
         [bridge createWithConfig:configDict completion:^(BOOL success) {
             resolve(success ? @YES : @NO);
         }];
@@ -353,8 +317,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] lifecycleLaunchWithData:data completion:^{
-        resolve(nil);
+    [[TealiumPrismBridge shared] lifecycleLaunchWithData:data completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
     }];
 }
 
@@ -365,8 +333,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] lifecycleWakeWithData:data completion:^{
-        resolve(nil);
+    [[TealiumPrismBridge shared] lifecycleWakeWithData:data completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
     }];
 }
 
@@ -377,8 +349,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] lifecycleSleepWithData:data completion:^{
-        resolve(nil);
+    [[TealiumPrismBridge shared] lifecycleSleepWithData:data completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
     }];
 }
 
