@@ -414,6 +414,38 @@ export default function App() {
   }, [dataLayerEventsEnabled, showToast]);
 
   // ============================================
+  // Consent Actions
+  // ============================================
+
+  const handleGrantConsent = useCallback(() => {
+    Tealium.consent.setDecision('explicit', [
+      'analytics',
+      'marketing',
+      'personalization',
+    ]);
+    showToast('Consent granted (explicit, all purposes)');
+  }, [showToast]);
+
+  const handleImplicitConsent = useCallback(() => {
+    Tealium.consent.setDecision('implicit', ['analytics']);
+    showToast('Implicit consent set (analytics only)');
+  }, [showToast]);
+
+  const handleRevokeConsent = useCallback(() => {
+    Tealium.consent.reset();
+    showToast('Consent revoked');
+  }, [showToast]);
+
+  const handleGetConsent = useCallback(async () => {
+    const decision = await Tealium.consent.getDecision();
+    if (decision) {
+      showToast(`${decision.decisionType}: ${decision.purposes.join(', ')}`);
+    } else {
+      showToast('No consent decision set');
+    }
+  }, [showToast]);
+
+  // ============================================
   // Misc Actions
   // ============================================
 
@@ -633,6 +665,27 @@ export default function App() {
             onPress={handleForceEndOfVisit}
             color="#dc3545"
           />
+        </Section>
+
+        <Section title="Consent">
+          <Button
+            title="Grant All (Explicit)"
+            onPress={handleGrantConsent}
+            color="#28a745"
+          />
+          <Button
+            title="Implicit (Analytics Only)"
+            onPress={handleImplicitConsent}
+          />
+          <Button
+            title="Revoke Consent"
+            onPress={handleRevokeConsent}
+            color="#dc3545"
+          />
+          <Button title="Get Consent Status" onPress={handleGetConsent} />
+          <Text style={styles.helperText}>
+            Requires consentEnabled: true in TealiumConfig.
+          </Text>
         </Section>
 
         <Section title="DataLayer Events">

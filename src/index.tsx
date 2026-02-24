@@ -10,6 +10,7 @@
  * - `Tealium.deepLink` - Deep link handling
  * - `Tealium.lifecycle` - Manual lifecycle tracking
  * - `Tealium.momentsAPI` - Moments API integration
+ * - `Tealium.consent` - Consent management
  */
 
 import { NativeEventEmitter } from 'react-native';
@@ -26,6 +27,7 @@ import {
   DeepLinkAPI,
   LifecycleAPI,
   MomentsAPIHandler,
+  ConsentAPI,
 } from './api';
 
 // Re-export types
@@ -81,6 +83,7 @@ export default class Tealium {
   private static _deepLink: DeepLinkAPI | null = null;
   private static _lifecycle: LifecycleAPI | null = null;
   private static _momentsAPI: MomentsAPIHandler | null = null;
+  private static _consent: ConsentAPI | null = null;
 
   // ============================================
   // Sub-API Getters (mirrors native SDK)
@@ -177,6 +180,27 @@ export default class Tealium {
     return this._momentsAPI;
   }
 
+  /**
+   * Manager for consent management.
+   *
+   * Mirrors native: `CMPAdapter` / `CmpAdapter` pattern
+   *
+   * Requires `consentEnabled: true` in the config passed to `Tealium.create()`.
+   *
+   * @example
+   * ```typescript
+   * Tealium.consent.setDecision('explicit', ['analytics', 'marketing']);
+   * const decision = await Tealium.consent.getDecision();
+   * Tealium.consent.reset();
+   * ```
+   */
+  static get consent(): ConsentAPI {
+    if (!this._consent) {
+      this._consent = new ConsentAPI();
+    }
+    return this._consent;
+  }
+
   // ============================================
   // Initialization & Lifecycle
   // ============================================
@@ -259,6 +283,7 @@ export default class Tealium {
     this._deepLink = null;
     this._lifecycle = null;
     this._momentsAPI = null;
+    this._consent = null;
   }
 
   // ============================================

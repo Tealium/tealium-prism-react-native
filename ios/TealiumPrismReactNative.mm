@@ -72,6 +72,19 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         // Lifecycle (default true)
         configDict[@"lifecycleEnabled"] = @(config.lifecycleEnabled().has_value() ? config.lifecycleEnabled().value() : YES);
 
+        // Consent
+        if (config.consentEnabled().has_value()) {
+            configDict[@"consentEnabled"] = @(config.consentEnabled().value());
+        }
+        if (config.consentPurposes().has_value()) {
+            auto purposes = config.consentPurposes().value();
+            NSMutableArray *purposesArray = [NSMutableArray arrayWithCapacity:purposes.size()];
+            for (size_t i = 0; i < purposes.size(); i++) {
+                [purposesArray addObject:purposes[i]];
+            }
+            configDict[@"consentPurposes"] = purposesArray;
+        }
+
         // Core Settings (optional)
         if (config.maxQueueSize().has_value()) {
             configDict[@"maxQueueSize"] = @(config.maxQueueSize().value());
@@ -356,6 +369,24 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             resolve(nil);
         }
     }];
+}
+
+// MARK: - Consent
+
+- (void)setConsentDecision:(NSString *)decisionType
+                  purposes:(NSArray<NSString *> *)purposes {
+    [[TealiumPrismBridge shared] setConsentDecisionWithDecisionType:decisionType purposes:purposes];
+}
+
+- (void)getConsentDecision:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getConsentDecisionWithCompletion:^(NSDictionary *result) {
+        resolve(result ?: [NSNull null]);
+    }];
+}
+
+- (void)resetConsentDecision {
+    [[TealiumPrismBridge shared] resetConsentDecision];
 }
 
 // MARK: - DataLayer Events

@@ -14,7 +14,11 @@ import com.tealium.prism.core.api.Tealium
 import com.tealium.prism.core.api.TealiumConfig
 import com.tealium.prism.core.api.data.DataItemUtils.asDataList
 import com.tealium.prism.core.api.data.DataObject
+import com.tealium.prism.core.api.consent.CmpAdapter
+import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.pubsub.Disposable
+import com.tealium.prism.core.api.pubsub.Observable
+import com.tealium.prism.core.api.pubsub.Observables
 import com.tealium.prism.core.api.logger.LogLevel
 import com.tealium.prism.core.api.misc.Environment
 import com.tealium.prism.core.api.misc.TimeFrame
@@ -24,6 +28,28 @@ import com.tealium.prism.core.api.tracking.DispatchType
 import com.tealium.prism.lifecycle.lifecycle
 import com.tealium.prism.momentsapi.MomentsApiRegion
 import com.tealium.prism.momentsapi.momentsApi
+
+/**
+ * Bridge CMP adapter that receives consent decisions pushed from JavaScript.
+ * Implements the native CmpAdapter interface, holding a StateSubject that the
+ * SDK's consent pipeline subscribes to.
+ */
+private class BridgeCmpAdapter : CmpAdapter {
+    override val id = "react-native-bridge"
+    private val _consentDecision = Observables.stateSubject<ConsentDecision?>(null)
+    override val consentDecision: Observable<ConsentDecision?> = _consentDecision.asObservable()
+    override var allPurposes: Set<String>? = null
+
+    fun update(decision: ConsentDecision) {
+        _consentDecision.onNext(decision)
+    }
+
+    fun reset() {
+        _consentDecision.onNext(null)
+    }
+
+    val currentDecision: ConsentDecision? get() = _consentDecision.value
+}
 
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
@@ -36,6 +62,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     private var tealium: Tealium? = null
+    private var bridgeCmpAdapter: BridgeCmpAdapter? = null
     private var dataLayerEventsEnabled = false
     private var dataUpdateSubscription: Disposable? = null
     private var dataRemoveSubscription: Disposable? = null
@@ -179,6 +206,28 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 }
             }
 
+            // Configure consent if enabled
+            val consentEnabled = if (config.hasKey("consentEnabled")) {
+                config.getBoolean("consentEnabled")
+            } else {
+                false
+            }
+            if (consentEnabled) {
+                val adapter = BridgeCmpAdapter()
+                if (config.hasKey("consentPurposes")) {
+                    val purposesArray = config.getArray("consentPurposes")
+                    if (purposesArray != null) {
+                        val purposes = mutableSetOf<String>()
+                        for (i in 0 until purposesArray.size()) {
+                            purposesArray.getString(i)?.let { purposes.add(it) }
+                        }
+                        adapter.allPurposes = purposes
+                    }
+                }
+                configBuilder.enableConsentIntegration(adapter)
+                bridgeCmpAdapter = adapter
+            }
+
             // Create Tealium instance
             tealium = Tealium.create(configBuilder.build()) { result ->
                 val teal = result.getOrNull()
@@ -200,6 +249,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun shutdown() {
         tealium?.shutdown()
         tealium = null
+        bridgeCmpAdapter = null
     }
 
     override fun isInitialized(promise: Promise) {
@@ -548,6 +598,43 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.reject("CLEAR_ERROR", error.message, error)
                 }
             }
+    }
+
+    // ============================================
+    // Consent
+    // ============================================
+
+    override fun setConsentDecision(decisionType: String, purposes: ReadableArray) {
+        val adapter = bridgeCmpAdapter ?: return
+        val type = if (decisionType.lowercase() == "explicit") {
+            ConsentDecision.DecisionType.Explicit
+        } else {
+            ConsentDecision.DecisionType.Implicit
+        }
+        val purposeSet = mutableSetOf<String>()
+        for (i in 0 until purposes.size()) {
+            purposes.getString(i)?.let { purposeSet.add(it) }
+        }
+        adapter.update(ConsentDecision(type, purposeSet))
+    }
+
+    override fun getConsentDecision(promise: Promise) {
+        val adapter = bridgeCmpAdapter
+        val decision = adapter?.currentDecision
+        if (decision == null) {
+            promise.resolve(null)
+            return
+        }
+        val map = Arguments.createMap()
+        map.putString("decisionType", if (decision.decisionType == ConsentDecision.DecisionType.Explicit) "explicit" else "implicit")
+        val purposesArray = Arguments.createArray()
+        decision.purposes.forEach { purposesArray.pushString(it) }
+        map.putArray("purposes", purposesArray)
+        promise.resolve(map)
+    }
+
+    override fun resetConsentDecision() {
+        bridgeCmpAdapter?.reset()
     }
 
     // ============================================

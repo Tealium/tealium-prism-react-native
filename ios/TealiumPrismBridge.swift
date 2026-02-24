@@ -51,9 +51,32 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
     return result
 }
 
+/// Bridge CMP adapter that receives consent decisions pushed from JavaScript.
+/// Implements the native CMPAdapter protocol, holding a StateSubject that the
+/// SDK's consent pipeline subscribes to.
+private class BridgeCMPAdapter: CMPAdapter {
+    let id = "react-native-bridge"
+    private let _consentDecision = StateSubject<ConsentDecision?>(nil)
+    var consentDecision: Observable<ConsentDecision?> { _consentDecision.asObservable() }
+    var allPurposes: Set<String>?
+
+    func update(decision: ConsentDecision) {
+        _consentDecision.publish(decision)
+    }
+
+    func reset() {
+        _consentDecision.publish(nil)
+    }
+
+    var currentDecision: ConsentDecision? {
+        _consentDecision.value
+    }
+}
+
 @objc(TealiumPrismBridge)
 public class TealiumPrismBridge: NSObject {
     private var tealium: Tealium?
+    private var bridgeCMPAdapter: BridgeCMPAdapter?
     private var dataUpdateSubscription: (any Disposable)?
     private var dataRemoveSubscription: (any Disposable)?
 
@@ -136,6 +159,17 @@ public class TealiumPrismBridge: NSObject {
         )
         tealiumConfig.existingVisitorId = existingVisitorId
 
+        // Configure consent if enabled
+        let consentEnabled = config["consentEnabled"] as? Bool ?? false
+        if consentEnabled {
+            let adapter = BridgeCMPAdapter()
+            if let purposes = config["consentPurposes"] as? [String] {
+                adapter.allPurposes = Set(purposes)
+            }
+            tealiumConfig.cmpAdapter = adapter
+            self.bridgeCMPAdapter = adapter
+        }
+
         _ = Tealium.create(config: tealiumConfig) { [weak self] result in
             DispatchQueue.main.async {
                 switch result {
@@ -155,6 +189,7 @@ public class TealiumPrismBridge: NSObject {
         disableDataLayerEvents()
         onDataUpdated = nil
         onDataRemoved = nil
+        bridgeCMPAdapter = nil
         tealium = nil
     }
 
@@ -521,6 +556,31 @@ public class TealiumPrismBridge: NSObject {
                 }
             }
         }
+    }
+
+    // MARK: - Consent
+
+    @objc public func setConsentDecision(decisionType: String, purposes: [String]) {
+        guard let adapter = bridgeCMPAdapter else { return }
+        let type: ConsentDecision.DecisionType = decisionType.lowercased() == "explicit" ? .explicit : .implicit
+        let decision = ConsentDecision(decisionType: type, purposes: Set(purposes))
+        adapter.update(decision: decision)
+    }
+
+    @objc public func getConsentDecision(completion: @escaping (NSDictionary?) -> Void) {
+        guard let adapter = bridgeCMPAdapter, let decision = adapter.currentDecision else {
+            completion(nil)
+            return
+        }
+        let dict: NSDictionary = [
+            "decisionType": decision.decisionType == .explicit ? "explicit" : "implicit",
+            "purposes": Array(decision.purposes)
+        ]
+        completion(dict)
+    }
+
+    @objc public func resetConsentDecision() {
+        bridgeCMPAdapter?.reset()
     }
 
     // MARK: - DataLayer Events

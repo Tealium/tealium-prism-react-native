@@ -27,6 +27,10 @@ export interface TealiumConfigSpec {
   momentsApiRegion?: string;
   /** Enable lifecycle tracking */
   lifecycleEnabled?: boolean;
+  /** Enable consent management */
+  consentEnabled?: boolean;
+  /** All available consent purposes */
+  consentPurposes?: string[];
   /** Maximum queue size for offline events */
   maxQueueSize?: number;
   /** Queue expiration in seconds */
@@ -323,6 +327,28 @@ export interface Spec extends TurboModule {
    * Remove listeners (required for TurboModules with EventEmitter).
    */
   removeListeners(count: number): void;
+
+  // ============================================
+  // Consent
+  // ============================================
+
+  /**
+   * Set the consent decision from JavaScript.
+   * @param decisionType - 'implicit' or 'explicit'
+   * @param purposes - Array of consented purpose IDs
+   */
+  setConsentDecision(decisionType: string, purposes: string[]): void;
+
+  /**
+   * Get the current consent decision.
+   * @returns Promise resolving to the consent decision object or null
+   */
+  getConsentDecision(): Promise<Object | null>;
+
+  /**
+   * Reset the consent decision (revoke consent).
+   */
+  resetConsentDecision(): void;
 
   // ============================================
   // DataLayer Transactional Operations

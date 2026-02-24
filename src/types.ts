@@ -8,6 +8,31 @@
 export type Environment = 'dev' | 'qa' | 'prod';
 
 /**
+ * Consent decision type.
+ * Mirrors native: ConsentDecision.DecisionType (Swift/Kotlin)
+ *
+ * - `implicit`: Consent derived from user action (e.g., app launch in implied-consent jurisdictions).
+ * - `explicit`: Consent purposefully given by the user (e.g., accepted privacy policy).
+ */
+export type ConsentDecisionType = 'implicit' | 'explicit';
+
+/**
+ * Represents a user's consent decision from a Consent Management Provider.
+ * Mirrors native: ConsentDecision (Swift/Kotlin)
+ */
+export interface ConsentDecision {
+  /**
+   * The category of decision: implicit (derived) or explicit (user-given).
+   */
+  decisionType: ConsentDecisionType;
+
+  /**
+   * The set of purposes the user has consented to (e.g., 'analytics', 'marketing').
+   */
+  purposes: string[];
+}
+
+/**
  * Log level options for SDK logging.
  */
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
@@ -136,6 +161,22 @@ export interface TealiumConfig {
    * @default true
    */
   lifecycleEnabled?: boolean;
+
+  /**
+   * Enable consent management. When true, a bridge CMP adapter is created
+   * that allows setting consent decisions from JavaScript via Tealium.consent.
+   * Mirrors native: TealiumConfig.cmpAdapter (Swift/Kotlin)
+   * @default false
+   */
+  consentEnabled?: boolean;
+
+  /**
+   * All available consent purposes recognized by the CMP.
+   * Used by the native SDK for consent evaluation (e.g., determining
+   * whether all purposes have been consented to).
+   * Only used when consentEnabled is true.
+   */
+  consentPurposes?: string[];
 
   // ============================================
   // Core Settings (Advanced)
