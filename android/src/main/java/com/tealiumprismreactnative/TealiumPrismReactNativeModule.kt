@@ -247,6 +247,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     override fun shutdown() {
+        disableDataLayerEvents()
         tealium?.shutdown()
         tealium = null
         bridgeCmpAdapter = null
@@ -284,13 +285,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             Log.d(TAG, "Track called: name=$name, type=$typeStr, data=$data")
             teal.track(name, type, data)
                 .subscribe { result ->
-                    try {
-                        val trackResult = result.getOrThrow()
-                        Log.d(TAG, "Track success: ${trackResult.description}")
+                    if (result.isSuccess) {
+                        Log.d(TAG, "Track success: ${result.getOrNull()?.description}")
                         promise.resolve(null)
-                    } catch (error: Exception) {
+                    } else {
+                        val error = result.exceptionOrNull()
                         Log.e(TAG, "Track failed", error)
-                        promise.resolve(null) // Still resolve to not block JS
+                        promise.reject("TRACK_ERROR", error?.message ?: "Track dispatch failed", error)
                     }
                 }
 
@@ -309,12 +310,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         teal.flushEventQueue()
             .subscribe { result ->
-                try {
-                    result.getOrThrow()
+                if (result.isSuccess) {
                     promise.resolve(null)
-                } catch (error: Exception) {
+                } else {
+                    val error = result.exceptionOrNull()
                     Log.e(TAG, "Flush failed", error)
-                    promise.resolve(null)
+                    promise.reject("FLUSH_ERROR", error?.message ?: "Flush event queue failed", error)
                 }
             }
     }
@@ -356,7 +357,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerValue(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.get(key).subscribe { result ->
@@ -416,7 +417,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerString(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getString(key).subscribe { result ->
@@ -427,7 +428,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerNumber(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getDouble(key).subscribe { result ->
@@ -438,7 +439,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerBoolean(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getBoolean(key).subscribe { result ->
@@ -449,7 +450,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerObject(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getDataObject(key).subscribe { result ->
@@ -465,7 +466,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun getDataLayerStringArray(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getDataList(key).subscribe { result ->
@@ -505,18 +506,24 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun clearDataLayer(promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(null)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
-        teal.dataLayer.clear().subscribe { _ ->
-            promise.resolve(null)
+        teal.dataLayer.clear().subscribe { result ->
+            if (result.isSuccess) {
+                promise.resolve(null)
+            } else {
+                val error = result.exceptionOrNull()
+                Log.e(TAG, "Clear data layer failed", error)
+                promise.reject("DATA_LAYER_ERROR", error?.message ?: "Failed to clear data layer", error)
+            }
         }
     }
 
     override fun getAllData(promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(Arguments.createMap())
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         teal.dataLayer.getAll().subscribe { result ->
@@ -536,7 +543,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun handleDeepLink(url: String, referrer: String?, promise: Promise) {
         val teal = tealium
         if (teal == null) {
-            promise.resolve(false)
+            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
             return
         }
         val deepLinkUri = android.net.Uri.parse(url)
@@ -573,11 +580,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         teal.resetVisitorId()
             .subscribe { result ->
-                try {
-                    val newId = result.getOrThrow()
+                val newId = result.getOrNull()
+                if (newId != null) {
                     promise.resolve(newId)
-                } catch (error: Exception) {
-                    promise.reject("RESET_ERROR", error.message, error)
+                } else {
+                    val error = result.exceptionOrNull()
+                    promise.reject("RESET_ERROR", error?.message ?: "Failed to reset visitor ID", error)
                 }
             }
     }
@@ -591,11 +599,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         teal.clearStoredVisitorIds()
             .subscribe { result ->
-                try {
-                    val newId = result.getOrThrow()
+                val newId = result.getOrNull()
+                if (newId != null) {
                     promise.resolve(newId)
-                } catch (error: Exception) {
-                    promise.reject("CLEAR_ERROR", error.message, error)
+                } else {
+                    val error = result.exceptionOrNull()
+                    promise.reject("CLEAR_ERROR", error?.message ?: "Failed to clear stored visitor IDs", error)
                 }
             }
     }
@@ -782,57 +791,59 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         momentsApi.fetchEngineResponse(engineId)
             .subscribe { result ->
-                try {
-                    val engineResponse = result.getOrThrow()
-                    val map = Arguments.createMap()
-
-                    // Audiences
-                    engineResponse.audiences?.let { audiences ->
-                        val array = Arguments.createArray()
-                        audiences.forEach { array.pushString(it) }
-                        map.putArray("audiences", array)
-                    }
-
-                    // Badges
-                    engineResponse.badges?.let { badges ->
-                        val array = Arguments.createArray()
-                        badges.forEach { array.pushString(it) }
-                        map.putArray("badges", array)
-                    }
-
-                    // Flags (booleans)
-                    engineResponse.flags?.let { flags ->
-                        val flagsMap = Arguments.createMap()
-                        flags.forEach { (key, value) -> flagsMap.putBoolean(key, value) }
-                        map.putMap("flags", flagsMap)
-                    }
-
-                    // Dates (as milliseconds)
-                    engineResponse.dates?.let { dates ->
-                        val datesMap = Arguments.createMap()
-                        dates.forEach { (key, value) -> datesMap.putDouble(key, value.toDouble()) }
-                        map.putMap("dates", datesMap)
-                    }
-
-                    // Metrics (numbers)
-                    engineResponse.metrics?.let { metrics ->
-                        val metricsMap = Arguments.createMap()
-                        metrics.forEach { (key, value) -> metricsMap.putDouble(key, value) }
-                        map.putMap("metrics", metricsMap)
-                    }
-
-                    // Properties (strings)
-                    engineResponse.properties?.let { properties ->
-                        val propertiesMap = Arguments.createMap()
-                        properties.forEach { (key, value) -> propertiesMap.putString(key, value) }
-                        map.putMap("properties", propertiesMap)
-                    }
-
-                    promise.resolve(map)
-                } catch (error: Exception) {
+                val engineResponse = result.getOrNull()
+                if (engineResponse == null) {
+                    val error = result.exceptionOrNull()
                     Log.e(TAG, "FetchEngineResponse failed", error)
-                    promise.resolve(null)
+                    promise.reject("MOMENTS_ERROR", error?.message ?: "Failed to fetch engine response", error)
+                    return@subscribe
                 }
+
+                val map = Arguments.createMap()
+
+                // Audiences
+                engineResponse.audiences?.let { audiences ->
+                    val array = Arguments.createArray()
+                    audiences.forEach { array.pushString(it) }
+                    map.putArray("audiences", array)
+                }
+
+                // Badges
+                engineResponse.badges?.let { badges ->
+                    val array = Arguments.createArray()
+                    badges.forEach { array.pushString(it) }
+                    map.putArray("badges", array)
+                }
+
+                // Flags (booleans)
+                engineResponse.flags?.let { flags ->
+                    val flagsMap = Arguments.createMap()
+                    flags.forEach { (key, value) -> flagsMap.putBoolean(key, value) }
+                    map.putMap("flags", flagsMap)
+                }
+
+                // Dates (as milliseconds)
+                engineResponse.dates?.let { dates ->
+                    val datesMap = Arguments.createMap()
+                    dates.forEach { (key, value) -> datesMap.putDouble(key, value.toDouble()) }
+                    map.putMap("dates", datesMap)
+                }
+
+                // Metrics (numbers)
+                engineResponse.metrics?.let { metrics ->
+                    val metricsMap = Arguments.createMap()
+                    metrics.forEach { (key, value) -> metricsMap.putDouble(key, value) }
+                    map.putMap("metrics", metricsMap)
+                }
+
+                // Properties (strings)
+                engineResponse.properties?.let { properties ->
+                    val propertiesMap = Arguments.createMap()
+                    properties.forEach { (key, value) -> propertiesMap.putString(key, value) }
+                    map.putMap("properties", propertiesMap)
+                }
+
+                promise.resolve(map)
             }
     }
 
@@ -865,12 +876,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
         lifecycle.launch(dataObject)
             .subscribe { result ->
-                try {
-                    result.getOrThrow()
+                if (result.isSuccess) {
                     promise.resolve(null)
-                } catch (error: Exception) {
+                } else {
+                    val error = result.exceptionOrNull()
                     Log.e(TAG, "Lifecycle launch failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error.message, error)
+                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle launch failed", error)
                 }
             }
     }
@@ -891,12 +902,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
         lifecycle.wake(dataObject)
             .subscribe { result ->
-                try {
-                    result.getOrThrow()
+                if (result.isSuccess) {
                     promise.resolve(null)
-                } catch (error: Exception) {
+                } else {
+                    val error = result.exceptionOrNull()
                     Log.e(TAG, "Lifecycle wake failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error.message, error)
+                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle wake failed", error)
                 }
             }
     }
@@ -917,12 +928,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
         lifecycle.sleep(dataObject)
             .subscribe { result ->
-                try {
-                    result.getOrThrow()
+                if (result.isSuccess) {
                     promise.resolve(null)
-                } catch (error: Exception) {
+                } else {
+                    val error = result.exceptionOrNull()
                     Log.e(TAG, "Lifecycle sleep failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error.message, error)
+                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle sleep failed", error)
                 }
             }
     }

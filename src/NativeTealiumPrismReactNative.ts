@@ -42,6 +42,11 @@ export interface TealiumConfigSpec {
 }
 
 /**
+ * Expiry type for data layer values (TurboModule spec).
+ */
+export type ExpirySpec = 'session' | 'forever' | 'untilRestart';
+
+/**
  * Data to be tracked with an event or view.
  */
 export interface TrackDataSpec {
@@ -51,6 +56,15 @@ export interface TrackDataSpec {
   type: string;
   /** Additional data payload */
   data?: Object;
+}
+
+/**
+ * Return type for getDataLayerValue (TurboModule spec).
+ * The `value` field holds the actual data layer value (string, number, boolean, array, or object).
+ */
+export interface DataLayerValueSpec {
+  type: string;
+  value: Object;
 }
 
 /**
@@ -108,7 +122,7 @@ export interface Spec extends TurboModule {
    * @param value - String value to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerString(key: string, value: string, expiry: string): void;
+  setDataLayerString(key: string, value: string, expiry: ExpirySpec): void;
 
   /**
    * Set a number value in the data layer.
@@ -116,7 +130,7 @@ export interface Spec extends TurboModule {
    * @param value - Number value to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerNumber(key: string, value: number, expiry: string): void;
+  setDataLayerNumber(key: string, value: number, expiry: ExpirySpec): void;
 
   /**
    * Set a boolean value in the data layer.
@@ -124,7 +138,7 @@ export interface Spec extends TurboModule {
    * @param value - Boolean value to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerBoolean(key: string, value: boolean, expiry: string): void;
+  setDataLayerBoolean(key: string, value: boolean, expiry: ExpirySpec): void;
 
   /**
    * Set an object value in the data layer.
@@ -132,7 +146,11 @@ export interface Spec extends TurboModule {
    * @param value - Object value to store (will be serialized)
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerObject(key: string, value: Object, expiry: string): void;
+  setDataLayerObject(
+    key: string,
+    value: Object,
+    expiry: ExpirySpec
+  ): void;
 
   /**
    * Set a string array value in the data layer.
@@ -140,16 +158,18 @@ export interface Spec extends TurboModule {
    * @param value - String array value to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerStringArray(key: string, value: string[], expiry: string): void;
+  setDataLayerStringArray(
+    key: string,
+    value: string[],
+    expiry: ExpirySpec
+  ): void;
 
   /**
    * Get any value from the data layer with type information.
    * @param key - Key to retrieve
    * @returns Promise resolving with object containing type and value, or null
    */
-  getDataLayerValue(
-    key: string
-  ): Promise<{ type: string; value: unknown } | null>;
+  getDataLayerValue(key: string): Promise<DataLayerValueSpec | null>;
 
   /**
    * Get a string value from the data layer.

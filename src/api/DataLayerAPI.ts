@@ -7,11 +7,7 @@
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
-import type {
-  Expiry,
-  TransactionContext,
-  DataLayerOperation,
-} from '../types';
+import type { Expiry, TransactionContext, DataLayerOperation } from '../types';
 import { TealiumEvents } from '../types';
 
 /**
@@ -59,6 +55,7 @@ export class DataLayerAPI {
    * Add data to the persistent data layer.
    *
    * Supports multiple value types: string, number, boolean, string arrays, and objects.
+   * Unsupported types (null, undefined, non-string arrays) will be skipped with a console warning.
    *
    * @param data - Object containing key-value pairs to add
    * @param expiry - When the data should expire: 'session', 'forever', or 'untilRestart'
@@ -80,10 +77,26 @@ export class DataLayerAPI {
         NativeTealiumPrism.setDataLayerNumber(key, value, expiry);
       } else if (typeof value === 'boolean') {
         NativeTealiumPrism.setDataLayerBoolean(key, value, expiry);
-      } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
-        NativeTealiumPrism.setDataLayerStringArray(key, value as string[], expiry);
+      } else if (
+        Array.isArray(value) &&
+        value.every((v) => typeof v === 'string')
+      ) {
+        NativeTealiumPrism.setDataLayerStringArray(
+          key,
+          value as string[],
+          expiry
+        );
       } else if (typeof value === 'object' && value !== null) {
-        NativeTealiumPrism.setDataLayerObject(key, value as Object, expiry);
+        NativeTealiumPrism.setDataLayerObject(
+          key,
+          value as Record<string, unknown>,
+          expiry
+        );
+      } else {
+        console.warn(
+          `[Tealium] Unsupported data type for key "${key}": ${value === null ? 'null' : typeof value}. ` +
+            'Supported types: string, number, boolean, string[], object.'
+        );
       }
     }
   }
@@ -283,7 +296,7 @@ export class DataLayerAPI {
     if (operations.length > 0) {
       await NativeTealiumPrism.dataLayerTransactionalUpdate(
         [],
-        operations
+        operations as unknown as Record<string, unknown>[]
       );
     }
   }

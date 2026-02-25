@@ -6,7 +6,16 @@
 //
 
 import Foundation
+import os.log
 import TealiumPrism
+
+private let logger = Logger(subsystem: "com.tealium.prism.reactnative", category: "Bridge")
+
+private func logFailure<E: Error>(_ result: Result<Void, E>, _ operation: String) {
+    if case .failure(let error) = result {
+        logger.error("Data layer \(operation) failed: \(error.localizedDescription)")
+    }
+}
 
 private func expiryFromString(_ expiry: String?) -> Expiry {
     switch expiry?.lowercased() {
@@ -41,6 +50,9 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
             result.set(converting: dataObject(from: nested), key: key)
         } else if let arr = value as? [String] {
             result.set(converting: arr, key: key)
+        } else if let arr = value as? [NSNumber], let first = arr.first,
+                  CFGetTypeID(first) == CFBooleanGetTypeID() {
+            result.set(converting: arr.map { $0.boolValue }, key: key)
         } else if let arr = value as? [NSNumber] {
             result.set(converting: arr, key: key)
         } else if let arr = value as? [[String: Any]] {
@@ -197,41 +209,69 @@ public class TealiumPrismBridge: NSObject {
         tealium != nil
     }
 
-    @objc public func track(name: String, type: String, data: NSDictionary?) {
-        guard let tealium = tealium else { return }
+    @objc public func track(name: String, type: String, data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
         let dispatchType: DispatchType = type.lowercased() == "view" ? .view : .event
         let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        _ = tealium.track(name, type: dispatchType, data: dataObj)
+        tealium.track(name, type: dispatchType, data: dataObj).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
+        }
     }
 
-    @objc public func flushEventQueue(completion: @escaping () -> Void) {
-        guard let tealium = tealium else { completion(); return }
-        tealium.flushEventQueue().subscribe { _ in
-            DispatchQueue.main.async { completion() }
+    @objc public func flushEventQueue(completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.flushEventQueue().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
         }
     }
 
     // MARK: - Data Layer
 
     @objc public func setDataLayerString(key: String, value: String, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe { _ in }
+        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+            logFailure($0, "put string '\(key)'")
+        }
     }
 
     @objc public func setDataLayerNumber(key: String, value: Double, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe { _ in }
+        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+            logFailure($0, "put number '\(key)'")
+        }
     }
 
     @objc public func setDataLayerBoolean(key: String, value: Bool, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe { _ in }
+        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+            logFailure($0, "put boolean '\(key)'")
+        }
     }
 
     @objc public func setDataLayerObject(key: String, value: NSDictionary, expiry: String?) {
         let obj = dataObject(from: value as? [String: Any] ?? [:])
-        tealium?.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry)).subscribe { _ in }
+        tealium?.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry)).subscribe {
+            logFailure($0, "put object '\(key)'")
+        }
     }
 
     @objc public func setDataLayerStringArray(key: String, value: [String], expiry: String?) {
-        tealium?.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe { _ in }
+        tealium?.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe {
+            logFailure($0, "put string array '\(key)'")
+        }
     }
 
     @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
@@ -348,17 +388,29 @@ public class TealiumPrismBridge: NSObject {
     }
 
     @objc public func removeDataLayerValue(key: String) {
-        tealium?.dataLayer.remove(key: key).subscribe { _ in }
+        tealium?.dataLayer.remove(key: key).subscribe {
+            logFailure($0, "remove '\(key)'")
+        }
     }
 
     @objc public func removeDataLayerValues(keys: [String]) {
-        tealium?.dataLayer.remove(keys: keys).subscribe { _ in }
+        tealium?.dataLayer.remove(keys: keys).subscribe {
+            logFailure($0, "remove keys")
+        }
     }
 
-    @objc public func clearDataLayer(completion: @escaping () -> Void) {
-        guard let tealium = tealium else { completion(); return }
-        tealium.dataLayer.clear().subscribe { _ in
-            DispatchQueue.main.async { completion() }
+    @objc public func clearDataLayer(completion: @escaping (Bool, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.dataLayer.clear().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true, nil)
+                case .failure(let err): completion(false, err)
+                }
+            }
         }
     }
 
@@ -447,14 +499,21 @@ public class TealiumPrismBridge: NSObject {
 
     // MARK: - MomentsAPI
 
-    @objc public func fetchEngineResponse(engineId: String, completion: @escaping (NSDictionary?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
+    @objc public func fetchEngineResponse(engineId: String, completion: @escaping (NSDictionary?, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
         let momentsApi = tealium.momentsAPI()
 
         momentsApi.fetchEngineResponse(engineID: engineId).subscribe { result in
             DispatchQueue.main.async {
                 guard case .success(let response) = result else {
-                    completion(nil)
+                    let error: Error = {
+                        if case .failure(let err) = result { return err }
+                        return NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch engine response"])
+                    }()
+                    completion(nil, error)
                     return
                 }
 
@@ -494,7 +553,7 @@ public class TealiumPrismBridge: NSObject {
                     dict["properties"] = properties
                 }
 
-                completion(dict)
+                completion(dict, nil)
             }
         }
     }

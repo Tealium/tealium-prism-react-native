@@ -320,7 +320,7 @@ export default class Tealium {
     const trackData: TrackDataSpec = {
       name,
       type,
-      data: data as Object | undefined,
+      data: data as Record<string, unknown> | undefined,
     };
     return NativeTealiumPrism.track(trackData);
   }

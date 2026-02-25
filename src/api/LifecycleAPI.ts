@@ -41,7 +41,9 @@ export class LifecycleAPI {
    * ```
    */
   launch(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleLaunch(data as Object | undefined);
+    return NativeTealiumPrism.lifecycleLaunch(
+      data as Record<string, unknown> | undefined
+    );
   }
 
   /**
@@ -53,7 +55,9 @@ export class LifecycleAPI {
    * @returns Promise resolving when tracking is complete
    */
   wake(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleWake(data as Object | undefined);
+    return NativeTealiumPrism.lifecycleWake(
+      data as Record<string, unknown> | undefined
+    );
   }
 
   /**
@@ -65,6 +69,8 @@ export class LifecycleAPI {
    * @returns Promise resolving when tracking is complete
    */
   sleep(data?: TrackData): Promise<void> {
-    return NativeTealiumPrism.lifecycleSleep(data as Object | undefined);
+    return NativeTealiumPrism.lifecycleSleep(
+      data as Record<string, unknown> | undefined
+    );
   }
 }

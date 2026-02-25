@@ -128,8 +128,13 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     NSString *name = trackData.name();
     NSString *type = trackData.type() ?: @"event";
     NSDictionary *dataDict = trackData.data() ? (NSDictionary *)trackData.data() : nil;
-    [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict];
-    resolve(nil);
+    [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"TRACK_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
 - (void)flushEventQueue:(RCTPromiseResolveBlock)resolve
@@ -138,8 +143,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] flushEventQueueWithCompletion:^{
-        resolve(nil);
+    [[TealiumPrismBridge shared] flushEventQueueWithCompletion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"FLUSH_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
     }];
 }
 
@@ -178,6 +187,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerValue:(NSString *)key
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerValueWithKey:key completion:^(NSDictionary *result) {
         resolve(result ?: [NSNull null]);
     }];
@@ -186,6 +199,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerString:(NSString *)key
                    resolve:(RCTPromiseResolveBlock)resolve
                     reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerStringWithKey:key completion:^(NSString *value) {
         resolve(value ?: [NSNull null]);
     }];
@@ -194,6 +211,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerNumber:(NSString *)key
                    resolve:(RCTPromiseResolveBlock)resolve
                     reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerNumberWithKey:key completion:^(NSNumber *value) {
         resolve(value ?: [NSNull null]);
     }];
@@ -202,6 +223,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerBoolean:(NSString *)key
                     resolve:(RCTPromiseResolveBlock)resolve
                      reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerBooleanWithKey:key completion:^(NSNumber *value) {
         resolve(value ?: [NSNull null]);
     }];
@@ -210,6 +235,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerObject:(NSString *)key
                    resolve:(RCTPromiseResolveBlock)resolve
                     reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerObjectWithKey:key completion:^(NSDictionary *value) {
         resolve(value ?: [NSNull null]);
     }];
@@ -218,6 +247,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 - (void)getDataLayerStringArray:(NSString *)key
                         resolve:(RCTPromiseResolveBlock)resolve
                          reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getDataLayerStringArrayWithKey:key completion:^(NSArray<NSString *> *value) {
         resolve(value ?: [NSNull null]);
     }];
@@ -233,13 +266,21 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)clearDataLayer:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
-    [[TealiumPrismBridge shared] clearDataLayerWithCompletion:^{
-        resolve(nil);
+    [[TealiumPrismBridge shared] clearDataLayerWithCompletion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
     }];
 }
 
 - (void)getAllData:(RCTPromiseResolveBlock)resolve
             reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] getAllDataWithCompletion:^(NSDictionary *data) {
         resolve(data ?: @{});
     }];
@@ -249,6 +290,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
                           operations:(NSArray<NSDictionary *> *)operations
                              resolve:(RCTPromiseResolveBlock)resolve
                               reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] dataLayerTransactionalUpdateWithKeysToRead:keysToRead
                                                                  operations:operations
                                                                  completion:^(NSDictionary *result) {
@@ -262,6 +307,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
               referrer:(NSString *)referrer
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] handleDeepLinkWithUrl:url referrer:referrer completion:^(BOOL success) {
         resolve(@(success));
     }];
@@ -310,8 +359,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] fetchEngineResponseWithEngineId:engineId completion:^(NSDictionary *response) {
-        resolve(response ?: [NSNull null]);
+    [[TealiumPrismBridge shared] fetchEngineResponseWithEngineId:engineId completion:^(NSDictionary *response, NSError *error) {
+        if (error) {
+            reject(@"MOMENTS_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(response ?: [NSNull null]);
+        }
     }];
 }
 
