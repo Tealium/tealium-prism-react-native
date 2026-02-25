@@ -23,10 +23,6 @@ export interface TealiumConfigSpec {
   existingVisitorId?: string;
   /** Key used for visitor identity (cross-device stitching) */
   visitorIdentityKey?: string;
-  /** MomentsAPI region */
-  momentsApiRegion?: string;
-  /** Enable lifecycle tracking */
-  lifecycleEnabled?: boolean;
   /** Enable consent management */
   consentEnabled?: boolean;
   /** All available consent purposes */
@@ -60,11 +56,12 @@ export interface TrackDataSpec {
 
 /**
  * Return type for getDataLayerValue (TurboModule spec).
- * The `value` field holds the actual data layer value (string, number, boolean, array, or object).
+ * Mirrors the DataItem discriminated union from the native SDK.
+ * The `value` field is absent for null variants.
  */
 export interface DataLayerValueSpec {
   type: string;
-  value: Object;
+  value?: Object;
 }
 
 /**
@@ -146,11 +143,7 @@ export interface Spec extends TurboModule {
    * @param value - Object value to store (will be serialized)
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerObject(
-    key: string,
-    value: Object,
-    expiry: ExpirySpec
-  ): void;
+  setDataLayerObject(key: string, value: Object, expiry: ExpirySpec): void;
 
   /**
    * Set a string array value in the data layer.
@@ -274,17 +267,6 @@ export interface Spec extends TurboModule {
   clearStoredVisitorIds(): Promise<string>;
 
   // ============================================
-  // MomentsAPI
-  // ============================================
-
-  /**
-   * Fetch the engine response for the current visitor.
-   * @param engineId - The engine ID to fetch
-   * @returns Promise resolving to the engine response object or null
-   */
-  fetchEngineResponse(engineId: string): Promise<Object | null>;
-
-  // ============================================
   // Trace (Extended)
   // ============================================
 
@@ -292,31 +274,6 @@ export interface Spec extends TurboModule {
    * Force end of visitor session for trace purposes.
    */
   forceEndOfVisit(): void;
-
-  // ============================================
-  // Lifecycle (Manual)
-  // ============================================
-
-  /**
-   * Manually track a launch lifecycle event.
-   * @param data - Optional additional data to include
-   * @returns Promise resolving when tracking is complete
-   */
-  lifecycleLaunch(data?: Object): Promise<void>;
-
-  /**
-   * Manually track a wake lifecycle event.
-   * @param data - Optional additional data to include
-   * @returns Promise resolving when tracking is complete
-   */
-  lifecycleWake(data?: Object): Promise<void>;
-
-  /**
-   * Manually track a sleep lifecycle event.
-   * @param data - Optional additional data to include
-   * @returns Promise resolving when tracking is complete
-   */
-  lifecycleSleep(data?: Object): Promise<void>;
 
   // ============================================
   // DataLayer Events

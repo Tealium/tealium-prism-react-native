@@ -8,8 +8,6 @@
  * - `Tealium.dataLayer` - Data layer management
  * - `Tealium.trace` - Trace/debugging functionality
  * - `Tealium.deepLink` - Deep link handling
- * - `Tealium.lifecycle` - Manual lifecycle tracking
- * - `Tealium.momentsAPI` - Moments API integration
  * - `Tealium.consent` - Consent management
  */
 
@@ -21,14 +19,7 @@ import type {
 } from './NativeTealiumPrismReactNative';
 
 // Sub-API imports
-import {
-  DataLayerAPI,
-  TraceAPI,
-  DeepLinkAPI,
-  LifecycleAPI,
-  MomentsAPIHandler,
-  ConsentAPI,
-} from './api';
+import { DataLayerAPI, TraceAPI, DeepLinkAPI, ConsentAPI } from './api';
 
 // Re-export types
 export * from './types';
@@ -81,8 +72,6 @@ export default class Tealium {
   private static _dataLayer: DataLayerAPI | null = null;
   private static _trace: TraceAPI | null = null;
   private static _deepLink: DeepLinkAPI | null = null;
-  private static _lifecycle: LifecycleAPI | null = null;
-  private static _momentsAPI: MomentsAPIHandler | null = null;
   private static _consent: ConsentAPI | null = null;
 
   // ============================================
@@ -142,42 +131,6 @@ export default class Tealium {
       this._deepLink = new DeepLinkAPI();
     }
     return this._deepLink;
-  }
-
-  /**
-   * Manager for manual lifecycle tracking.
-   *
-   * Mirrors native: `tealium.lifecycle()`
-   *
-   * @example
-   * ```typescript
-   * await Tealium.lifecycle.launch();
-   * await Tealium.lifecycle.wake();
-   * await Tealium.lifecycle.sleep();
-   * ```
-   */
-  static get lifecycle(): LifecycleAPI {
-    if (!this._lifecycle) {
-      this._lifecycle = new LifecycleAPI();
-    }
-    return this._lifecycle;
-  }
-
-  /**
-   * Manager for Moments API integration.
-   *
-   * Mirrors native: `tealium.momentsAPI()`
-   *
-   * @example
-   * ```typescript
-   * const response = await Tealium.momentsAPI.fetchEngineResponse('engine-id');
-   * ```
-   */
-  static get momentsAPI(): MomentsAPIHandler {
-    if (!this._momentsAPI) {
-      this._momentsAPI = new MomentsAPIHandler();
-    }
-    return this._momentsAPI;
   }
 
   /**
@@ -281,8 +234,6 @@ export default class Tealium {
     this._dataLayer = null;
     this._trace = null;
     this._deepLink = null;
-    this._lifecycle = null;
-    this._momentsAPI = null;
     this._consent = null;
   }
 

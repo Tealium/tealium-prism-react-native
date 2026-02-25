@@ -12,45 +12,26 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.tealium.prism.core.api.Modules
 import com.tealium.prism.core.api.Tealium
 import com.tealium.prism.core.api.TealiumConfig
+import com.tealium.prism.core.api.data.DataItem
 import com.tealium.prism.core.api.data.DataItemUtils.asDataList
+import com.tealium.prism.core.api.data.DataList
 import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.consent.CmpAdapter
 import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.pubsub.Disposable
-import com.tealium.prism.core.api.pubsub.Observable
-import com.tealium.prism.core.api.pubsub.Observables
 import com.tealium.prism.core.api.logger.LogLevel
 import com.tealium.prism.core.api.misc.Environment
 import com.tealium.prism.core.api.misc.TimeFrame
 import com.tealium.prism.core.api.misc.TimeFrameUtils.seconds
 import com.tealium.prism.core.api.persistence.Expiry
 import com.tealium.prism.core.api.tracking.DispatchType
-import com.tealium.prism.lifecycle.lifecycle
-import com.tealium.prism.momentsapi.MomentsApiRegion
-import com.tealium.prism.momentsapi.momentsApi
 
-/**
- * Bridge CMP adapter that receives consent decisions pushed from JavaScript.
- * Implements the native CmpAdapter interface, holding a StateSubject that the
- * SDK's consent pipeline subscribes to.
- */
-private class BridgeCmpAdapter : CmpAdapter {
-    override val id = "react-native-bridge"
-    private val _consentDecision = Observables.stateSubject<ConsentDecision?>(null)
-    override val consentDecision: Observable<ConsentDecision?> = _consentDecision.asObservable()
-    override var allPurposes: Set<String>? = null
-
-    fun update(decision: ConsentDecision) {
-        _consentDecision.onNext(decision)
-    }
-
-    fun reset() {
-        _consentDecision.onNext(null)
-    }
-
-    val currentDecision: ConsentDecision? get() = _consentDecision.value
-}
-
+// TODO: addBarrier() — requires native BarrierFactory objects, cannot be serialized as JS config
+// TODO: addLoadRule() — requires native Rule<Condition> objects, cannot be serialized as JS config
+// TODO: addTransformation() — requires native TransformationSettings objects, cannot be serialized as JS config
+// TODO: setLogHandler() — custom native log handler callback, difficult to bridge from JS
+// TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package
+// TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
 
@@ -88,7 +69,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 promise.reject("INIT_ERROR", "Profile is required")
                 return
             }
-            val environmentStr = config.getString("environment") ?: "dev"
+            val environmentStr = config.getString("environment") ?: run {
+                promise.reject("INIT_ERROR", "Environment is required")
+                return
+            }
 
             val environment = when (environmentStr) {
                 "prod" -> Environment.PROD
@@ -96,41 +80,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 else -> Environment.DEV
             }
 
-            // Check if lifecycle is enabled (default true)
-            val lifecycleEnabled = if (config.hasKey("lifecycleEnabled")) {
-                config.getBoolean("lifecycleEnabled")
-            } else {
-                true
-            }
-
-            // Configure optional modules (default modules like collect, appData, etc. are added automatically by SDK)
-            val modules = mutableListOf<com.tealium.prism.core.api.modules.ModuleFactory>()
-
-            // Add lifecycle module if enabled
-            if (lifecycleEnabled) {
-                modules.add(Modules.lifecycle())
-            }
-
-            // Add MomentsAPI module if region is provided
-            val momentsApiRegion = if (config.hasKey("momentsApiRegion")) {
-                when (config.getString("momentsApiRegion")) {
-                    "germany" -> MomentsApiRegion.Germany
-                    "us_east" -> MomentsApiRegion.UsEast
-                    "sydney" -> MomentsApiRegion.Sydney
-                    "oregon" -> MomentsApiRegion.Oregon
-                    "tokyo" -> MomentsApiRegion.Tokyo
-                    "hong_kong" -> MomentsApiRegion.HongKong
-                    else -> null
-                }
-            } else null
-
-            if (momentsApiRegion != null) {
-                modules.add(Modules.momentsApi { it.setRegion(momentsApiRegion) })
-            }
-
             val configBuilder = TealiumConfig.Builder(
                 application = application,
-                modules = modules,
+                modules = emptyList(),
                 accountName = account,
                 profileName = profile,
                 environment = environment
@@ -362,55 +314,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
         teal.dataLayer.get(key).subscribe { result ->
             val dataItem = result.getOrNull()
-            if (dataItem == null) {
-                promise.resolve(null)
-                return@subscribe
-            }
-
-            val response = Arguments.createMap()
-            when {
-                dataItem.getString() != null -> {
-                    response.putString("type", "string")
-                    response.putString("value", dataItem.getString())
-                }
-                dataItem.getDouble() != null -> {
-                    response.putString("type", "number")
-                    response.putDouble("value", dataItem.getDouble()!!)
-                }
-                dataItem.getLong() != null -> {
-                    response.putString("type", "number")
-                    response.putDouble("value", dataItem.getLong()!!.toDouble())
-                }
-                dataItem.getInt() != null -> {
-                    response.putString("type", "number")
-                    response.putDouble("value", dataItem.getInt()!!.toDouble())
-                }
-                dataItem.getBoolean() != null -> {
-                    response.putString("type", "boolean")
-                    response.putBoolean("value", dataItem.getBoolean()!!)
-                }
-                dataItem.getDataList() != null -> {
-                    response.putString("type", "array")
-                    val arr = Arguments.createArray()
-                    dataItem.getDataList()?.forEach { item ->
-                        when {
-                            item.isString() -> item.getString()?.let { arr.pushString(it) }
-                            item.isNumber() -> item.getDouble()?.let { arr.pushDouble(it) }
-                            item.isBoolean() -> item.getBoolean()?.let { arr.pushBoolean(it) }
-                        }
-                    }
-                    response.putArray("value", arr)
-                }
-                dataItem.getDataObject() != null -> {
-                    response.putString("type", "object")
-                    response.putMap("value", dataObjectToMap(dataItem.getDataObject()!!))
-                }
-                else -> {
-                    promise.resolve(null)
-                    return@subscribe
-                }
-            }
-            promise.resolve(response)
+            promise.resolve(if (dataItem != null) dataItemToMap(dataItem) else null)
         }
     }
 
@@ -474,11 +378,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             if (dataList != null) {
                 val array = Arguments.createArray()
                 for (item in dataList) {
-                    when {
-                        item.isString() -> item.getString()?.let { array.pushString(it) }
-                        item.isNumber() -> item.getDouble()?.let { array.pushDouble(it) }
-                        item.isBoolean() -> item.getBoolean()?.let { array.pushBoolean(it) }
-                    }
+                    item.getString()?.let { array.pushString(it) }
                 }
                 promise.resolve(array)
             } else {
@@ -668,6 +568,41 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    private fun readableArrayToDataList(array: ReadableArray): DataList? {
+        if (array.size() == 0) return null
+        return when (array.getType(0)) {
+            ReadableType.String -> {
+                val list = mutableListOf<String>()
+                for (i in 0 until array.size()) {
+                    array.getString(i)?.let { list.add(it) }
+                }
+                list.asDataList()
+            }
+            ReadableType.Number -> {
+                val list = mutableListOf<Double>()
+                for (i in 0 until array.size()) {
+                    list.add(array.getDouble(i))
+                }
+                list.asDataList()
+            }
+            ReadableType.Boolean -> {
+                val list = mutableListOf<Boolean>()
+                for (i in 0 until array.size()) {
+                    list.add(array.getBoolean(i))
+                }
+                list.asDataList()
+            }
+            ReadableType.Map -> {
+                val list = mutableListOf<DataObject>()
+                for (i in 0 until array.size()) {
+                    array.getMap(i)?.let { list.add(readableMapToDataObject(it)) }
+                }
+                list.asDataList()
+            }
+            else -> null
+        }
+    }
+
     private fun readableMapToDataObject(map: ReadableMap?): DataObject {
         if (map == null) return DataObject.EMPTY_OBJECT
 
@@ -694,38 +629,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 }
                 ReadableType.Array -> {
                     val array = map.getArray(key)
-                    if (array != null && array.size() > 0) {
-                        when (array.getType(0)) {
-                            ReadableType.String -> {
-                                val list = mutableListOf<String>()
-                                for (i in 0 until array.size()) {
-                                    array.getString(i)?.let { list.add(it) }
-                                }
-                                builder.put(key, list.asDataList())
-                            }
-                            ReadableType.Number -> {
-                                val list = mutableListOf<Double>()
-                                for (i in 0 until array.size()) {
-                                    list.add(array.getDouble(i))
-                                }
-                                builder.put(key, list.asDataList())
-                            }
-                            ReadableType.Boolean -> {
-                                val list = mutableListOf<Boolean>()
-                                for (i in 0 until array.size()) {
-                                    list.add(array.getBoolean(i))
-                                }
-                                builder.put(key, list.asDataList())
-                            }
-                            ReadableType.Map -> {
-                                val list = mutableListOf<DataObject>()
-                                for (i in 0 until array.size()) {
-                                    array.getMap(i)?.let { list.add(readableMapToDataObject(it)) }
-                                }
-                                builder.put(key, list.asDataList())
-                            }
-                            else -> {}
-                        }
+                    if (array != null) {
+                        readableArrayToDataList(array)?.let { builder.put(key, it) }
                     }
                 }
                 else -> { /* Skip null values */ }
@@ -733,6 +638,38 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
 
         return builder.build()
+    }
+
+    private fun dataItemToMap(item: DataItem): com.facebook.react.bridge.WritableMap {
+        val map = Arguments.createMap()
+        when {
+            item.isString() -> {
+                map.putString("type", "string")
+                map.putString("value", item.getString())
+            }
+            item.isNumber() -> {
+                map.putString("type", "number")
+                map.putDouble("value", item.getDouble()!!)
+            }
+            item.isBoolean() -> {
+                map.putString("type", "boolean")
+                map.putBoolean("value", item.getBoolean()!!)
+            }
+            item.isNull() -> map.putString("type", "null")
+            item.isDataList() -> {
+                map.putString("type", "list")
+                val arr = Arguments.createArray()
+                item.getDataList()?.forEach { arr.pushMap(dataItemToMap(it)) }
+                map.putArray("value", arr)
+            }
+            item.isDataObject() -> {
+                map.putString("type", "object")
+                val obj = Arguments.createMap()
+                item.getDataObject()?.forEach { (k, v) -> obj.putMap(k, dataItemToMap(v)) }
+                map.putMap("value", obj)
+            }
+        }
+        return map
     }
 
     private fun dataObjectToMap(dataObject: DataObject): com.facebook.react.bridge.WritableMap {
@@ -773,169 +710,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     // ============================================
-    // MomentsAPI
-    // ============================================
-
-    override fun fetchEngineResponse(engineId: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-
-        val momentsApi = teal.momentsApi
-        if (momentsApi == null) {
-            promise.reject("MOMENTS_NOT_CONFIGURED", "MomentsAPI is not configured. Set momentsApiRegion in config.")
-            return
-        }
-
-        momentsApi.fetchEngineResponse(engineId)
-            .subscribe { result ->
-                val engineResponse = result.getOrNull()
-                if (engineResponse == null) {
-                    val error = result.exceptionOrNull()
-                    Log.e(TAG, "FetchEngineResponse failed", error)
-                    promise.reject("MOMENTS_ERROR", error?.message ?: "Failed to fetch engine response", error)
-                    return@subscribe
-                }
-
-                val map = Arguments.createMap()
-
-                // Audiences
-                engineResponse.audiences?.let { audiences ->
-                    val array = Arguments.createArray()
-                    audiences.forEach { array.pushString(it) }
-                    map.putArray("audiences", array)
-                }
-
-                // Badges
-                engineResponse.badges?.let { badges ->
-                    val array = Arguments.createArray()
-                    badges.forEach { array.pushString(it) }
-                    map.putArray("badges", array)
-                }
-
-                // Flags (booleans)
-                engineResponse.flags?.let { flags ->
-                    val flagsMap = Arguments.createMap()
-                    flags.forEach { (key, value) -> flagsMap.putBoolean(key, value) }
-                    map.putMap("flags", flagsMap)
-                }
-
-                // Dates (as milliseconds)
-                engineResponse.dates?.let { dates ->
-                    val datesMap = Arguments.createMap()
-                    dates.forEach { (key, value) -> datesMap.putDouble(key, value.toDouble()) }
-                    map.putMap("dates", datesMap)
-                }
-
-                // Metrics (numbers)
-                engineResponse.metrics?.let { metrics ->
-                    val metricsMap = Arguments.createMap()
-                    metrics.forEach { (key, value) -> metricsMap.putDouble(key, value) }
-                    map.putMap("metrics", metricsMap)
-                }
-
-                // Properties (strings)
-                engineResponse.properties?.let { properties ->
-                    val propertiesMap = Arguments.createMap()
-                    properties.forEach { (key, value) -> propertiesMap.putString(key, value) }
-                    map.putMap("properties", propertiesMap)
-                }
-
-                promise.resolve(map)
-            }
-    }
-
-    // ============================================
     // Trace (Extended)
     // ============================================
 
     override fun forceEndOfVisit() {
         val teal = tealium ?: return
         teal.trace.forceEndOfVisit()
-    }
-
-    // ============================================
-    // Lifecycle (Manual)
-    // ============================================
-
-    override fun lifecycleLaunch(data: ReadableMap?, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-
-        val lifecycle = teal.lifecycle
-        if (lifecycle == null) {
-            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
-            return
-        }
-
-        val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
-        lifecycle.launch(dataObject)
-            .subscribe { result ->
-                if (result.isSuccess) {
-                    promise.resolve(null)
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e(TAG, "Lifecycle launch failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle launch failed", error)
-                }
-            }
-    }
-
-    override fun lifecycleWake(data: ReadableMap?, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-
-        val lifecycle = teal.lifecycle
-        if (lifecycle == null) {
-            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
-            return
-        }
-
-        val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
-        lifecycle.wake(dataObject)
-            .subscribe { result ->
-                if (result.isSuccess) {
-                    promise.resolve(null)
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e(TAG, "Lifecycle wake failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle wake failed", error)
-                }
-            }
-    }
-
-    override fun lifecycleSleep(data: ReadableMap?, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-
-        val lifecycle = teal.lifecycle
-        if (lifecycle == null) {
-            promise.reject("LIFECYCLE_ERROR", "Lifecycle module is not configured. Set lifecycleEnabled in config.")
-            return
-        }
-
-        val dataObject = if (data != null) readableMapToDataObject(data) else DataObject.EMPTY_OBJECT
-        lifecycle.sleep(dataObject)
-            .subscribe { result ->
-                if (result.isSuccess) {
-                    promise.resolve(null)
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e(TAG, "Lifecycle sleep failed", error)
-                    promise.reject("LIFECYCLE_ERROR", error?.message ?: "Lifecycle sleep failed", error)
-                }
-            }
     }
 
     // ============================================
@@ -997,7 +777,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
         if (operations.size() == 0 && keysToReadList.isNotEmpty()) {
             val preReadValues = Arguments.createMap()
-            val readLatch = java.util.concurrent.CountDownLatch(keysToReadList.size)
+            val remaining = java.util.concurrent.atomic.AtomicInteger(keysToReadList.size)
 
             for (key in keysToReadList) {
                 teal.dataLayer.get(key).subscribe { result ->
@@ -1028,14 +808,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                             }
                         }
                     }
-                    readLatch.countDown()
+                    if (remaining.decrementAndGet() == 0) {
+                        promise.resolve(preReadValues)
+                    }
                 }
             }
-
-            Thread {
-                readLatch.await()
-                promise.resolve(preReadValues)
-            }.start()
             return
         }
 
@@ -1064,12 +841,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                                 }
                                 ReadableType.Array -> {
                                     val arr = op.getArray("value")
-                                    if (arr != null && arr.size() > 0) {
-                                        val list = mutableListOf<String>()
-                                        for (j in 0 until arr.size()) {
-                                            arr.getString(j)?.let { list.add(it) }
-                                        }
-                                        editor.put(key, list.asDataList(), expiry)
+                                    if (arr != null) {
+                                        readableArrayToDataList(arr)?.let { editor.put(key, it, expiry) }
                                     }
                                 }
                                 else -> {}

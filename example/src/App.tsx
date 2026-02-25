@@ -15,15 +15,11 @@ import {
   TextInput,
   Platform,
   Animated,
-  ActivityIndicator,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import Tealium, {
-  type EngineResponse,
-  type TransactionContext,
-} from 'tealium-prism-react-native';
+import Tealium, { type TransactionContext } from 'tealium-prism-react-native';
 import TealiumHelper from './TealiumHelper';
 
 // ============================================
@@ -115,11 +111,6 @@ export default function App() {
   const [dataKey, setDataKey] = useState('example_key');
   const [dataValue, setDataValue] = useState('example_value');
   const [email, setEmail] = useState('');
-  const [engineId, setEngineId] = useState('');
-  const [engineResponse, setEngineResponse] = useState<EngineResponse | null>(
-    null
-  );
-  const [engineLoading, setEngineLoading] = useState(false);
   const [dataLayerEventsEnabled, setDataLayerEventsEnabled] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
@@ -296,7 +287,7 @@ export default function App() {
         ['tx_counter']
       );
       showToast('Transactional update completed');
-    } catch (error) {
+    } catch {
       showToast('Transactional update failed');
     }
   }, [showToast]);
@@ -357,28 +348,6 @@ export default function App() {
   }, [showToast]);
 
   // ============================================
-  // MomentsAPI Actions
-  // ============================================
-
-  const handleFetchEngineResponse = useCallback(async () => {
-    if (!engineId) {
-      showToast('Please enter an engine ID');
-      return;
-    }
-
-    setEngineLoading(true);
-    setEngineResponse(null);
-    const response = await TealiumHelper.fetchEngineResponse(engineId);
-    setEngineLoading(false);
-    if (response) {
-      setEngineResponse(response);
-      showToast('Engine response loaded');
-    } else {
-      showToast('No engine response (MomentsAPI may not be configured)');
-    }
-  }, [engineId, showToast]);
-
-  // ============================================
   // Trace Extended Actions
   // ============================================
 
@@ -426,6 +395,11 @@ export default function App() {
     showToast('Consent granted (explicit, all purposes)');
   }, [showToast]);
 
+  const handlePartialConsent = useCallback(() => {
+    Tealium.consent.setDecision('explicit', ['analytics']);
+    showToast('Consent granted (explicit, analytics only)');
+  }, [showToast]);
+
   const handleImplicitConsent = useCallback(() => {
     Tealium.consent.setDecision('implicit', ['analytics']);
     showToast('Implicit consent set (analytics only)');
@@ -452,7 +426,6 @@ export default function App() {
   const handleShutdown = useCallback(() => {
     TealiumHelper.stopTealium();
     setIsInitialized(false);
-    setEngineResponse(null);
     showToast('Tealium stopped');
   }, [showToast]);
 
@@ -554,111 +527,6 @@ export default function App() {
           <Button title="Clear Stored IDs" onPress={handleClearVisitorIds} />
         </Section>
 
-        <Section title="Moments API">
-          <TextInput
-            style={styles.input}
-            placeholder="Enter engine ID"
-            placeholderTextColor="#666"
-            value={engineId}
-            onChangeText={setEngineId}
-            autoCapitalize="none"
-          />
-          <Button
-            title="Fetch Engine Response"
-            onPress={handleFetchEngineResponse}
-            disabled={engineLoading}
-          />
-          {engineLoading && (
-            <ActivityIndicator
-              style={styles.loader}
-              size="small"
-              color="#007CC1"
-            />
-          )}
-          {engineResponse && (
-            <View style={styles.engineResponse}>
-              {engineResponse.audiences?.length ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Audiences</Text>
-                  <Text style={styles.engineValue}>
-                    {engineResponse.audiences.join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {engineResponse.badges?.length ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Badges</Text>
-                  <Text style={styles.engineValue}>
-                    {engineResponse.badges.join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {engineResponse.properties &&
-              Object.keys(engineResponse.properties).length > 0 ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Properties</Text>
-                  <Text style={styles.engineValue}>
-                    {Object.entries(engineResponse.properties)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {engineResponse.metrics &&
-              Object.keys(engineResponse.metrics).length > 0 ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Metrics</Text>
-                  <Text style={styles.engineValue}>
-                    {Object.entries(engineResponse.metrics)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {engineResponse.flags &&
-              Object.keys(engineResponse.flags).length > 0 ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Flags</Text>
-                  <Text style={styles.engineValue}>
-                    {Object.entries(engineResponse.flags)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {engineResponse.dates &&
-              Object.keys(engineResponse.dates).length > 0 ? (
-                <View style={styles.engineRow}>
-                  <Text style={styles.engineLabel}>Dates</Text>
-                  <Text style={styles.engineValue}>
-                    {Object.entries(engineResponse.dates)
-                      .map(([k, v]) => `${k}: ${new Date(v).toLocaleString()}`)
-                      .join('\n')}
-                  </Text>
-                </View>
-              ) : null}
-              {!engineResponse.audiences?.length &&
-                !engineResponse.badges?.length &&
-                !(
-                  engineResponse.properties &&
-                  Object.keys(engineResponse.properties).length > 0
-                ) &&
-                !(
-                  engineResponse.metrics &&
-                  Object.keys(engineResponse.metrics).length > 0
-                ) &&
-                !(
-                  engineResponse.flags &&
-                  Object.keys(engineResponse.flags).length > 0
-                ) &&
-                !(
-                  engineResponse.dates &&
-                  Object.keys(engineResponse.dates).length > 0
-                ) && <Text style={styles.engineValue}>Empty response</Text>}
-            </View>
-          )}
-        </Section>
-
         <Section title="Trace (Extended)">
           <Button
             title="Force End of Visit"
@@ -674,6 +542,10 @@ export default function App() {
             color="#28a745"
           />
           <Button
+            title="Partial Consent (Explicit, Analytics Only)"
+            onPress={handlePartialConsent}
+          />
+          <Button
             title="Implicit (Analytics Only)"
             onPress={handleImplicitConsent}
           />
@@ -683,9 +555,6 @@ export default function App() {
             color="#dc3545"
           />
           <Button title="Get Consent Status" onPress={handleGetConsent} />
-          <Text style={styles.helperText}>
-            Requires consentEnabled: true in TealiumConfig.
-          </Text>
         </Section>
 
         <Section title="DataLayer Events">

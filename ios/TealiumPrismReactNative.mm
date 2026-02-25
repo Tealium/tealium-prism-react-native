@@ -65,13 +65,6 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         if (config.visitorIdentityKey()) {
             configDict[@"visitorIdentityKey"] = config.visitorIdentityKey();
         }
-        if (config.momentsApiRegion()) {
-            configDict[@"momentsApiRegion"] = config.momentsApiRegion();
-        }
-
-        // Lifecycle (default true)
-        configDict[@"lifecycleEnabled"] = @(config.lifecycleEnabled().has_value() ? config.lifecycleEnabled().value() : YES);
-
         // Consent
         if (config.consentEnabled().has_value()) {
             configDict[@"consentEnabled"] = @(config.consentEnabled().value());
@@ -266,6 +259,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)clearDataLayer:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] clearDataLayerWithCompletion:^(BOOL success, NSError *error) {
         if (error) {
             reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
@@ -350,78 +347,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     }];
 }
 
-// MARK: - MomentsAPI
-
-- (void)fetchEngineResponse:(NSString *)engineId
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
-    if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
-        return;
-    }
-    [[TealiumPrismBridge shared] fetchEngineResponseWithEngineId:engineId completion:^(NSDictionary *response, NSError *error) {
-        if (error) {
-            reject(@"MOMENTS_ERROR", error.localizedDescription, error);
-        } else {
-            resolve(response ?: [NSNull null]);
-        }
-    }];
-}
-
 // MARK: - Trace (Extended)
 
 - (void)forceEndOfVisit {
     [[TealiumPrismBridge shared] forceEndOfVisit];
-}
-
-// MARK: - Lifecycle (Manual)
-
-- (void)lifecycleLaunch:(NSDictionary *)data
-                resolve:(RCTPromiseResolveBlock)resolve
-                 reject:(RCTPromiseRejectBlock)reject {
-    if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
-        return;
-    }
-    [[TealiumPrismBridge shared] lifecycleLaunchWithData:data completion:^(BOOL success, NSError *error) {
-        if (error) {
-            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
-        } else {
-            resolve(nil);
-        }
-    }];
-}
-
-- (void)lifecycleWake:(NSDictionary *)data
-              resolve:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
-    if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
-        return;
-    }
-    [[TealiumPrismBridge shared] lifecycleWakeWithData:data completion:^(BOOL success, NSError *error) {
-        if (error) {
-            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
-        } else {
-            resolve(nil);
-        }
-    }];
-}
-
-- (void)lifecycleSleep:(NSDictionary *)data
-               resolve:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject {
-    if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
-        return;
-    }
-    [[TealiumPrismBridge shared] lifecycleSleepWithData:data completion:^(BOOL success, NSError *error) {
-        if (error) {
-            reject(@"LIFECYCLE_ERROR", error.localizedDescription, error);
-        } else {
-            resolve(nil);
-        }
-    }];
 }
 
 // MARK: - Consent

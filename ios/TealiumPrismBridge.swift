@@ -25,17 +25,6 @@ private func expiryFromString(_ expiry: String?) -> Expiry {
     }
 }
 
-private func momentsApiRegionFromString(_ region: String?) -> MomentsAPIRegion? {
-    switch region?.lowercased() {
-    case "germany": return .germany
-    case "us_east": return .usEast
-    case "sydney": return .sydney
-    case "oregon": return .oregon
-    case "tokyo": return .tokyo
-    case "hong_kong": return .hongKong
-    default: return nil
-    }
-}
 
 private func dataObject(from dict: [String: Any]) -> DataObject {
     var result = DataObject()
@@ -63,28 +52,11 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
     return result
 }
 
-/// Bridge CMP adapter that receives consent decisions pushed from JavaScript.
-/// Implements the native CMPAdapter protocol, holding a StateSubject that the
-/// SDK's consent pipeline subscribes to.
-private class BridgeCMPAdapter: CMPAdapter {
-    let id = "react-native-bridge"
-    private let _consentDecision = StateSubject<ConsentDecision?>(nil)
-    var consentDecision: Observable<ConsentDecision?> { _consentDecision.asObservable() }
-    var allPurposes: Set<String>?
-
-    func update(decision: ConsentDecision) {
-        _consentDecision.publish(decision)
-    }
-
-    func reset() {
-        _consentDecision.publish(nil)
-    }
-
-    var currentDecision: ConsentDecision? {
-        _consentDecision.value
-    }
-}
-
+// TODO: addBarrier() — requires native BarrierFactory objects, cannot be serialized as JS config
+// TODO: addLoadRule() — requires native Rule<Condition> objects, cannot be serialized as JS config
+// TODO: addTransformation() — requires native TransformationSettings objects, cannot be serialized as JS config
+// TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package
+// TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package
 @objc(TealiumPrismBridge)
 public class TealiumPrismBridge: NSObject {
     private var tealium: Tealium?
@@ -119,8 +91,6 @@ public class TealiumPrismBridge: NSObject {
         let settingsUrl = config["settingsUrl"] as? String
         let existingVisitorId = config["existingVisitorId"] as? String
         let visitorIdentityKey = config["visitorIdentityKey"] as? String
-        let momentsApiRegion = config["momentsApiRegion"] as? String
-        let lifecycleEnabled = config["lifecycleEnabled"] as? Bool ?? true
 
         // Core Settings
         let minLogLevel = logLevel.flatMap { LogLevel.Minimum(from: $0) }
@@ -128,19 +98,6 @@ public class TealiumPrismBridge: NSObject {
         let queueExpirationSeconds = config["queueExpirationSeconds"] as? Int
         let refreshIntervalSeconds = config["refreshIntervalSeconds"] as? Int
         let sessionTimeoutSeconds = config["sessionTimeoutSeconds"] as? Int
-
-        // Configure modules
-        var modules: [any ModuleFactory] = []
-
-        // Add lifecycle module if enabled
-        if lifecycleEnabled {
-            modules.append(Modules.lifecycle(forcingSettings: nil))
-        }
-
-        // Add MomentsAPI module if region is provided
-        if let region = momentsApiRegionFromString(momentsApiRegion) {
-            modules.append(Modules.momentsAPI(forcingSettings: { $0.setRegion(region) }))
-        }
 
         let hasAnyCoreSetting = minLogLevel != nil || visitorIdentityKey != nil
             || maxQueueSize != nil || queueExpirationSeconds != nil
@@ -164,7 +121,7 @@ public class TealiumPrismBridge: NSObject {
             profile: profile,
             environment: environment,
             dataSource: dataSource,
-            modules: modules,
+            modules: [],
             settingsFile: settingsFile,
             settingsUrl: settingsUrl,
             forcingSettings: coreSettingsBlock
@@ -244,89 +201,71 @@ public class TealiumPrismBridge: NSObject {
     // MARK: - Data Layer
 
     @objc public func setDataLayerString(key: String, value: String, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
             logFailure($0, "put string '\(key)'")
         }
     }
 
     @objc public func setDataLayerNumber(key: String, value: Double, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
             logFailure($0, "put number '\(key)'")
         }
     }
 
     @objc public func setDataLayerBoolean(key: String, value: Bool, expiry: String?) {
-        tealium?.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
             logFailure($0, "put boolean '\(key)'")
         }
     }
 
     @objc public func setDataLayerObject(key: String, value: NSDictionary, expiry: String?) {
+        guard let tealium = tealium else { return }
         let obj = dataObject(from: value as? [String: Any] ?? [:])
-        tealium?.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry)).subscribe {
+        tealium.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry)).subscribe {
             logFailure($0, "put object '\(key)'")
         }
     }
 
     @objc public func setDataLayerStringArray(key: String, value: [String], expiry: String?) {
-        tealium?.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe {
             logFailure($0, "put string array '\(key)'")
+        }
+    }
+
+    private func dataItemToDictionary(_ item: DataItem) -> [String: Any] {
+        if let str = item.get(as: String.self) {
+            return ["type": "string", "value": str]
+        } else if let b = item.get(as: Bool.self) {
+            return ["type": "boolean", "value": b]
+        } else if let num = item.get(as: Double.self) {
+            return ["type": "number", "value": num]
+        } else if let arr = item.getDataArray() {
+            return ["type": "list", "value": arr.map { dataItemToDictionary($0) }]
+        } else if let dict = item.getDataDictionary() {
+            var out: [String: Any] = [:]
+            for (k, v) in dict {
+                out[k] = dataItemToDictionary(v)
+            }
+            return ["type": "object", "value": out]
+        } else {
+            return ["type": "null"]
         }
     }
 
     @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
         guard let tealium = tealium else { completion(nil); return }
 
-        // Try to get the raw DataItem and determine its type
         tealium.dataLayer.getDataItem(key: key).subscribe { result in
             DispatchQueue.main.async {
                 guard case .success(let dataItem) = result, let item = dataItem else {
                     completion(nil)
                     return
                 }
-
-                let response = NSMutableDictionary()
-
-                if let str = item.get(as: String.self) {
-                    response["type"] = "string"
-                    response["value"] = str
-                } else if let b = item.get(as: Bool.self) {
-                    response["type"] = "boolean"
-                    response["value"] = b
-                } else if let num = item.get(as: Int.self) {
-                    response["type"] = "number"
-                    response["value"] = num
-                } else if let num = item.get(as: Double.self) {
-                    response["type"] = "number"
-                    response["value"] = num
-                } else if let arr = item.getArray(of: String.self) {
-                    response["type"] = "array"
-                    response["value"] = arr.compactMap { $0 }
-                } else if let arr = item.getDataArray() {
-                    response["type"] = "array"
-                    var values: [Any] = []
-                    for element in arr {
-                        if let s = element.get(as: String.self) { values.append(s) }
-                        else if let n = element.get(as: Double.self) { values.append(n) }
-                        else if let b = element.get(as: Bool.self) { values.append(b) }
-                    }
-                    response["value"] = values
-                } else if let dictItems = item.getDataDictionary() {
-                    response["type"] = "object"
-                    let out = NSMutableDictionary()
-                    let dict = dictItems.toDataObject()
-                    for k in dict.keys {
-                        if let s: String = dict.get(key: k) { out[k] = s }
-                        else if let bl: Bool = dict.get(key: k) { out[k] = bl }
-                        else if let n: Double = dict.get(key: k) { out[k] = n }
-                    }
-                    response["value"] = out
-                } else {
-                    completion(nil)
-                    return
-                }
-
-                completion(response)
+                completion(self.dataItemToDictionary(item) as NSDictionary)
             }
         }
     }
@@ -388,13 +327,15 @@ public class TealiumPrismBridge: NSObject {
     }
 
     @objc public func removeDataLayerValue(key: String) {
-        tealium?.dataLayer.remove(key: key).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.remove(key: key).subscribe {
             logFailure($0, "remove '\(key)'")
         }
     }
 
     @objc public func removeDataLayerValues(keys: [String]) {
-        tealium?.dataLayer.remove(keys: keys).subscribe {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.remove(keys: keys).subscribe {
             logFailure($0, "remove keys")
         }
     }
@@ -427,17 +368,27 @@ public class TealiumPrismBridge: NSObject {
         }
     }
 
+    private func dataItemToAny(_ item: DataItem) -> Any? {
+        if let str = item.get(as: String.self) {
+            return str
+        } else if let b = item.get(as: Bool.self) {
+            return b
+        } else if let num = item.get(as: Double.self) {
+            return num
+        } else if let arr = item.getDataArray() {
+            return arr.compactMap { dataItemToAny($0) }
+        } else if let dict = item.getDataDictionary() {
+            return dict.compactMapValues { dataItemToAny($0) }
+        }
+        return nil
+    }
+
     private func dataObjectToDict(_ dataObject: DataObject) -> [String: Any] {
         var out: [String: Any] = [:]
         for key in dataObject.keys {
-            if let str: String = dataObject.get(key: key) {
-                out[key] = str
-            } else if let b: Bool = dataObject.get(key: key) {
-                out[key] = b
-            } else if let num: Double = dataObject.get(key: key) {
-                out[key] = num
-            } else if let arr = dataObject.getArray(key: key, of: String.self) {
-                out[key] = arr.compactMap { $0 }
+            guard let item = dataObject.getDataItem(key: key) else { continue }
+            if let val = dataItemToAny(item) {
+                out[key] = val
             }
         }
         return out
@@ -464,11 +415,13 @@ public class TealiumPrismBridge: NSObject {
     // MARK: - Trace
 
     @objc public func joinTrace(traceId: String) {
-        tealium?.trace.join(id: traceId)
+        guard let tealium = tealium else { return }
+        tealium.trace.join(id: traceId)
     }
 
     @objc public func leaveTrace() {
-        tealium?.trace.leave()
+        guard let tealium = tealium else { return }
+        tealium.trace.leave()
     }
 
     // MARK: - Visitor
@@ -497,124 +450,11 @@ public class TealiumPrismBridge: NSObject {
         }
     }
 
-    // MARK: - MomentsAPI
-
-    @objc public func fetchEngineResponse(engineId: String, completion: @escaping (NSDictionary?, Error?) -> Void) {
-        guard let tealium = tealium else {
-            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
-            return
-        }
-        let momentsApi = tealium.momentsAPI()
-
-        momentsApi.fetchEngineResponse(engineID: engineId).subscribe { result in
-            DispatchQueue.main.async {
-                guard case .success(let response) = result else {
-                    let error: Error = {
-                        if case .failure(let err) = result { return err }
-                        return NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch engine response"])
-                    }()
-                    completion(nil, error)
-                    return
-                }
-
-                let dict = NSMutableDictionary()
-
-                // Audiences
-                if let audiences = response.audiences {
-                    dict["audiences"] = audiences
-                }
-
-                // Badges
-                if let badges = response.badges {
-                    dict["badges"] = badges
-                }
-
-                // Flags (booleans)
-                if let flags = response.flags {
-                    dict["flags"] = flags
-                }
-
-                // Dates (as milliseconds)
-                if let dates = response.dates {
-                    var datesDict: [String: Double] = [:]
-                    for (key, value) in dates {
-                        datesDict[key] = Double(value)
-                    }
-                    dict["dates"] = datesDict
-                }
-
-                // Metrics (numbers)
-                if let metrics = response.metrics {
-                    dict["metrics"] = metrics
-                }
-
-                // Properties (strings)
-                if let properties = response.properties {
-                    dict["properties"] = properties
-                }
-
-                completion(dict, nil)
-            }
-        }
-    }
-
     // MARK: - Trace (Extended)
 
     @objc public func forceEndOfVisit() {
-        tealium?.trace.forceEndOfVisit()
-    }
-
-    // MARK: - Lifecycle (Manual)
-
-    @objc public func lifecycleLaunch(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
-        guard let tealium = tealium else {
-            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
-            return
-        }
-        let lifecycle = tealium.lifecycle()
-        let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.launch(dataObj).subscribe { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success: completion(true, nil)
-                case .failure(let err): completion(false, err)
-                }
-            }
-        }
-    }
-
-    @objc public func lifecycleWake(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
-        guard let tealium = tealium else {
-            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
-            return
-        }
-        let lifecycle = tealium.lifecycle()
-        let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.wake(dataObj).subscribe { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success: completion(true, nil)
-                case .failure(let err): completion(false, err)
-                }
-            }
-        }
-    }
-
-    @objc public func lifecycleSleep(data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
-        guard let tealium = tealium else {
-            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
-            return
-        }
-        let lifecycle = tealium.lifecycle()
-        let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
-        lifecycle.sleep(dataObj).subscribe { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success: completion(true, nil)
-                case .failure(let err): completion(false, err)
-                }
-            }
-        }
+        guard let tealium = tealium else { return }
+        tealium.trace.forceEndOfVisit()
     }
 
     // MARK: - Consent
@@ -645,7 +485,7 @@ public class TealiumPrismBridge: NSObject {
     // MARK: - DataLayer Events
 
     @objc public func enableDataLayerEvents() {
-        guard let tealium = tealium else { return }
+        guard dataUpdateSubscription == nil, let tealium = tealium else { return }
 
         let updateHandler: (DataObject) -> Void = { [weak self] dataObject in
             var dict: [String: Any] = [:]

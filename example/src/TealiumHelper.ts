@@ -9,7 +9,6 @@ import Tealium, {
   type TealiumConfig,
   type TrackData,
   type Expiry,
-  type EngineResponse,
 } from 'tealium-prism-react-native';
 
 /**
@@ -32,6 +31,8 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
     'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
   logLevel: 'debug',
   visitorIdentityKey: 'email',
+  consentEnabled: true,
+  consentPurposes: ['analytics', 'marketing', 'personalization'],
 };
 
 /**
@@ -372,63 +373,6 @@ class TealiumHelper {
     }
 
     return Tealium.deepLink.handle(url, referrer ?? undefined);
-  }
-
-  // ============================================
-  // MomentsAPI
-  // ============================================
-
-  /**
-   * Fetch the Moments API engine response for the given engine ID.
-   * Requires MomentsAPI module and region configured in settings.
-   */
-  async fetchEngineResponse(engineId: string): Promise<EngineResponse | null> {
-    if (!this._isEnabled) {
-      return null;
-    }
-
-    console.log('[TealiumHelper] Fetching engine response for:', engineId);
-    return Tealium.momentsAPI.fetchEngineResponse(engineId);
-  }
-
-  // ============================================
-  // Lifecycle (manual)
-  // ============================================
-
-  /**
-   * Manually fire a launch lifecycle event (e.g. when auto-tracking is off).
-   */
-  async lifecycleLaunch(data?: TrackData): Promise<void> {
-    if (!this._isEnabled) {
-      return;
-    }
-
-    console.log('[TealiumHelper] Lifecycle launch');
-    return Tealium.lifecycle.launch(data);
-  }
-
-  /**
-   * Manually fire a wake lifecycle event.
-   */
-  async lifecycleWake(data?: TrackData): Promise<void> {
-    if (!this._isEnabled) {
-      return;
-    }
-
-    console.log('[TealiumHelper] Lifecycle wake');
-    return Tealium.lifecycle.wake(data);
-  }
-
-  /**
-   * Manually fire a sleep lifecycle event.
-   */
-  async lifecycleSleep(data?: TrackData): Promise<void> {
-    if (!this._isEnabled) {
-      return;
-    }
-
-    console.log('[TealiumHelper] Lifecycle sleep');
-    return Tealium.lifecycle.sleep(data);
   }
 }
 

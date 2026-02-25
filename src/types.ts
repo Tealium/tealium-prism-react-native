@@ -48,52 +48,6 @@ export type Expiry = 'session' | 'forever' | 'untilRestart';
 export type DispatchType = 'event' | 'view';
 
 /**
- * MomentsAPI region options.
- */
-export type MomentsApiRegion =
-  | 'germany'
-  | 'us_east'
-  | 'sydney'
-  | 'oregon'
-  | 'tokyo'
-  | 'hong_kong';
-
-/**
- * Response from MomentsAPI engine containing visitor profile data.
- */
-export interface EngineResponse {
-  /**
-   * List of audiences the visitor is currently assigned to.
-   */
-  audiences?: string[];
-
-  /**
-   * List of badges assigned to the visitor.
-   */
-  badges?: string[];
-
-  /**
-   * Boolean attributes (flags) assigned to the visitor.
-   */
-  flags?: Record<string, boolean>;
-
-  /**
-   * Date attributes as Unix timestamps in milliseconds.
-   */
-  dates?: Record<string, number>;
-
-  /**
-   * Numeric attributes (metrics) assigned to the visitor.
-   */
-  metrics?: Record<string, number>;
-
-  /**
-   * String attributes (properties) assigned to the visitor.
-   */
-  properties?: Record<string, string>;
-}
-
-/**
  * Configuration object for initializing Tealium.
  * Mirrors native: TealiumConfig (Swift/Kotlin)
  */
@@ -150,17 +104,6 @@ export interface TealiumConfig {
    * Used for cross-device visitor stitching.
    */
   visitorIdentityKey?: string;
-
-  /**
-   * Enable MomentsAPI module with specified region.
-   */
-  momentsApiRegion?: MomentsApiRegion;
-
-  /**
-   * Enable lifecycle tracking module.
-   * @default true
-   */
-  lifecycleEnabled?: boolean;
 
   /**
    * Enable consent management. When true, a bridge CMP adapter is created
@@ -289,6 +232,26 @@ export interface DataLayerOptions {
 }
 
 /**
+ * A typed value from the Tealium data layer.
+ * Mirrors native: DataItem (Swift/Kotlin)
+ *
+ * Discriminated union matching the native SDK type hierarchy.
+ */
+export type DataItem =
+  | { type: 'string'; value: string }
+  | { type: 'number'; value: number }
+  | { type: 'boolean'; value: boolean }
+  | { type: 'null' }
+  | { type: 'list'; value: DataItem[] }
+  | { type: 'object'; value: Record<string, DataItem> };
+
+/**
+ * A heterogeneous list of DataItems.
+ * Mirrors native: DataList (Kotlin) / [DataItem] (Swift)
+ */
+export type DataList = DataItem[];
+
+/**
  * Result of initialization.
  */
 export interface InitializationResult {
@@ -304,11 +267,6 @@ export interface InitializationResult {
 }
 
 /**
- * Lifecycle event types for manual lifecycle tracking.
- */
-export type LifecycleEventType = 'launch' | 'wake' | 'sleep';
-
-/**
  * Event names emitted by the native module.
  * @internal
  */
@@ -318,7 +276,8 @@ export const TealiumEvents = {
 } as const;
 
 /** @internal */
-export type TealiumEventName = (typeof TealiumEvents)[keyof typeof TealiumEvents];
+export type TealiumEventName =
+  (typeof TealiumEvents)[keyof typeof TealiumEvents];
 
 // ============================================
 // DataLayer Transactional Operations
@@ -350,7 +309,9 @@ export interface DataLayerRemoveOperation {
 /**
  * Union type for all data layer operations.
  */
-export type DataLayerOperation = DataLayerPutOperation | DataLayerRemoveOperation;
+export type DataLayerOperation =
+  | DataLayerPutOperation
+  | DataLayerRemoveOperation;
 
 /**
  * Context object passed to the transactionally() callback.

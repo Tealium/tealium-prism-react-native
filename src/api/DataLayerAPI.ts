@@ -7,7 +7,13 @@
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
-import type { Expiry, TransactionContext, DataLayerOperation } from '../types';
+import type {
+  DataItem,
+  DataList,
+  Expiry,
+  TransactionContext,
+  DataLayerOperation,
+} from '../types';
 import { TealiumEvents } from '../types';
 
 /**
@@ -112,9 +118,20 @@ export class DataLayerAPI {
    * const userId = await Tealium.dataLayer.get('user_id');
    * ```
    */
-  async get(key: string): Promise<unknown> {
-    const result = await NativeTealiumPrism.getDataLayerValue(key);
-    return result?.value ?? null;
+  async get(key: string): Promise<DataItem | null> {
+    return (await NativeTealiumPrism.getDataLayerValue(key)) as DataItem | null;
+  }
+
+  /**
+   * Get a list value from the data layer.
+   *
+   * @param key - Key to retrieve
+   * @returns Promise resolving to the DataList or null if the value is not a list
+   */
+  async getList(key: string): Promise<DataList | null> {
+    const item = await this.get(key);
+    if (!item || item.type !== 'list') return null;
+    return item.value;
   }
 
   /**
@@ -217,7 +234,6 @@ export class DataLayerAPI {
     }
     this.listenerCount++;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subscription = this.eventEmitter.addListener(
       TealiumEvents.DATA_LAYER_REMOVED,
       (event: any) => callback(event.keys as string[])
@@ -238,14 +254,18 @@ export class DataLayerAPI {
   }
 
   /**
-   * Execute multiple data layer operations atomically.
+   * Execute multiple data layer operations as a batch.
    *
    * The callback receives a TransactionContext that allows:
-   * - get(key): Read current values (reads happen before writes)
+   * - get(key): Read a pre-fetched value (see `keysToRead`)
    * - put(key, value, expiry): Queue a put operation
    * - remove(key): Queue a remove operation
    *
-   * All operations are committed atomically after the callback returns.
+   * All queued write operations are committed in a single native batch — no
+   * other writer can interleave between individual puts/removes within that
+   * batch. Pre-reads, however, are fetched in a separate native call before
+   * the batch is committed. Values returned by `ctx.get()` reflect the data
+   * layer state at the time of the pre-read, not at commit time.
    *
    * @param block - Function that receives a TransactionContext to build the transaction
    * @param keysToRead - Array of keys to pre-read before executing the transaction
