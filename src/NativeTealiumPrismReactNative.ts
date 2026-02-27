@@ -162,6 +162,30 @@ export interface Spec extends TurboModule {
   ): void;
 
   /**
+   * Set a number array value in the data layer.
+   * @param key - Key to store the value under
+   * @param value - Number array value to store
+   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
+   */
+  setDataLayerNumberArray(
+    key: string,
+    value: number[],
+    expiry: ExpirySpec
+  ): void;
+
+  /**
+   * Set a boolean array value in the data layer.
+   * @param key - Key to store the value under
+   * @param value - Boolean array value to store
+   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
+   */
+  setDataLayerBooleanArray(
+    key: string,
+    value: boolean[],
+    expiry: ExpirySpec
+  ): void;
+
+  /**
    * Get any value from the data layer with type information.
    * @param key - Key to retrieve
    * @returns Promise resolving with object containing type and value, or null

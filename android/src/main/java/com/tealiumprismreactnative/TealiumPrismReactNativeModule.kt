@@ -307,6 +307,24 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
     }
 
+    override fun setDataLayerNumberArray(key: String, value: ReadableArray, expiry: String) {
+        val teal = tealium ?: return
+        val list = mutableListOf<Double>()
+        for (i in 0 until value.size()) {
+            list.add(value.getDouble(i))
+        }
+        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
+    }
+
+    override fun setDataLayerBooleanArray(key: String, value: ReadableArray, expiry: String) {
+        val teal = tealium ?: return
+        val list = mutableListOf<Boolean>()
+        for (i in 0 until value.size()) {
+            list.add(value.getBoolean(i))
+        }
+        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
+    }
+
     override fun getDataLayerValue(key: String, promise: Promise) {
         val teal = tealium
         if (teal == null) {

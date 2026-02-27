@@ -80,7 +80,7 @@ yarn && yarn prepare && yarn example start
 In a second terminal:
 
 ```bash
-cd /Users/sebastian/Projects/tealium-prism-react-native && yarn example android
+cd /path/to/tealium-prism-react-native && yarn example android  
 ```
 
 ## What to test in the app

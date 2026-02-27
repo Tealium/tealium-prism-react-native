@@ -92,12 +92,21 @@ export class DataLayerAPI {
             value as string[],
             expiry
           );
+        } else if (value.every((v) => typeof v === 'number')) {
+          NativeTealiumPrism.setDataLayerNumberArray(
+            key,
+            value as number[],
+            expiry
+          );
+        } else if (value.every((v) => typeof v === 'boolean')) {
+          NativeTealiumPrism.setDataLayerBooleanArray(
+            key,
+            value as boolean[],
+            expiry
+          );
         } else {
-          // Only string[] has a dedicated native method. Passing a non-string
-          // array to setDataLayerObject would silently corrupt data on native.
           console.warn(
-            `[Tealium] Unsupported array type for key "${key}": only string[] is supported. ` +
-              'Use transactionally() to store number or boolean arrays.'
+            `[Tealium] Unsupported array type for key "${key}": only homogeneous string[], number[], or boolean[] arrays are supported.`
           );
         }
       } else if (typeof value === 'object' && value !== null) {

@@ -188,6 +188,18 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     [[TealiumPrismBridge shared] setDataLayerStringArrayWithKey:key value:value expiry:expiry];
 }
 
+- (void)setDataLayerNumberArray:(NSString *)key
+                          value:(NSArray<NSNumber *> *)value
+                         expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerNumberArrayWithKey:key value:value expiry:expiry];
+}
+
+- (void)setDataLayerBooleanArray:(NSString *)key
+                           value:(NSArray<NSNumber *> *)value
+                          expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerBooleanArrayWithKey:key value:value expiry:expiry];
+}
+
 - (void)getDataLayerValue:(NSString *)key
                   resolve:(RCTPromiseResolveBlock)resolve
                    reject:(RCTPromiseRejectBlock)reject {

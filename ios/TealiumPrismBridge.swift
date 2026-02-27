@@ -194,6 +194,16 @@ public class TealiumPrismBridge: NSObject {
         tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
     }
 
+    @objc public func setDataLayerNumberArray(key: String, value: [Double], expiry: String?) {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
+    }
+
+    @objc public func setDataLayerBooleanArray(key: String, value: [Bool], expiry: String?) {
+        guard let tealium = tealium else { return }
+        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
+    }
+
     @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
         guard let tealium = tealium else { completion(nil); return }
 
@@ -414,6 +424,8 @@ public class TealiumPrismBridge: NSObject {
                                 }
                             } else if let arr = value as? [String] {
                                 apply(.put(key: key, value: arr.toDataInput(), expiry: expiry))
+                            } else if let arr = value as? [NSNumber] {
+                                apply(.put(key: key, value: arr.map { $0.doubleValue }.toDataInput(), expiry: expiry))
                             } else if let dict = value as? [String: Any] {
                                 apply(.put(key: key, value: dataObject(from: dict).toDataInput(), expiry: expiry))
                             }

@@ -33,10 +33,10 @@ No additional setup required - dependencies are automatically resolved via Gradl
 ## Quick Start
 
 ```typescript
-import Tealium, { TealiumEvent, TealiumView } from 'tealium-prism-react-native';
+import Tealium from 'tealium-prism-react-native';
 
 // Initialize Tealium
-await Tealium.initialize({
+await Tealium.create({
   account: 'your-account',
   profile: 'your-profile',
   environment: 'dev', // 'dev', 'qa', or 'prod'
@@ -44,14 +44,10 @@ await Tealium.initialize({
 });
 
 // Track a view
-Tealium.track(new TealiumView('home_screen', { category: 'main' }));
+await Tealium.track('home_screen', 'view', { category: 'main' });
 
 // Track an event
-Tealium.track(new TealiumEvent('button_click', { button_id: 'submit' }));
-
-// Or use convenience methods
-await Tealium.trackView('home_screen');
-await Tealium.trackEvent('button_click', { button_id: 'submit' });
+await Tealium.track('button_click', 'event', { button_id: 'submit' });
 ```
 
 ## API Reference
@@ -59,20 +55,18 @@ await Tealium.trackEvent('button_click', { button_id: 'submit' });
 ### Initialization
 
 ```typescript
-// Initialize with configuration
-const success = await Tealium.initialize({
-  account: string;           // Required: Tealium account name
-  profile: string;           // Required: Tealium profile name
-  environment: 'dev' | 'qa' | 'prod';  // Required: Environment
-  dataSource?: string;       // Optional: Data source key
-  logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
-  settingsFile?: string;     // Optional: Local settings file path
-  settingsUrl?: string;      // Optional: Remote settings URL
+// Create instance with configuration
+const success = await Tealium.create({
+  account: 'your-account',
+  profile: 'your-profile',
+  environment: 'dev', // 'dev' | 'qa' | 'prod'
+  dataSource: 'abc123',       // optional
+  logLevel: 'debug',          // optional: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
 });
 
 // Check initialization status
 const isInit = await Tealium.isInitialized();
-const hasInit = Tealium.hasInitialized; // Synchronous check
+const isReady = Tealium.isReady; // Synchronous check
 
 // Shutdown
 Tealium.shutdown();
@@ -81,15 +75,14 @@ Tealium.shutdown();
 ### Tracking
 
 ```typescript
-// Track using TealiumView/TealiumEvent classes
-import { TealiumView, TealiumEvent } from 'tealium-prism-react-native';
+// Track a view
+await Tealium.track('screen_name', 'view', { key: 'value' });
 
-Tealium.track(new TealiumView('screen_name', { key: 'value' }));
-Tealium.track(new TealiumEvent('event_name', { key: 'value' }));
+// Track an event (type defaults to 'event')
+await Tealium.track('event_name', 'event', { key: 'value' });
 
-// Convenience methods
-await Tealium.trackView('screen_name', { key: 'value' });
-await Tealium.trackEvent('event_name', { key: 'value' });
+// Simple event without data
+await Tealium.track('user_login');
 
 // Flush queued events
 await Tealium.flushEventQueue();
@@ -99,27 +92,33 @@ await Tealium.flushEventQueue();
 
 ```typescript
 // Add data with expiry
-Tealium.addData({
+Tealium.dataLayer.put({
   user_id: '12345',
   user_type: 'premium',
 }, 'session'); // 'session', 'forever', or 'untilRestart'
 
 // Get data
-const value = await Tealium.getData('user_id');
+const value = await Tealium.dataLayer.get('user_id');
+
+// Get all data
+const allData = await Tealium.dataLayer.getAll();
 
 // Remove data
-Tealium.removeData('user_id');
-Tealium.removeData(['user_id', 'user_type']); // Multiple keys
+Tealium.dataLayer.remove('user_id');
+Tealium.dataLayer.remove(['user_id', 'user_type']); // Multiple keys
 ```
 
 ### Trace (Debugging)
 
 ```typescript
 // Join a trace session
-Tealium.joinTrace('your-trace-id');
+Tealium.trace.join('your-trace-id');
+
+// Force end of visit (for testing visit-level calculations)
+Tealium.trace.forceEndOfVisit();
 
 // Leave trace
-Tealium.leaveTrace();
+Tealium.trace.leave();
 ```
 
 ### Visitor Identity
