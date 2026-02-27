@@ -6,57 +6,14 @@
 //
 
 import Foundation
-import os.log
 import TealiumPrism
-
-private let logger = Logger(subsystem: "com.tealium.prism.reactnative", category: "Bridge")
-
-private func logFailure<E: Error>(_ result: Result<Void, E>, _ operation: String) {
-    if case .failure(let error) = result {
-        logger.error("Data layer \(operation) failed: \(error.localizedDescription)")
-    }
-}
-
-private func expiryFromString(_ expiry: String?) -> Expiry {
-    switch expiry?.lowercased() {
-    case "forever": return .forever
-    case "untilrestart": return .untilRestart
-    default: return .session
-    }
-}
-
-
-private func dataObject(from dict: [String: Any]) -> DataObject {
-    var result = DataObject()
-    for (key, value) in dict {
-        if let str = value as? String {
-            result.set(converting: str, key: key)
-        } else if let b = value as? Bool {
-            result.set(converting: b, key: key)
-        } else if let num = value as? NSNumber {
-            result.set(converting: num, key: key)
-        } else if let nested = value as? [String: Any] {
-            result.set(converting: dataObject(from: nested), key: key)
-        } else if let arr = value as? [String] {
-            result.set(converting: arr, key: key)
-        } else if let arr = value as? [NSNumber], let first = arr.first,
-                  CFGetTypeID(first) == CFBooleanGetTypeID() {
-            result.set(converting: arr.map { $0.boolValue }, key: key)
-        } else if let arr = value as? [NSNumber] {
-            result.set(converting: arr, key: key)
-        } else if let arr = value as? [[String: Any]] {
-            let dataObjects = arr.map { dataObject(from: $0) }
-            result.set(converting: dataObjects, key: key)
-        }
-    }
-    return result
-}
 
 // TODO: addBarrier() — requires native BarrierFactory objects, cannot be serialized as JS config
 // TODO: addLoadRule() — requires native Rule<Condition> objects, cannot be serialized as JS config
 // TODO: addTransformation() — requires native TransformationSettings objects, cannot be serialized as JS config
 // TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package
 // TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package
+
 @objc(TealiumPrismBridge)
 public class TealiumPrismBridge: NSObject {
     private var tealium: Tealium?
@@ -69,6 +26,8 @@ public class TealiumPrismBridge: NSObject {
     @objc public var onDataRemoved: (([String]) -> Void)?
 
     @objc public static let shared = TealiumPrismBridge()
+
+    // MARK: - Lifecycle
 
     /// Creates a Tealium instance from a configuration dictionary.
     /// This approach allows easy extension without changing method signatures.
@@ -128,10 +87,17 @@ public class TealiumPrismBridge: NSObject {
         )
         tealiumConfig.existingVisitorId = existingVisitorId
 
-        // Configure consent if enabled
-        let consentEnabled = config["consentEnabled"] as? Bool ?? false
-        if consentEnabled {
-            let adapter = BridgeCMPAdapter()
+        // Configure consent if consentAdapterId is present
+        if let adapterId = config["consentAdapterId"] as? String {
+
+            var defaultDecision: ConsentDecision? = nil
+            if let typeStr = config["consentDefaultDecisionType"] as? String,
+               let purposes = config["consentDefaultPurposes"] as? [String] {
+                let type: ConsentDecision.DecisionType = typeStr.lowercased() == "explicit" ? .explicit : .implicit
+                defaultDecision = ConsentDecision(decisionType: type, purposes: Set(purposes))
+            }
+
+            let adapter = BridgeCMPAdapter(id: adapterId, defaultDecision: defaultDecision)
             if let purposes = config["consentPurposes"] as? [String] {
                 adapter.allPurposes = Set(purposes)
             }
@@ -165,6 +131,8 @@ public class TealiumPrismBridge: NSObject {
     @objc public func isInitialized() -> Bool {
         tealium != nil
     }
+
+    // MARK: - Tracking
 
     @objc public func track(name: String, type: String, data: NSDictionary?, completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
@@ -202,58 +170,28 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public func setDataLayerString(key: String, value: String, expiry: String?) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
-            logFailure($0, "put string '\(key)'")
-        }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
     }
 
     @objc public func setDataLayerNumber(key: String, value: Double, expiry: String?) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
-            logFailure($0, "put number '\(key)'")
-        }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
     }
 
     @objc public func setDataLayerBoolean(key: String, value: Bool, expiry: String?) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry)).subscribe {
-            logFailure($0, "put boolean '\(key)'")
-        }
+        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
     }
 
     @objc public func setDataLayerObject(key: String, value: NSDictionary, expiry: String?) {
         guard let tealium = tealium else { return }
         let obj = dataObject(from: value as? [String: Any] ?? [:])
-        tealium.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry)).subscribe {
-            logFailure($0, "put object '\(key)'")
-        }
+        tealium.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry))
     }
 
     @objc public func setDataLayerStringArray(key: String, value: [String], expiry: String?) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry)).subscribe {
-            logFailure($0, "put string array '\(key)'")
-        }
-    }
-
-    private func dataItemToDictionary(_ item: DataItem) -> [String: Any] {
-        if let str = item.get(as: String.self) {
-            return ["type": "string", "value": str]
-        } else if let b = item.get(as: Bool.self) {
-            return ["type": "boolean", "value": b]
-        } else if let num = item.get(as: Double.self) {
-            return ["type": "number", "value": num]
-        } else if let arr = item.getDataArray() {
-            return ["type": "list", "value": arr.map { dataItemToDictionary($0) }]
-        } else if let dict = item.getDataDictionary() {
-            var out: [String: Any] = [:]
-            for (k, v) in dict {
-                out[k] = dataItemToDictionary(v)
-            }
-            return ["type": "object", "value": out]
-        } else {
-            return ["type": "null"]
-        }
+        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
     }
 
     @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
@@ -270,74 +208,14 @@ public class TealiumPrismBridge: NSObject {
         }
     }
 
-    @objc public func getDataLayerString(key: String, completion: @escaping (String?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
-        tealium.dataLayer.get(key: key, as: String.self).subscribe { result in
-            DispatchQueue.main.async {
-                if case .success(let value) = result { completion(value) }
-                else { completion(nil) }
-            }
-        }
-    }
-
-    @objc public func getDataLayerNumber(key: String, completion: @escaping (NSNumber?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
-        tealium.dataLayer.get(key: key, as: Double.self).subscribe { result in
-            DispatchQueue.main.async {
-                if case .success(let value) = result, let val = value { completion(NSNumber(value: val)) }
-                else { completion(nil) }
-            }
-        }
-    }
-
-    @objc public func getDataLayerBoolean(key: String, completion: @escaping (NSNumber?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
-        tealium.dataLayer.get(key: key, as: Bool.self).subscribe { result in
-            DispatchQueue.main.async {
-                if case .success(let value) = result, let val = value { completion(NSNumber(value: val)) }
-                else { completion(nil) }
-            }
-        }
-    }
-
-    @objc public func getDataLayerObject(key: String, completion: @escaping (NSDictionary?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
-        tealium.dataLayer.getDataDictionary(key: key).subscribe { result in
-            DispatchQueue.main.async {
-                guard case .success(let dict) = result, let d = dict else { completion(nil); return }
-                let out = NSMutableDictionary()
-                for (k, item) in d {
-                    if let str = item.get(as: String.self) { out[k] = str }
-                    else if let num = item.get(as: Double.self) { out[k] = num }
-                    else if let b = item.get(as: Bool.self) { out[k] = b }
-                }
-                completion(out)
-            }
-        }
-    }
-
-    @objc public func getDataLayerStringArray(key: String, completion: @escaping ([String]?) -> Void) {
-        guard let tealium = tealium else { completion(nil); return }
-        tealium.dataLayer.getArray(key: key, of: String.self).subscribe { result in
-            DispatchQueue.main.async {
-                guard case .success(let arr) = result else { completion(nil); return }
-                completion(arr?.compactMap { $0 })
-            }
-        }
-    }
-
     @objc public func removeDataLayerValue(key: String) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.remove(key: key).subscribe {
-            logFailure($0, "remove '\(key)'")
-        }
+        tealium.dataLayer.remove(key: key)
     }
 
     @objc public func removeDataLayerValues(keys: [String]) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.remove(keys: keys).subscribe {
-            logFailure($0, "remove keys")
-        }
+        tealium.dataLayer.remove(keys: keys)
     }
 
     @objc public func clearDataLayer(completion: @escaping (Bool, Error?) -> Void) {
@@ -366,32 +244,6 @@ public class TealiumPrismBridge: NSObject {
                 completion(self.dataObjectToDict(dataObject) as NSDictionary)
             }
         }
-    }
-
-    private func dataItemToAny(_ item: DataItem) -> Any? {
-        if let str = item.get(as: String.self) {
-            return str
-        } else if let b = item.get(as: Bool.self) {
-            return b
-        } else if let num = item.get(as: Double.self) {
-            return num
-        } else if let arr = item.getDataArray() {
-            return arr.compactMap { dataItemToAny($0) }
-        } else if let dict = item.getDataDictionary() {
-            return dict.compactMapValues { dataItemToAny($0) }
-        }
-        return nil
-    }
-
-    private func dataObjectToDict(_ dataObject: DataObject) -> [String: Any] {
-        var out: [String: Any] = [:]
-        for key in dataObject.keys {
-            guard let item = dataObject.getDataItem(key: key) else { continue }
-            if let val = dataItemToAny(item) {
-                out[key] = val
-            }
-        }
-        return out
     }
 
     // MARK: - Deep Link
@@ -424,6 +276,11 @@ public class TealiumPrismBridge: NSObject {
         tealium.trace.leave()
     }
 
+    @objc public func forceEndOfVisit() {
+        guard let tealium = tealium else { return }
+        tealium.trace.forceEndOfVisit()
+    }
+
     // MARK: - Visitor
 
     @objc public func resetVisitorId(completion: @escaping (String?, Error?) -> Void) {
@@ -448,13 +305,6 @@ public class TealiumPrismBridge: NSObject {
                 }
             }
         }
-    }
-
-    // MARK: - Trace (Extended)
-
-    @objc public func forceEndOfVisit() {
-        guard let tealium = tealium else { return }
-        tealium.trace.forceEndOfVisit()
     }
 
     // MARK: - Consent
@@ -488,18 +338,10 @@ public class TealiumPrismBridge: NSObject {
         guard dataUpdateSubscription == nil, let tealium = tealium else { return }
 
         let updateHandler: (DataObject) -> Void = { [weak self] dataObject in
-            var dict: [String: Any] = [:]
-            for key in dataObject.keys {
-                if let str: String = dataObject.get(key: key) {
-                    dict[key] = str
-                } else if let num: Double = dataObject.get(key: key) {
-                    dict[key] = num
-                } else if let b: Bool = dataObject.get(key: key) {
-                    dict[key] = b
-                }
-            }
+            guard let bridge = self else { return }
+            let dict = bridge.dataObjectToDict(dataObject)
             DispatchQueue.main.async {
-                self?.onDataUpdated?(dict)
+                bridge.onDataUpdated?(dict)
             }
         }
         dataUpdateSubscription = tealium.dataLayer.onDataUpdated.subscribe(updateHandler)
@@ -539,16 +381,9 @@ public class TealiumPrismBridge: NSObject {
             for key in keysToRead {
                 group.enter()
                 tealium.dataLayer.getDataItem(key: key).subscribe { result in
-                    if case .success(let item) = result, let dataItem = item {
-                        if let str = dataItem.get(as: String.self) {
-                            preReadValues[key] = str
-                        } else if let num = dataItem.get(as: Double.self) {
-                            preReadValues[key] = num
-                        } else if let intNum = dataItem.get(as: Int.self) {
-                            preReadValues[key] = intNum
-                        } else if let b = dataItem.get(as: Bool.self) {
-                            preReadValues[key] = b
-                        }
+                    if case .success(let item) = result, let dataItem = item,
+                       let val = dataItemToAny(dataItem) {
+                        preReadValues[key] = val
                     }
                     group.leave()
                 }
@@ -605,4 +440,91 @@ public class TealiumPrismBridge: NSObject {
         // Empty call (no keys to read, no operations)
         completion([:] as NSDictionary)
     }
+
+    // MARK: - Helpers
+
+    /// Converts a typed DataItem to a { type, value } dictionary for JS consumption.
+    private func dataItemToDictionary(_ item: DataItem) -> [String: Any] {
+        if let str = item.get(as: String.self) {
+            return ["type": "string", "value": str]
+        } else if let b = item.get(as: Bool.self) {
+            return ["type": "boolean", "value": b]
+        } else if let num = item.get(as: Double.self) {
+            return ["type": "number", "value": num]
+        } else if let arr = item.getDataArray() {
+            return ["type": "list", "value": arr.map { dataItemToDictionary($0) }]
+        } else if let dict = item.getDataDictionary() {
+            var out: [String: Any] = [:]
+            for (k, v) in dict {
+                out[k] = dataItemToDictionary(v)
+            }
+            return ["type": "object", "value": out]
+        } else {
+            return ["type": "null"]
+        }
+    }
+
+    /// Unwraps a DataItem to its raw Swift value (used for getAllData / transactional reads).
+    private func dataItemToAny(_ item: DataItem) -> Any? {
+        if let str = item.get(as: String.self) {
+            return str
+        } else if let b = item.get(as: Bool.self) {
+            return b
+        } else if let num = item.get(as: Double.self) {
+            return num
+        } else if let arr = item.getDataArray() {
+            return arr.compactMap { dataItemToAny($0) }
+        } else if let dict = item.getDataDictionary() {
+            return dict.compactMapValues { dataItemToAny($0) }
+        }
+        return nil
+    }
+
+    private func dataObjectToDict(_ dataObject: DataObject) -> [String: Any] {
+        var out: [String: Any] = [:]
+        for key in dataObject.keys {
+            guard let item = dataObject.getDataItem(key: key) else { continue }
+            if let val = dataItemToAny(item) {
+                out[key] = val
+            }
+        }
+        return out
+    }
+}
+
+// MARK: - File-private Helpers
+
+private func expiryFromString(_ expiry: String?) -> Expiry {
+    switch expiry?.lowercased() {
+    case "forever": return .forever
+    case "untilrestart": return .untilRestart
+    default: return .session
+    }
+}
+
+/// Recursively converts an NSDictionary (from JS) into a native DataObject.
+private func dataObject(from dict: [String: Any]) -> DataObject {
+    var result = DataObject()
+    for (key, value) in dict {
+        if let str = value as? String {
+            result.set(converting: str, key: key)
+        } else if let b = value as? Bool {
+            result.set(converting: b, key: key)
+        } else if let num = value as? NSNumber {
+            result.set(converting: num, key: key)
+        } else if let nested = value as? [String: Any] {
+            result.set(converting: dataObject(from: nested), key: key)
+        } else if let arr = value as? [String] {
+            result.set(converting: arr, key: key)
+        } else if let arr = value as? [NSNumber], let first = arr.first,
+                  CFGetTypeID(first) == CFBooleanGetTypeID() {
+            result.set(converting: arr.map { $0.boolValue }, key: key)
+        } else if let arr = value as? [NSNumber] {
+            result.set(converting: arr, key: key)
+        } else if let arr = value as? [[String: Any]] {
+            let dataObjects = arr.map { dataObject(from: $0) }
+            result.set(converting: dataObjects, key: key)
+        }
+    }
+    return result
 }

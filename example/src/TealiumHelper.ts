@@ -9,7 +9,26 @@ import Tealium, {
   type TealiumConfig,
   type TrackData,
   type Expiry,
+  type DataItem,
 } from 'tealium-prism-react-native';
+
+function unwrapDataItem(item: DataItem | null): unknown {
+  if (item === null) return null;
+  switch (item.type) {
+    case 'null':
+      return null;
+    case 'string':
+    case 'number':
+    case 'boolean':
+      return item.value;
+    case 'list':
+      return item.value.map(unwrapDataItem);
+    case 'object':
+      return Object.fromEntries(
+        Object.entries(item.value).map(([k, v]) => [k, unwrapDataItem(v)])
+      );
+  }
+}
 
 /**
  * Configuration options for the TealiumHelper singleton.
@@ -242,7 +261,7 @@ class TealiumHelper {
       return null;
     }
 
-    return Tealium.dataLayer.get(key);
+    return unwrapDataItem(await Tealium.dataLayer.get(key));
   }
 
   /**

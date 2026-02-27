@@ -23,10 +23,14 @@ export interface TealiumConfigSpec {
   existingVisitorId?: string;
   /** Key used for visitor identity (cross-device stitching) */
   visitorIdentityKey?: string;
-  /** Enable consent management */
-  consentEnabled?: boolean;
+  /** Unique ID for the bridge CMP adapter — presence enables consent management */
+  consentAdapterId?: string;
   /** All available consent purposes */
   consentPurposes?: string[];
+  /** Default consent decision type: 'implicit' or 'explicit' */
+  consentDefaultDecisionType?: string;
+  /** Default consent decision purposes */
+  consentDefaultPurposes?: string[];
   /** Maximum queue size for offline events */
   maxQueueSize?: number;
   /** Queue expiration in seconds */
@@ -163,41 +167,6 @@ export interface Spec extends TurboModule {
    * @returns Promise resolving with object containing type and value, or null
    */
   getDataLayerValue(key: string): Promise<DataLayerValueSpec | null>;
-
-  /**
-   * Get a string value from the data layer.
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the string value or null
-   */
-  getDataLayerString(key: string): Promise<string | null>;
-
-  /**
-   * Get a number value from the data layer.
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the number value or null
-   */
-  getDataLayerNumber(key: string): Promise<number | null>;
-
-  /**
-   * Get a boolean value from the data layer.
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the boolean value or null
-   */
-  getDataLayerBoolean(key: string): Promise<boolean | null>;
-
-  /**
-   * Get an object value from the data layer.
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the object value or null
-   */
-  getDataLayerObject(key: string): Promise<Object | null>;
-
-  /**
-   * Get a string array value from the data layer.
-   * @param key - Key to retrieve
-   * @returns Promise resolving to the string array value or null
-   */
-  getDataLayerStringArray(key: string): Promise<string[] | null>;
 
   /**
    * Remove a value from the data layer.

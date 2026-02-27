@@ -48,6 +48,31 @@ export type Expiry = 'session' | 'forever' | 'untilRestart';
 export type DispatchType = 'event' | 'view';
 
 /**
+ * Configuration for the bridge CMP adapter used for consent management.
+ * Mirrors the native CmpAdapter/CMPAdapter pattern.
+ */
+export interface ConsentAdapterConfig {
+  /**
+   * Unique ID for the adapter. Must match the key used for ConsentConfiguration
+   * in local/remote settings JSON.
+   * @default 'react-native-bridge'
+   */
+  id?: string;
+
+  /**
+   * All purposes the CMP can manage. Used by the SDK to determine whether
+   * all purposes have been consented to.
+   */
+  allPurposes?: string[];
+
+  /**
+   * Consent decision to use on first launch or after reset, and to restore
+   * across app restarts when no persisted decision exists.
+   */
+  defaultDecision?: ConsentDecision;
+}
+
+/**
  * Configuration object for initializing Tealium.
  * Mirrors native: TealiumConfig (Swift/Kotlin)
  */
@@ -106,20 +131,11 @@ export interface TealiumConfig {
   visitorIdentityKey?: string;
 
   /**
-   * Enable consent management. When true, a bridge CMP adapter is created
-   * that allows setting consent decisions from JavaScript via Tealium.consent.
+   * Configuration for the bridge CMP adapter.
+   * When provided, consent management is enabled.
    * Mirrors native: TealiumConfig.cmpAdapter (Swift/Kotlin)
-   * @default false
    */
-  consentEnabled?: boolean;
-
-  /**
-   * All available consent purposes recognized by the CMP.
-   * Used by the native SDK for consent evaluation (e.g., determining
-   * whether all purposes have been consented to).
-   * Only used when consentEnabled is true.
-   */
-  consentPurposes?: string[];
+  consentAdapter?: ConsentAdapterConfig;
 
   // ============================================
   // Core Settings (Advanced)
@@ -226,7 +242,7 @@ export interface DataLayerOptions {
 
   /**
    * Expiry option for the value.
-   * @default 'session'
+   * @default 'forever'
    */
   expiry?: Expiry;
 }
@@ -330,7 +346,7 @@ export interface TransactionContext {
    * Queue a put operation to store a value.
    * @param key - Key to store the value under
    * @param value - Value to store
-   * @param expiry - Expiry option (default: 'session')
+   * @param expiry - Expiry option (default: 'forever')
    */
   put(key: string, value: unknown, expiry?: Expiry): void;
 

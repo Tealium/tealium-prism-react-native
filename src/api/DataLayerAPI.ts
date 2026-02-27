@@ -60,11 +60,13 @@ export class DataLayerAPI {
   /**
    * Add data to the persistent data layer.
    *
-   * Supports multiple value types: string, number, boolean, string arrays, and objects.
-   * Unsupported types (null, undefined, non-string arrays) will be skipped with a console warning.
+   * Supports multiple value types: string, number, boolean, string[], and objects.
+   * Arrays of numbers or booleans are not supported here — use transactionally() instead.
+   * Unsupported types are skipped with a console warning.
    *
    * @param data - Object containing key-value pairs to add
    * @param expiry - When the data should expire: 'session', 'forever', or 'untilRestart'
+   * @default 'forever'
    *
    * @example
    * ```typescript
@@ -72,10 +74,10 @@ export class DataLayerAPI {
    *   user_type: 'premium',
    *   user_id: '12345',
    *   preferences: { dark_mode: true }
-   * }, 'session');
+   * });
    * ```
    */
-  put(data: Record<string, unknown>, expiry: Expiry = 'session'): void {
+  put(data: Record<string, unknown>, expiry: Expiry = 'forever'): void {
     for (const [key, value] of Object.entries(data)) {
       if (typeof value === 'string') {
         NativeTealiumPrism.setDataLayerString(key, value, expiry);
@@ -83,15 +85,21 @@ export class DataLayerAPI {
         NativeTealiumPrism.setDataLayerNumber(key, value, expiry);
       } else if (typeof value === 'boolean') {
         NativeTealiumPrism.setDataLayerBoolean(key, value, expiry);
-      } else if (
-        Array.isArray(value) &&
-        value.every((v) => typeof v === 'string')
-      ) {
-        NativeTealiumPrism.setDataLayerStringArray(
-          key,
-          value as string[],
-          expiry
-        );
+      } else if (Array.isArray(value)) {
+        if (value.every((v) => typeof v === 'string')) {
+          NativeTealiumPrism.setDataLayerStringArray(
+            key,
+            value as string[],
+            expiry
+          );
+        } else {
+          // Only string[] has a dedicated native method. Passing a non-string
+          // array to setDataLayerObject would silently corrupt data on native.
+          console.warn(
+            `[Tealium] Unsupported array type for key "${key}": only string[] is supported. ` +
+              'Use transactionally() to store number or boolean arrays.'
+          );
+        }
       } else if (typeof value === 'object' && value !== null) {
         NativeTealiumPrism.setDataLayerObject(
           key,
@@ -303,7 +311,7 @@ export class DataLayerAPI {
       get: (key: string): unknown => {
         return preReadValues[key];
       },
-      put: (key: string, value: unknown, expiry: Expiry = 'session'): void => {
+      put: (key: string, value: unknown, expiry: Expiry = 'forever'): void => {
         operations.push({ type: 'put', key, value, expiry });
       },
       remove: (key: string): void => {

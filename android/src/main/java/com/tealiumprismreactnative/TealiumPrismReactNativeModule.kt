@@ -1,7 +1,6 @@
 package com.tealiumprismreactnative
 
 import android.app.Application
-import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -36,7 +35,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
 
     companion object {
-        const val TAG = "TealiumPrismRN"
         const val NAME = NativeTealiumPrismReactNativeSpec.NAME
         const val EVENT_DATA_LAYER_UPDATED = "TealiumDataLayerUpdated"
         const val EVENT_DATA_LAYER_REMOVED = "TealiumDataLayerRemoved"
@@ -158,14 +156,26 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 }
             }
 
-            // Configure consent if enabled
-            val consentEnabled = if (config.hasKey("consentEnabled")) {
-                config.getBoolean("consentEnabled")
-            } else {
-                false
-            }
-            if (consentEnabled) {
-                val adapter = BridgeCmpAdapter()
+            // Configure consent if consentAdapterId is present
+            if (config.hasKey("consentAdapterId")) {
+                val adapterId = config.getString("consentAdapterId") ?: "react-native-bridge"
+
+                var defaultDecision: ConsentDecision? = null
+                if (config.hasKey("consentDefaultDecisionType") && config.hasKey("consentDefaultPurposes")) {
+                    val typeStr = config.getString("consentDefaultDecisionType")
+                    val purposesArray = config.getArray("consentDefaultPurposes")
+                    if (typeStr != null && purposesArray != null) {
+                        val type = if (typeStr.lowercase() == "explicit") ConsentDecision.DecisionType.Explicit
+                                   else ConsentDecision.DecisionType.Implicit
+                        val purposes = mutableSetOf<String>()
+                        for (i in 0 until purposesArray.size()) {
+                            purposesArray.getString(i)?.let { purposes.add(it) }
+                        }
+                        defaultDecision = ConsentDecision(type, purposes)
+                    }
+                }
+
+                val adapter = BridgeCmpAdapter(application, adapterId, defaultDecision)
                 if (config.hasKey("consentPurposes")) {
                     val purposesArray = config.getArray("consentPurposes")
                     if (purposesArray != null) {
@@ -184,22 +194,20 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             tealium = Tealium.create(configBuilder.build()) { result ->
                 val teal = result.getOrNull()
                 if (teal != null) {
-                    Log.d(TAG, "Tealium initialized successfully")
                     promise.resolve(true)
                 } else {
-                    Log.e(TAG, "Tealium initialization failed")
                     promise.resolve(false)
                 }
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Initialization error", e)
             promise.reject("INIT_ERROR", e.message, e)
         }
     }
 
     override fun shutdown() {
         disableDataLayerEvents()
+        listenerCount = 0
         tealium?.shutdown()
         tealium = null
         bridgeCmpAdapter = null
@@ -234,21 +242,17 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 DataObject.EMPTY_OBJECT
             }
 
-            Log.d(TAG, "Track called: name=$name, type=$typeStr, data=$data")
             teal.track(name, type, data)
                 .subscribe { result ->
                     if (result.isSuccess) {
-                        Log.d(TAG, "Track success: ${result.getOrNull()?.description}")
                         promise.resolve(null)
                     } else {
                         val error = result.exceptionOrNull()
-                        Log.e(TAG, "Track failed", error)
                         promise.reject("TRACK_ERROR", error?.message ?: "Track dispatch failed", error)
                     }
                 }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Track error", e)
             promise.reject("TRACK_ERROR", e.message, e)
         }
     }
@@ -266,7 +270,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     promise.resolve(null)
                 } else {
                     val error = result.exceptionOrNull()
-                    Log.e(TAG, "Flush failed", error)
                     promise.reject("FLUSH_ERROR", error?.message ?: "Flush event queue failed", error)
                 }
             }
@@ -318,75 +321,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    override fun getDataLayerString(key: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-        teal.dataLayer.getString(key).subscribe { result ->
-            promise.resolve(result.getOrNull())
-        }
-    }
-
-    override fun getDataLayerNumber(key: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-        teal.dataLayer.getDouble(key).subscribe { result ->
-            promise.resolve(result.getOrNull())
-        }
-    }
-
-    override fun getDataLayerBoolean(key: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-        teal.dataLayer.getBoolean(key).subscribe { result ->
-            promise.resolve(result.getOrNull())
-        }
-    }
-
-    override fun getDataLayerObject(key: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-        teal.dataLayer.getDataObject(key).subscribe { result ->
-            val dataObject = result.getOrNull()
-            if (dataObject != null) {
-                promise.resolve(dataObjectToMap(dataObject))
-            } else {
-                promise.resolve(null)
-            }
-        }
-    }
-
-    override fun getDataLayerStringArray(key: String, promise: Promise) {
-        val teal = tealium
-        if (teal == null) {
-            promise.reject("NOT_INITIALIZED", "Tealium is not initialized")
-            return
-        }
-        teal.dataLayer.getDataList(key).subscribe { result ->
-            val dataList = result.getOrNull()
-            if (dataList != null) {
-                val array = Arguments.createArray()
-                for (item in dataList) {
-                    item.getString()?.let { array.pushString(it) }
-                }
-                promise.resolve(array)
-            } else {
-                promise.resolve(null)
-            }
-        }
-    }
-
     override fun removeDataLayerValue(key: String) {
         val teal = tealium ?: return
         teal.dataLayer.remove(key)
@@ -414,7 +348,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 promise.resolve(null)
             } else {
                 val error = result.exceptionOrNull()
-                Log.e(TAG, "Clear data layer failed", error)
                 promise.reject("DATA_LAYER_ERROR", error?.message ?: "Failed to clear data layer", error)
             }
         }
@@ -555,7 +488,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             reactApplicationContext.currentActivity?.application
                 ?: reactApplicationContext.applicationContext as? Application
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get Application", e)
             null
         }
     }
@@ -880,7 +812,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(eventName, params)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send event: $eventName", e)
+            // Ignore — nothing we can do if the JS event bus is unavailable.
         }
     }
 }

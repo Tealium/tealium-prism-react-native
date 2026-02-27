@@ -199,10 +199,18 @@ export default class Tealium {
    * ```
    */
   static async create(config: TealiumConfig): Promise<boolean> {
-    // Pass config directly - all fields are mapped 1:1
-    const result = await NativeTealiumPrism.initialize(
-      config as TealiumConfigSpec
-    );
+    const { consentAdapter, ...rest } = config;
+    const spec: TealiumConfigSpec = {
+      ...rest,
+      consentAdapterId:
+        consentAdapter != null
+          ? (consentAdapter.id ?? 'react-native-bridge')
+          : undefined,
+      consentPurposes: consentAdapter?.allPurposes,
+      consentDefaultDecisionType: consentAdapter?.defaultDecision?.decisionType,
+      consentDefaultPurposes: consentAdapter?.defaultDecision?.purposes,
+    };
+    const result = await NativeTealiumPrism.initialize(spec);
     Tealium._initialized = result;
 
     // Add plugin metadata to data layer

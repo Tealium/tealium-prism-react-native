@@ -257,7 +257,13 @@ export default function App() {
     }
 
     const value = await TealiumHelper.getData(dataKey);
-    showToast(`${dataKey} = ${value ?? 'null'}`);
+    const display =
+      value == null
+        ? 'null'
+        : typeof value === 'object'
+          ? JSON.stringify(value)
+          : String(value);
+    showToast(`${dataKey} = ${display}`);
   }, [dataKey, showToast]);
 
   const handleRemoveData = useCallback(() => {
@@ -293,7 +299,7 @@ export default function App() {
   }, [showToast]);
 
   const handleGetTransactionCounter = useCallback(async () => {
-    const count = await Tealium.dataLayer.get('tx_counter');
+    const count = await TealiumHelper.getData('tx_counter');
     showToast(`tx_counter = ${count ?? 'null'}`);
   }, [showToast]);
 
