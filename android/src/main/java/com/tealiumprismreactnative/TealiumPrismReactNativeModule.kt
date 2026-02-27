@@ -45,7 +45,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     private var dataLayerEventsEnabled = false
     private var dataUpdateSubscription: Disposable? = null
     private var dataRemoveSubscription: Disposable? = null
-    private var listenerCount = 0
 
     // ============================================
     // Initialization & Lifecycle
@@ -207,7 +206,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     override fun shutdown() {
         disableDataLayerEvents()
-        listenerCount = 0
         tealium?.shutdown()
         tealium = null
         bridgeCmpAdapter = null
@@ -380,6 +378,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             return
         }
         val deepLinkUri = android.net.Uri.parse(url)
+        if (deepLinkUri.scheme == null) {
+            promise.resolve(false)
+            return
+        }
         val referrerUri = referrer?.let { android.net.Uri.parse(it) }
         teal.deeplink.handle(deepLinkUri, referrerUri).subscribe { result ->
             promise.resolve(result.isSuccess)
@@ -398,6 +400,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun leaveTrace() {
         val teal = tealium ?: return
         teal.trace.leave()
+    }
+
+    override fun forceEndOfVisit() {
+        val teal = tealium ?: return
+        teal.trace.forceEndOfVisit()
     }
 
     // ============================================
@@ -642,15 +649,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     // ============================================
-    // Trace (Extended)
-    // ============================================
-
-    override fun forceEndOfVisit() {
-        val teal = tealium ?: return
-        teal.trace.forceEndOfVisit()
-    }
-
-    // ============================================
     // DataLayer Events
     // ============================================
 
@@ -794,17 +792,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    override fun addListener(eventType: String) {
-        listenerCount++
-    }
+    override fun addListener(eventType: String) {}
 
-    override fun removeListeners(count: Double) {
-        listenerCount -= count.toInt()
-        if (listenerCount <= 0) {
-            listenerCount = 0
-            disableDataLayerEvents()
-        }
-    }
+    // JS reference counting in DataLayerAPI.ts drives the enable/disable lifecycle.
+    override fun removeListeners(count: Double) {}
 
     private fun sendEvent(eventName: String, params: Any?) {
         try {

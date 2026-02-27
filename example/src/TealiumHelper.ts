@@ -50,8 +50,9 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
     'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
   logLevel: 'debug',
   visitorIdentityKey: 'email',
-  consentEnabled: true,
-  consentPurposes: ['analytics', 'marketing', 'personalization'],
+  consentAdapter: {
+    allPurposes: ['analytics', 'marketing', 'personalization'],
+  },
 };
 
 /**
@@ -318,9 +319,6 @@ class TealiumHelper {
 
     console.log('[TealiumHelper] Joining trace:', traceId);
     Tealium.trace.join(traceId);
-
-    // Track a trace start event
-    this.trackEvent('trace_started', { trace_id: traceId });
   }
 
   /**

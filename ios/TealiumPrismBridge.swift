@@ -249,10 +249,8 @@ public class TealiumPrismBridge: NSObject {
     // MARK: - Deep Link
 
     @objc public func handleDeepLink(url: String, referrer: String?, completion: @escaping (Bool) -> Void) {
-        guard let tealium = tealium, let deepLinkUrl = URL(string: url) else {
-            completion(false)
-            return
-        }
+        guard let tealium = tealium else { completion(false); return }
+        guard let deepLinkUrl = URL(string: url) else { completion(false); return }
         let ref: Referrer? = referrer.flatMap { URL(string: $0) }.map { .url($0) }
         tealium.deepLink.handle(link: deepLinkUrl, referrer: ref).subscribe { result in
             DispatchQueue.main.async {
@@ -382,7 +380,7 @@ public class TealiumPrismBridge: NSObject {
                 group.enter()
                 tealium.dataLayer.getDataItem(key: key).subscribe { result in
                     if case .success(let item) = result, let dataItem = item,
-                       let val = dataItemToAny(dataItem) {
+                       let val = self.dataItemToAny(dataItem) {
                         preReadValues[key] = val
                     }
                     group.leave()

@@ -66,8 +66,8 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             configDict[@"visitorIdentityKey"] = config.visitorIdentityKey();
         }
         // Consent
-        if (config.consentEnabled().has_value()) {
-            configDict[@"consentEnabled"] = @(config.consentEnabled().value());
+        if (config.consentAdapterId()) {
+            configDict[@"consentAdapterId"] = config.consentAdapterId();
         }
         if (config.consentPurposes().has_value()) {
             auto purposes = config.consentPurposes().value();
@@ -76,6 +76,17 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
                 [purposesArray addObject:purposes[i]];
             }
             configDict[@"consentPurposes"] = purposesArray;
+        }
+        if (config.consentDefaultDecisionType()) {
+            configDict[@"consentDefaultDecisionType"] = config.consentDefaultDecisionType();
+        }
+        if (config.consentDefaultPurposes().has_value()) {
+            auto purposes = config.consentDefaultPurposes().value();
+            NSMutableArray *purposesArray = [NSMutableArray arrayWithCapacity:purposes.size()];
+            for (size_t i = 0; i < purposes.size(); i++) {
+                [purposesArray addObject:purposes[i]];
+            }
+            configDict[@"consentDefaultPurposes"] = purposesArray;
         }
 
         // Core Settings (optional)
@@ -263,6 +274,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     [[TealiumPrismBridge shared] leaveTrace];
 }
 
+- (void)forceEndOfVisit {
+    [[TealiumPrismBridge shared] forceEndOfVisit];
+}
+
 // MARK: - Visitor / Identity
 
 - (void)resetVisitorId:(RCTPromiseResolveBlock)resolve
@@ -285,12 +300,6 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             resolve(visitorId);
         }
     }];
-}
-
-// MARK: - Trace (Extended)
-
-- (void)forceEndOfVisit {
-    [[TealiumPrismBridge shared] forceEndOfVisit];
 }
 
 // MARK: - Consent
@@ -360,6 +369,19 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)stopObserving {
     _hasListeners = NO;
+}
+
+// In bridgeless New Architecture mode (RN 0.73+), RCTEventEmitter.receiveEvent() is not
+// registered as a callable JS module. Override to route through RCTDeviceEventEmitter.emit()
+// instead, which is always registered in both bridge and bridgeless modes.
+- (void)sendEventWithName:(NSString *)eventName body:(id)body {
+    if (!_hasListeners) {
+        return;
+    }
+    // callableJSModules is id — message send to nil is safe (no-op) in ObjC.
+    [self.callableJSModules invokeModule:@"RCTDeviceEventEmitter"
+                                   method:@"emit"
+                                 withArgs:@[eventName, body ?: [NSNull null]]];
 }
 
 @end
