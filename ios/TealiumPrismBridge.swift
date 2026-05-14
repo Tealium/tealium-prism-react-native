@@ -460,7 +460,11 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
     for (key, value) in dict {
         if let convertible = value as? DataInputConvertible {
             result.set(converting: convertible, key: key)
-        } else if let arr = value as? [DataInputConvertible] {
+        } else if let arr = value as? [String] {
+            result.set(converting: arr, key: key)
+        } else if let arr = value as? [Double] {
+            result.set(converting: arr, key: key)
+        } else if let arr = value as? [Bool] {
             result.set(converting: arr, key: key)
         } else if let nested = value as? [String: Any] {
             result.set(converting: dataObject(from: nested), key: key)
@@ -469,7 +473,7 @@ private func dataObject(from dict: [String: Any]) -> DataObject {
         } else if let arr = value as? NSArray {
             // Fallback for heterogeneous arrays (mixed element types) that
             // don't match the homogeneous branches above.
-            result.set(converting: convertArrayToDataInputList(arr), key: key)
+            result.set(convertArrayToDataInputList(arr), key: key)
         }
     }
     return result
@@ -486,7 +490,7 @@ private func convertArrayToDataInputList(_ array: NSArray) -> [DataInput] {
         } else if let num = element as? NSNumber {
             result.append(num.doubleValue)
         } else if let dict = element as? [String: Any] {
-            result.append(dataObject(from: dict))
+            result.append(dataObject(from: dict).toDataInput())
         } else if let arr = element as? NSArray {
             result.append(convertArrayToDataInputList(arr))
         }

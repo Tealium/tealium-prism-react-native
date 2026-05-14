@@ -63,19 +63,29 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             configDict[@"visitorIdentityKey"] = config.visitorIdentityKey();
         }
         // Consent adapter (nested object from JS)
-        NSDictionary *cmpAdapter = (NSDictionary *)config.cmpAdapter();
-        if (cmpAdapter) {
-            if (cmpAdapter[@"id"]) {
-                configDict[@"consentAdapterId"] = cmpAdapter[@"id"];
+        if (auto cmpAdapterOpt = config.cmpAdapter(); cmpAdapterOpt.has_value()) {
+            auto cmpAdapter = cmpAdapterOpt.value();
+            if (cmpAdapter.id_()) {
+                configDict[@"consentAdapterId"] = cmpAdapter.id_();
             }
-            if (cmpAdapter[@"allPurposes"]) {
-                configDict[@"consentPurposes"] = cmpAdapter[@"allPurposes"];
+            auto allPurposes = cmpAdapter.allPurposes();
+            if (allPurposes.has_value()) {
+                NSMutableArray *purposes = [NSMutableArray array];
+                for (NSString *purpose : allPurposes.value()) {
+                    [purposes addObject:purpose];
+                }
+                configDict[@"consentPurposes"] = purposes;
             }
-            if (cmpAdapter[@"defaultDecisionType"]) {
-                configDict[@"consentDefaultDecisionType"] = cmpAdapter[@"defaultDecisionType"];
+            if (cmpAdapter.defaultDecisionType()) {
+                configDict[@"consentDefaultDecisionType"] = cmpAdapter.defaultDecisionType();
             }
-            if (cmpAdapter[@"defaultPurposes"]) {
-                configDict[@"consentDefaultPurposes"] = cmpAdapter[@"defaultPurposes"];
+            auto defaultPurposes = cmpAdapter.defaultPurposes();
+            if (defaultPurposes.has_value()) {
+                NSMutableArray *defaults = [NSMutableArray array];
+                for (NSString *purpose : defaultPurposes.value()) {
+                    [defaults addObject:purpose];
+                }
+                configDict[@"consentDefaultPurposes"] = defaults;
             }
         }
 

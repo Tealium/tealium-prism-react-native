@@ -58,8 +58,9 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "latest",
-    "@react-native/babel-preset": "0.83.1",
-    "@react-native/eslint-config": "0.83.1",
+    "@react-native/babel-preset": "0.85.3",
+    "@react-native/eslint-config": "0.85.3",
+    "@react-native/jest-preset": "0.85.3",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.11",
     "del-cli": "^7.0.0",
@@ -69,14 +70,14 @@
     "jest": "^30.2.0",
     "prettier": "^3.8.1",
     "react": "19.2.4",
-    "react-native": "0.83.1",
+    "react-native": "0.85.3",
     "react-native-builder-bob": "^0.40.17",
     "turbo": "^2.8.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-native": ">=0.83.0"
+    "react-native": ">=0.85.0"
   },
   "engines": {
     "node": ">=20"
@@ -119,7 +120,7 @@
     "useTabs": false
   },
   "jest": {
-    "preset": "react-native",
+    "preset": "@react-native/jest-preset",
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
