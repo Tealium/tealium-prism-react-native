@@ -13,6 +13,7 @@
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from './NativeTealiumPrismReactNative';
+import { version as PLUGIN_VERSION } from '../package.json';
 import type {
   TealiumConfigSpec,
   TrackDataSpec,
@@ -23,14 +24,14 @@ import { DataLayerAPI, TraceAPI, DeepLinkAPI, ConsentAPI } from './api';
 
 // Re-export types
 export * from './types';
-export { TealiumView, TealiumEvent } from './types';
 
 // Re-export API types
 export type { DataLayerUpdateCallback, DataLayerRemoveCallback } from './api';
 
 import type { TealiumConfig, TrackData, DispatchType } from './types';
 
-// Create event emitter for native events (singleton)
+// Instantiated before create() — safe because the emitter is a JS wrapper that
+// doesn't call native until addListener is invoked.
 const eventEmitter = new NativeEventEmitter(NativeTealiumPrism as any);
 
 /**
@@ -39,6 +40,9 @@ const eventEmitter = new NativeEventEmitter(NativeTealiumPrism as any);
  * The API structure mirrors the native Swift/Kotlin SDKs:
  * - Sub-modules accessible via lazy getters (dataLayer, trace, deepLink, etc.)
  * - Core methods directly on the class (track, create, shutdown, etc.)
+ *
+ * Note: Sub-API getters (dataLayer, trace, etc.) do not guard against use before `create()`.
+ * Calls made before initialization will silently no-op on the native side.
  *
  * @example
  * ```typescript
@@ -138,7 +142,7 @@ export default class Tealium {
    *
    * Mirrors native: `CMPAdapter` / `CmpAdapter` pattern
    *
-   * Requires `consentEnabled: true` in the config passed to `Tealium.create()`.
+   * Requires `cmpAdapter` to be provided in the config passed to `Tealium.create()`.
    *
    * @example
    * ```typescript
@@ -185,8 +189,8 @@ export default class Tealium {
    * Mirrors native: `Tealium.create(config:)`
    *
    * @param config - Configuration object with account, profile, environment, and optional settings
-   * @returns Promise resolving to true when creation is complete
-   * @throws Error if creation fails
+   * @returns Promise resolving to true when creation is complete, false if native init returned failure
+   * @throws Rejects with native error (code: INIT_ERROR) on exception. Safe to retry after failure.
    *
    * @example
    * ```typescript
@@ -199,16 +203,17 @@ export default class Tealium {
    * ```
    */
   static async create(config: TealiumConfig): Promise<boolean> {
-    const { consentAdapter, ...rest } = config;
+    const { cmpAdapter, ...rest } = config;
     const spec: TealiumConfigSpec = {
       ...rest,
-      consentAdapterId:
-        consentAdapter != null
-          ? (consentAdapter.id ?? 'react-native-bridge')
-          : undefined,
-      consentPurposes: consentAdapter?.allPurposes,
-      consentDefaultDecisionType: consentAdapter?.defaultDecision?.decisionType,
-      consentDefaultPurposes: consentAdapter?.defaultDecision?.purposes,
+      cmpAdapter: cmpAdapter
+        ? {
+            id: cmpAdapter.id ?? 'react-native-bridge',
+            allPurposes: cmpAdapter.allPurposes,
+            defaultDecisionType: cmpAdapter.defaultDecision?.decisionType,
+            defaultPurposes: cmpAdapter.defaultDecision?.purposes,
+          }
+        : undefined,
     };
     const result = await NativeTealiumPrism.initialize(spec);
     Tealium._initialized = result;
@@ -218,7 +223,7 @@ export default class Tealium {
       this.dataLayer.put(
         {
           plugin_name: 'Tealium-Prism-ReactNative',
-          plugin_version: '0.1.0',
+          plugin_version: PLUGIN_VERSION,
         },
         'forever'
       );
@@ -235,6 +240,10 @@ export default class Tealium {
    * After calling this, you must call create() again to use Tealium.
    */
   static shutdown(): void {
+    if (this._dataLayer) {
+      NativeTealiumPrism.disableDataLayerEvents();
+    }
+
     NativeTealiumPrism.shutdown();
     Tealium._initialized = false;
 

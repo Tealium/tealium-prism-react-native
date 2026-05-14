@@ -2540,17 +2540,17 @@ PODS:
   - SQLite.swift (0.15.5):
     - SQLite.swift/standard (= 0.15.5)
   - SQLite.swift/standard (0.15.5)
-  - tealium-prism (0.3.0):
+  - tealium-prism (0.4.0):
     - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core (= 0.3.0)
-    - tealium-prism/Lifecycle (= 0.3.0)
-    - tealium-prism/MomentsAPI (= 0.3.0)
-  - tealium-prism/Core (0.3.0):
+    - tealium-prism/Core (= 0.4.0)
+    - tealium-prism/Lifecycle (= 0.4.0)
+    - tealium-prism/MomentsAPI (= 0.4.0)
+  - tealium-prism/Core (0.4.0):
     - SQLite.swift (~> 0.15.0)
-  - tealium-prism/Lifecycle (0.3.0):
+  - tealium-prism/Lifecycle (0.4.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
-  - tealium-prism/MomentsAPI (0.3.0):
+  - tealium-prism/MomentsAPI (0.4.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
   - TealiumPrismReactNative (0.1.0):
@@ -2580,9 +2580,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - SocketRocket
-    - tealium-prism/Core (~> 0.3.0)
-    - tealium-prism/Lifecycle (~> 0.3.0)
-    - tealium-prism/MomentsAPI (~> 0.3.0)
+    - tealium-prism/Core (~> 0.4.0)
+    - tealium-prism/Lifecycle (~> 0.4.0)
+    - tealium-prism/MomentsAPI (~> 0.4.0)
     - Yoga
   - Yoga (0.0.0)
 
@@ -2918,10 +2918,10 @@ SPEC CHECKSUMS:
   ReactCommon: 424cc34cf5055d69a3dcf02f3436481afb8b0f6f
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
-  tealium-prism: 9d9a327b07c72ec25b9738e3542bf06dc9be2ae9
-  TealiumPrismReactNative: 0a87fc0fe73b524cf0598f9cc5c614200d6c075f
+  tealium-prism: e9f95cc8c45ebdaa3c4be3496e5e343a144bfb50
+  TealiumPrismReactNative: 2420981476ba48a0856adbf6f244f1295b040233
   Yoga: 6ca93c8c13f56baeec55eb608577619b17a4d64e
 
-PODFILE CHECKSUM: cd7b7650649796e0c8ce041b56777ea7cae087e1
+PODFILE CHECKSUM: eb786c034e8c9bcbbdfcea8ed7138d15fc2308cb
 
 COCOAPODS: 1.16.2

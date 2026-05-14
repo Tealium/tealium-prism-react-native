@@ -38,29 +38,9 @@ target 'TealiumPrismReactNativeExample' do
       # :ccache_enabled => true
     )
     
-    # Workaround for glog C++ module issues with New Architecture
-    # The glog library has module map conflicts when included within C++ namespaces.
-    # Solution: Replace glog's module.modulemap with an empty one to prevent module conflicts
-    glog_modulemaps = [
-      File.join(installer.sandbox.root, 'Target Support Files', 'glog', 'glog.modulemap'),
-      File.join(installer.sandbox.root, 'Headers', 'Public', 'glog', 'glog.modulemap')
-    ]
-    glog_modulemaps.each do |modulemap_path|
-      if File.exist?(modulemap_path)
-        # Write an empty modulemap to prevent the module from being built
-        File.write(modulemap_path, "// Empty modulemap to prevent glog module build issues\n")
-        Pod::UI.puts "Emptied #{modulemap_path} to fix New Architecture build"
-      end
-    end
-    
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        # Disable modules for glog target
         if target.name == 'glog'
-          config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
-        end
-        # For TealiumPrismReactNative, disable modules to avoid glog issues in .mm files
-        if target.name == 'TealiumPrismReactNative'
           config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
         end
         config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'

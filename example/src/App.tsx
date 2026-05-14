@@ -19,8 +19,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import Tealium, { type TransactionContext } from 'tealium-prism-react-native';
+import Tealium, { TealiumView, TealiumEvent } from 'tealium-prism-react-native';
 import TealiumHelper from './TealiumHelper';
+import { version as sdkVersion } from 'tealium-prism-react-native/package.json';
 
 // ============================================
 // Types
@@ -151,10 +152,7 @@ export default function App() {
   }, [isInitialized]);
 
   const initializeTealium = async () => {
-    const config =
-      Platform.OS === 'android'
-        ? { settingsFile: 'TealiumSettings.json' as const }
-        : undefined;
+    const config = { settingsFile: 'TealiumSettings.json' as const };
     const success = await TealiumHelper.startTealium(config);
 
     setIsInitialized(success);
@@ -218,16 +216,18 @@ export default function App() {
   // ============================================
 
   const handleTrackView = useCallback(() => {
-    TealiumHelper.trackView('screen_view');
+    const view = new TealiumView('screen_view', { section: 'demo' });
+    Tealium.track(view.name, view.type, view.data);
     showToast('View tracked: screen_view');
   }, [showToast]);
 
   const handleTrackEvent = useCallback(() => {
-    TealiumHelper.trackEvent('button_tapped', {
+    const event = new TealiumEvent('button_tapped', {
       event_category: 'example',
       event_action: 'tap',
       event_label: 'Track Event',
     });
+    Tealium.track(event.name, event.type, event.data);
     showToast('Event tracked: button_tapped');
   }, [showToast]);
 
@@ -276,14 +276,41 @@ export default function App() {
     showToast(`Removed: ${dataKey}`);
   }, [dataKey, showToast]);
 
+  const handleAddArrayData = useCallback(() => {
+    TealiumHelper.addData(
+      { example_tags: ['react-native', 'tealium', 'prism'] },
+      'session'
+    );
+    showToast('Added: example_tags = [react-native, tealium, prism]');
+  }, [showToast]);
+
+  const handleGetListData = useCallback(async () => {
+    const list = await TealiumHelper.getListData('example_tags');
+    showToast(
+      list
+        ? `example_tags = [${list.join(', ')}]`
+        : 'example_tags not found (add array data first)'
+    );
+  }, [showToast]);
+
+  const handleGetAllData = useCallback(async () => {
+    const all = await TealiumHelper.getAllData();
+    showToast(`All data: ${JSON.stringify(all).slice(0, 120)}`);
+  }, [showToast]);
+
+  const handleClearDataLayer = useCallback(async () => {
+    await TealiumHelper.clearDataLayer();
+    showToast('Data layer cleared');
+  }, [showToast]);
+
   // ============================================
   // Transactional Operations
   // ============================================
 
   const handleTransactionalUpdate = useCallback(async () => {
     try {
-      await Tealium.dataLayer.transactionally(
-        (ctx: TransactionContext) => {
+      await TealiumHelper.transactionally(
+        (ctx) => {
           ctx.put('tx_key1', 'value1', 'session');
           ctx.put('tx_key2', 'value2', 'forever');
           ctx.remove('tx_key3');
@@ -393,7 +420,7 @@ export default function App() {
   // ============================================
 
   const handleGrantConsent = useCallback(() => {
-    Tealium.consent.setDecision('explicit', [
+    TealiumHelper.setConsentDecision('explicit', [
       'analytics',
       'marketing',
       'personalization',
@@ -402,22 +429,22 @@ export default function App() {
   }, [showToast]);
 
   const handlePartialConsent = useCallback(() => {
-    Tealium.consent.setDecision('explicit', ['analytics']);
+    TealiumHelper.setConsentDecision('explicit', ['analytics']);
     showToast('Consent granted (explicit, analytics only)');
   }, [showToast]);
 
   const handleImplicitConsent = useCallback(() => {
-    Tealium.consent.setDecision('implicit', ['analytics']);
+    TealiumHelper.setConsentDecision('implicit', ['analytics']);
     showToast('Implicit consent set (analytics only)');
   }, [showToast]);
 
   const handleRevokeConsent = useCallback(() => {
-    Tealium.consent.reset();
+    TealiumHelper.resetConsentDecision();
     showToast('Consent revoked');
   }, [showToast]);
 
   const handleGetConsent = useCallback(async () => {
-    const decision = await Tealium.consent.getDecision();
+    const decision = await TealiumHelper.getConsentDecision();
     if (decision) {
       showToast(`${decision.decisionType}: ${decision.purposes.join(', ')}`);
     } else {
@@ -482,8 +509,16 @@ export default function App() {
             onChangeText={setDataValue}
           />
           <Button title="Add Data" onPress={handleAddData} />
+          <Button title="Add Array Data" onPress={handleAddArrayData} />
           <Button title="Get Data" onPress={handleGetData} />
+          <Button title="Get List Data" onPress={handleGetListData} />
           <Button title="Remove Data" onPress={handleRemoveData} />
+          <Button title="Get All Data" onPress={handleGetAllData} />
+          <Button
+            title="Clear Data Layer"
+            onPress={handleClearDataLayer}
+            color="#dc3545"
+          />
         </Section>
 
         <Section title="Transactional Operations">
@@ -576,7 +611,7 @@ export default function App() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Tealium Prism React Native v0.1.0
+            Tealium Prism React Native v{sdkVersion}
           </Text>
           <Text style={styles.footerText}>
             Platform: {Platform.OS} {Platform.Version}

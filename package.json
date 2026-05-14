@@ -57,16 +57,14 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@eslint/compat": "^2.0.2",
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.39.2",
+    "@react-native-community/cli": "latest",
     "@react-native/babel-preset": "0.83.1",
     "@react-native/eslint-config": "0.83.1",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.11",
     "del-cli": "^7.0.0",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.2.0",
     "prettier": "^3.8.1",
@@ -77,8 +75,11 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=18.0.0",
+    "react-native": ">=0.83.0"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "workspaces": [
     "example"

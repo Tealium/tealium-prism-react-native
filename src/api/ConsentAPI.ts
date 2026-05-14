@@ -5,7 +5,7 @@
  * A bridge CMP adapter is created on the native side that receives consent
  * decisions pushed from JavaScript.
  *
- * Requires `consentEnabled: true` in the TealiumConfig passed to `Tealium.create()`.
+ * Requires `cmpAdapter` to be provided in the TealiumConfig passed to `Tealium.create()`.
  */
 
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';

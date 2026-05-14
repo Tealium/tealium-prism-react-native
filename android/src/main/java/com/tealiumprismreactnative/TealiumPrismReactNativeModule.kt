@@ -155,48 +155,47 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 }
             }
 
-            // Configure consent if consentAdapterId is present
-            if (config.hasKey("consentAdapterId")) {
-                val adapterId = config.getString("consentAdapterId") ?: "react-native-bridge"
+            // Configure consent if cmpAdapterMap object is present
+            if (config.hasKey("cmpAdapter")) {
+                val cmpAdapterMap = config.getMap("cmpAdapter")
+                if (cmpAdapterMap != null) {
+                    val adapterId = cmpAdapterMap.getString("id") ?: "react-native-bridge"
 
-                var defaultDecision: ConsentDecision? = null
-                if (config.hasKey("consentDefaultDecisionType") && config.hasKey("consentDefaultPurposes")) {
-                    val typeStr = config.getString("consentDefaultDecisionType")
-                    val purposesArray = config.getArray("consentDefaultPurposes")
-                    if (typeStr != null && purposesArray != null) {
-                        val type = if (typeStr.lowercase() == "explicit") ConsentDecision.DecisionType.Explicit
-                                   else ConsentDecision.DecisionType.Implicit
-                        val purposes = mutableSetOf<String>()
-                        for (i in 0 until purposesArray.size()) {
-                            purposesArray.getString(i)?.let { purposes.add(it) }
+                    var defaultDecision: ConsentDecision? = null
+                    if (cmpAdapterMap.hasKey("defaultDecisionType") && cmpAdapterMap.hasKey("defaultPurposes")) {
+                        val typeStr = cmpAdapterMap.getString("defaultDecisionType")
+                        val purposesArray = cmpAdapterMap.getArray("defaultPurposes")
+                        if (typeStr != null && purposesArray != null) {
+                            val type = if (typeStr.lowercase() == "explicit") ConsentDecision.DecisionType.Explicit
+                                       else ConsentDecision.DecisionType.Implicit
+                            val purposes = mutableSetOf<String>()
+                            for (i in 0 until purposesArray.size()) {
+                                purposesArray.getString(i)?.let { purposes.add(it) }
+                            }
+                            defaultDecision = ConsentDecision(type, purposes)
                         }
-                        defaultDecision = ConsentDecision(type, purposes)
                     }
-                }
 
-                val adapter = BridgeCmpAdapter(application, adapterId, defaultDecision)
-                if (config.hasKey("consentPurposes")) {
-                    val purposesArray = config.getArray("consentPurposes")
-                    if (purposesArray != null) {
-                        val purposes = mutableSetOf<String>()
-                        for (i in 0 until purposesArray.size()) {
-                            purposesArray.getString(i)?.let { purposes.add(it) }
+                    val adapter = BridgeCmpAdapter(application, adapterId, defaultDecision)
+                    if (cmpAdapterMap.hasKey("allPurposes")) {
+                        val purposesArray = cmpAdapterMap.getArray("allPurposes")
+                        if (purposesArray != null) {
+                            val purposes = mutableSetOf<String>()
+                            for (i in 0 until purposesArray.size()) {
+                                purposesArray.getString(i)?.let { purposes.add(it) }
+                            }
+                            adapter.allPurposes = purposes
                         }
-                        adapter.allPurposes = purposes
                     }
+                    configBuilder.enableConsentIntegration(adapter)
+                    bridgeCmpAdapter = adapter
                 }
-                configBuilder.enableConsentIntegration(adapter)
-                bridgeCmpAdapter = adapter
             }
 
             // Create Tealium instance
-            tealium = Tealium.create(configBuilder.build()) { result ->
-                val teal = result.getOrNull()
-                if (teal != null) {
-                    promise.resolve(true)
-                } else {
-                    promise.resolve(false)
-                }
+            Tealium.create(configBuilder.build()) { result ->
+                tealium = result.getOrNull()
+                promise.resolve(tealium != null)
             }
 
         } catch (e: Exception) {
@@ -277,52 +276,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Data Layer
     // ============================================
 
-    override fun setDataLayerString(key: String, value: String, expiry: String) {
+    override fun setDataLayer(record: ReadableMap, expiry: String) {
         val teal = tealium ?: return
-        teal.dataLayer.put(key, value, expiryFromString(expiry))
-    }
-
-    override fun setDataLayerNumber(key: String, value: Double, expiry: String) {
-        val teal = tealium ?: return
-        teal.dataLayer.put(key, value, expiryFromString(expiry))
-    }
-
-    override fun setDataLayerBoolean(key: String, value: Boolean, expiry: String) {
-        val teal = tealium ?: return
-        teal.dataLayer.put(key, value, expiryFromString(expiry))
-    }
-
-    override fun setDataLayerObject(key: String, value: ReadableMap, expiry: String) {
-        val teal = tealium ?: return
-        val dataObject = readableMapToDataObject(value)
-        teal.dataLayer.put(key, dataObject, expiryFromString(expiry))
-    }
-
-    override fun setDataLayerStringArray(key: String, value: ReadableArray, expiry: String) {
-        val teal = tealium ?: return
-        val list = mutableListOf<String>()
-        for (i in 0 until value.size()) {
-            value.getString(i)?.let { list.add(it) }
-        }
-        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
-    }
-
-    override fun setDataLayerNumberArray(key: String, value: ReadableArray, expiry: String) {
-        val teal = tealium ?: return
-        val list = mutableListOf<Double>()
-        for (i in 0 until value.size()) {
-            list.add(value.getDouble(i))
-        }
-        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
-    }
-
-    override fun setDataLayerBooleanArray(key: String, value: ReadableArray, expiry: String) {
-        val teal = tealium ?: return
-        val list = mutableListOf<Boolean>()
-        for (i in 0 until value.size()) {
-            list.add(value.getBoolean(i))
-        }
-        teal.dataLayer.put(key, list.asDataList(), expiryFromString(expiry))
+        val dataObject = readableMapToDataObject(record)
+        teal.dataLayer.put(dataObject, expiryFromString(expiry)).subscribe {}
     }
 
     override fun getDataLayerValue(key: String, promise: Promise) {
@@ -519,15 +476,22 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     private fun expiryFromString(expiry: String): Expiry {
         return when (expiry.lowercase()) {
-            "forever" -> Expiry.FOREVER
+            "session" -> Expiry.SESSION
             "untilrestart" -> Expiry.UNTIL_RESTART
-            else -> Expiry.SESSION
+            else -> Expiry.FOREVER
         }
     }
 
     private fun readableArrayToDataList(array: ReadableArray): DataList? {
         if (array.size() == 0) return null
-        return when (array.getType(0)) {
+        // If elements are not all the same type, fall back to heterogeneous path.
+        val firstType = array.getType(0)
+        for (i in 1 until array.size()) {
+            if (array.getType(i) != firstType) {
+                return readableArrayToHeterogeneousDataList(array)
+            }
+        }
+        return when (firstType) {
             ReadableType.String -> {
                 val list = mutableListOf<String>()
                 for (i in 0 until array.size()) {
@@ -556,8 +520,26 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 }
                 list.asDataList()
             }
-            else -> null
+            else -> readableArrayToHeterogeneousDataList(array)
         }
+    }
+
+    private fun readableArrayToHeterogeneousDataList(array: ReadableArray): DataList? {
+        if (array.size() == 0) return null
+        val builder = DataList.Builder()
+        for (i in 0 until array.size()) {
+            when (array.getType(i)) {
+                ReadableType.String -> array.getString(i)?.let { builder.add(DataItem.convert(it)) }
+                ReadableType.Number -> builder.add(DataItem.convert(array.getDouble(i)))
+                ReadableType.Boolean -> builder.add(DataItem.convert(array.getBoolean(i)))
+                ReadableType.Map -> array.getMap(i)?.let { builder.add(DataItem.convert(readableMapToDataObject(it))) }
+                ReadableType.Array -> array.getArray(i)?.let {
+                    readableArrayToHeterogeneousDataList(it)?.let { nested -> builder.add(DataItem.convert(nested)) }
+                }
+                else -> {}
+            }
+        }
+        return builder.build()
     }
 
     private fun readableMapToDataObject(map: ReadableMap?): DataObject {
@@ -629,38 +611,30 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         return map
     }
 
+    private fun dataListToWritableArray(dataList: DataList): com.facebook.react.bridge.WritableArray {
+        val array = Arguments.createArray()
+        for (item in dataList) {
+            when {
+                item.isString() -> item.getString()?.let { array.pushString(it) }
+                item.isNumber() -> item.getDouble()?.let { array.pushDouble(it) }
+                item.isBoolean() -> item.getBoolean()?.let { array.pushBoolean(it) }
+                item.isDataObject() -> item.getDataObject()?.let { array.pushMap(dataObjectToMap(it)) }
+                item.isDataList() -> item.getDataList()?.let { array.pushArray(dataListToWritableArray(it)) }
+                item.isNull() -> array.pushNull()
+            }
+        }
+        return array
+    }
+
     private fun dataObjectToMap(dataObject: DataObject): com.facebook.react.bridge.WritableMap {
         val map = Arguments.createMap()
         for ((key, dataItem) in dataObject) {
             when {
                 dataItem.isString() -> map.putString(key, dataItem.getString())
-                dataItem.isNumber() -> {
-                    dataItem.getDouble()?.let { map.putDouble(key, it) }
-                }
-                dataItem.isBoolean() -> {
-                    dataItem.getBoolean()?.let { map.putBoolean(key, it) }
-                }
-                dataItem.isDataList() -> {
-                    val dataList = dataItem.getDataList()
-                    if (dataList != null) {
-                        val array = Arguments.createArray()
-                        for (item in dataList) {
-                            when {
-                                item.isString() -> item.getString()?.let { array.pushString(it) }
-                                item.isNumber() -> item.getDouble()?.let { array.pushDouble(it) }
-                                item.isBoolean() -> item.getBoolean()?.let { array.pushBoolean(it) }
-                                item.isDataObject() -> item.getDataObject()?.let { array.pushMap(dataObjectToMap(it)) }
-                            }
-                        }
-                        map.putArray(key, array)
-                    }
-                }
-                dataItem.isDataObject() -> {
-                    val nestedObject = dataItem.getDataObject()
-                    if (nestedObject != null) {
-                        map.putMap(key, dataObjectToMap(nestedObject))
-                    }
-                }
+                dataItem.isNumber() -> dataItem.getDouble()?.let { map.putDouble(key, it) }
+                dataItem.isBoolean() -> dataItem.getBoolean()?.let { map.putBoolean(key, it) }
+                dataItem.isDataList() -> dataItem.getDataList()?.let { map.putArray(key, dataListToWritableArray(it)) }
+                dataItem.isDataObject() -> dataItem.getDataObject()?.let { map.putMap(key, dataObjectToMap(it)) }
             }
         }
         return map
@@ -731,28 +705,14 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 teal.dataLayer.get(key).subscribe { result ->
                     result.getOrNull()?.let { dataItem ->
                         synchronized(preReadValues) {
-                            when {
-                                dataItem.getString() != null ->
-                                    preReadValues.putString(key, dataItem.getString())
-                                dataItem.getDouble() != null ->
-                                    preReadValues.putDouble(key, dataItem.getDouble()!!)
-                                dataItem.getInt() != null ->
-                                    preReadValues.putInt(key, dataItem.getInt()!!)
-                                dataItem.getBoolean() != null ->
-                                    preReadValues.putBoolean(key, dataItem.getBoolean()!!)
-                                dataItem.getDataObject() != null ->
-                                    preReadValues.putMap(key, dataObjectToMap(dataItem.getDataObject()!!))
-                                dataItem.getDataList() != null -> {
-                                    val arr = Arguments.createArray()
-                                    dataItem.getDataList()?.forEach { item ->
-                                        when {
-                                            item.isString() -> item.getString()?.let { arr.pushString(it) }
-                                            item.isNumber() -> item.getDouble()?.let { arr.pushDouble(it) }
-                                            item.isBoolean() -> item.getBoolean()?.let { arr.pushBoolean(it) }
-                                        }
-                                    }
-                                    preReadValues.putArray(key, arr)
-                                }
+                            when (val v = dataItem.value) {
+                                is String -> preReadValues.putString(key, v)
+                                is Int -> preReadValues.putInt(key, v)
+                                is Long -> preReadValues.putDouble(key, v.toDouble())
+                                is Double -> preReadValues.putDouble(key, v)
+                                is Boolean -> preReadValues.putBoolean(key, v)
+                                is DataObject -> preReadValues.putMap(key, dataObjectToMap(v))
+                                is DataList -> preReadValues.putArray(key, dataListToWritableArray(v))
                             }
                         }
                     }
@@ -772,7 +732,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
                 when (type) {
                     "put" -> {
-                        val expiry = expiryFromString(op.getString("expiry") ?: "session")
+                        val expiry = expiryFromString(op.getString("expiry") ?: "forever")
                         if (op.hasKey("value")) {
                             when (op.getType("value")) {
                                 ReadableType.String ->
@@ -805,7 +765,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             if (result.isSuccess) {
                 promise.resolve(Arguments.createMap())
             } else {
-                promise.reject("TRANSACTION_ERROR", "Transaction failed")
+                val error = result.exceptionOrNull()
+                promise.reject("TRANSACTION_ERROR", error?.message ?: "Transaction failed", error)
             }
         }
     }

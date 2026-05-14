@@ -1,6 +1,21 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
 
 /**
+ * Consent adapter configuration (TurboModule spec).
+ * Mirrors native: CMPAdapter / CmpAdapter
+ */
+export interface CmpAdapterSpec {
+  /** Unique ID for the bridge CMP adapter */
+  id: string;
+  /** All available consent purposes */
+  allPurposes?: string[];
+  /** Default consent decision type: 'implicit' or 'explicit' */
+  defaultDecisionType?: string;
+  /** Default consent decision purposes */
+  defaultPurposes?: string[];
+}
+
+/**
  * Configuration object for initializing Tealium (TurboModule spec).
  * Mirrors native: TealiumConfig
  */
@@ -23,14 +38,8 @@ export interface TealiumConfigSpec {
   existingVisitorId?: string;
   /** Key used for visitor identity (cross-device stitching) */
   visitorIdentityKey?: string;
-  /** Unique ID for the bridge CMP adapter — presence enables consent management */
-  consentAdapterId?: string;
-  /** All available consent purposes */
-  consentPurposes?: string[];
-  /** Default consent decision type: 'implicit' or 'explicit' */
-  consentDefaultDecisionType?: string;
-  /** Default consent decision purposes */
-  consentDefaultPurposes?: string[];
+  /** CMP adapter config — presence enables consent management */
+  cmpAdapter?: CmpAdapterSpec;
   /** Maximum queue size for offline events */
   maxQueueSize?: number;
   /** Queue expiration in seconds */
@@ -118,72 +127,13 @@ export interface Spec extends TurboModule {
   // ============================================
 
   /**
-   * Set a string value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - String value to store
+   * Set multiple data layer values at once.
+   * The entire record is converted to the native DataObject/DataItem tree by
+   * the bridge (iOS: dataObject(from:), Android: readableMapToDataObject()).
+   * @param record - Key-value map of values to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayerString(key: string, value: string, expiry: ExpirySpec): void;
-
-  /**
-   * Set a number value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - Number value to store
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerNumber(key: string, value: number, expiry: ExpirySpec): void;
-
-  /**
-   * Set a boolean value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - Boolean value to store
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerBoolean(key: string, value: boolean, expiry: ExpirySpec): void;
-
-  /**
-   * Set an object value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - Object value to store (will be serialized)
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerObject(key: string, value: Object, expiry: ExpirySpec): void;
-
-  /**
-   * Set a string array value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - String array value to store
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerStringArray(
-    key: string,
-    value: string[],
-    expiry: ExpirySpec
-  ): void;
-
-  /**
-   * Set a number array value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - Number array value to store
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerNumberArray(
-    key: string,
-    value: number[],
-    expiry: ExpirySpec
-  ): void;
-
-  /**
-   * Set a boolean array value in the data layer.
-   * @param key - Key to store the value under
-   * @param value - Boolean array value to store
-   * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
-   */
-  setDataLayerBooleanArray(
-    key: string,
-    value: boolean[],
-    expiry: ExpirySpec
-  ): void;
+  setDataLayer(record: Object, expiry: ExpirySpec): void;
 
   /**
    * Get any value from the data layer with type information.

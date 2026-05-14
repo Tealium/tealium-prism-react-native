@@ -44,32 +44,29 @@ internal class BridgeCMPAdapter: CMPAdapter {
 
     // MARK: - Persistence
 
-    private static func prefixedKey(_ suffix: String, adapterId: String) -> String {
-        "com.tealium.prism.rn.consent.\(adapterId).\(suffix)"
+    private static func storageKey(adapterId: String) -> String {
+        "com.tealium.prism.rn.consent.\(adapterId)"
     }
 
     private static func readPersistedDecision(adapterId: String) -> ConsentDecision? {
-        let defaults = UserDefaults.standard
-        guard let typeString = defaults.string(forKey: prefixedKey("decisionType", adapterId: adapterId)) else {
+        guard let dict = UserDefaults.standard.dictionary(forKey: storageKey(adapterId: adapterId)),
+              let typeString = dict["decisionType"] as? String else {
             return nil
         }
         let type: ConsentDecision.DecisionType = typeString == "explicit" ? .explicit : .implicit
-        let purposes = Set(defaults.stringArray(forKey: prefixedKey("purposes", adapterId: adapterId)) ?? [])
+        let purposes = Set(dict["purposes"] as? [String] ?? [])
         return ConsentDecision(decisionType: type, purposes: purposes)
     }
 
     private static func saveDecision(_ decision: ConsentDecision, adapterId: String) {
-        let defaults = UserDefaults.standard
-        defaults.set(
-            decision.decisionType == .explicit ? "explicit" : "implicit",
-            forKey: prefixedKey("decisionType", adapterId: adapterId)
-        )
-        defaults.set(Array(decision.purposes), forKey: prefixedKey("purposes", adapterId: adapterId))
+        let dict: [String: Any] = [
+            "decisionType": decision.decisionType == .explicit ? "explicit" : "implicit",
+            "purposes": Array(decision.purposes)
+        ]
+        UserDefaults.standard.set(dict, forKey: storageKey(adapterId: adapterId))
     }
 
     private static func clearDecision(adapterId: String) {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: prefixedKey("decisionType", adapterId: adapterId))
-        defaults.removeObject(forKey: prefixedKey("purposes", adapterId: adapterId))
+        UserDefaults.standard.removeObject(forKey: storageKey(adapterId: adapterId))
     }
 }

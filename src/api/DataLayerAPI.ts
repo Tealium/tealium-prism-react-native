@@ -9,6 +9,7 @@ import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
 import type {
   DataItem,
+  DataLayerValue,
   DataList,
   Expiry,
   TransactionContext,
@@ -60,9 +61,8 @@ export class DataLayerAPI {
   /**
    * Add data to the persistent data layer.
    *
-   * Supports multiple value types: string, number, boolean, string[], and objects.
-   * Arrays of numbers or booleans are not supported here — use transactionally() instead.
-   * Unsupported types are skipped with a console warning.
+   * Supports multiple value types: string, number, boolean, null, string[], number[], boolean[],
+   * heterogeneous arrays (mixed types), and objects.
    *
    * @param data - Object containing key-value pairs to add
    * @param expiry - When the data should expire: 'session', 'forever', or 'untilRestart'
@@ -77,51 +77,8 @@ export class DataLayerAPI {
    * });
    * ```
    */
-  put(data: Record<string, unknown>, expiry: Expiry = 'forever'): void {
-    for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'string') {
-        NativeTealiumPrism.setDataLayerString(key, value, expiry);
-      } else if (typeof value === 'number') {
-        NativeTealiumPrism.setDataLayerNumber(key, value, expiry);
-      } else if (typeof value === 'boolean') {
-        NativeTealiumPrism.setDataLayerBoolean(key, value, expiry);
-      } else if (Array.isArray(value)) {
-        if (value.every((v) => typeof v === 'string')) {
-          NativeTealiumPrism.setDataLayerStringArray(
-            key,
-            value as string[],
-            expiry
-          );
-        } else if (value.every((v) => typeof v === 'number')) {
-          NativeTealiumPrism.setDataLayerNumberArray(
-            key,
-            value as number[],
-            expiry
-          );
-        } else if (value.every((v) => typeof v === 'boolean')) {
-          NativeTealiumPrism.setDataLayerBooleanArray(
-            key,
-            value as boolean[],
-            expiry
-          );
-        } else {
-          console.warn(
-            `[Tealium] Unsupported array type for key "${key}": only homogeneous string[], number[], or boolean[] arrays are supported.`
-          );
-        }
-      } else if (typeof value === 'object' && value !== null) {
-        NativeTealiumPrism.setDataLayerObject(
-          key,
-          value as Record<string, unknown>,
-          expiry
-        );
-      } else {
-        console.warn(
-          `[Tealium] Unsupported data type for key "${key}": ${value === null ? 'null' : typeof value}. ` +
-            'Supported types: string, number, boolean, string[], object.'
-        );
-      }
-    }
+  put(data: Record<string, DataLayerValue>, expiry: Expiry = 'forever'): void {
+    NativeTealiumPrism.setDataLayer(data, expiry);
   }
 
   /**

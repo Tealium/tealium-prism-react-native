@@ -10,6 +10,10 @@ import Tealium, {
   type TrackData,
   type Expiry,
   type DataItem,
+  type DataLayerValue,
+  type ConsentDecision,
+  type ConsentDecisionType,
+  type TransactionContext,
 } from 'tealium-prism-react-native';
 
 function unwrapDataItem(item: DataItem | null): unknown {
@@ -31,17 +35,10 @@ function unwrapDataItem(item: DataItem | null): unknown {
 }
 
 /**
- * Configuration options for the TealiumHelper singleton.
- */
-interface TealiumHelperConfig extends TealiumConfig {
-  // Inherits all TealiumConfig options
-}
-
-/**
  * Default config: remote settings URL, trace logging, visitor identity key "email".
  * Override with startTealium({ ... }) or initialize({ ... }).
  */
-const DEFAULT_CONFIG: TealiumHelperConfig = {
+const DEFAULT_CONFIG: TealiumConfig = {
   account: 'tealiummobile',
   profile: 'demo',
   environment: 'dev',
@@ -50,7 +47,7 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
     'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
   logLevel: 'debug',
   visitorIdentityKey: 'email',
-  consentAdapter: {
+  cmpAdapter: {
     allPurposes: ['analytics', 'marketing', 'personalization'],
   },
 };
@@ -69,7 +66,7 @@ const DEFAULT_CONFIG: TealiumHelperConfig = {
 class TealiumHelper {
   private static _instance: TealiumHelper | null = null;
   private _isEnabled: boolean = false;
-  private _config: TealiumHelperConfig | null = null;
+  private _config: TealiumConfig | null = null;
 
   private constructor() {
     // Private constructor for singleton
@@ -95,7 +92,7 @@ class TealiumHelper {
   /**
    * Get the current configuration.
    */
-  get config(): TealiumHelperConfig | null {
+  get config(): TealiumConfig | null {
     return this._config;
   }
 
@@ -104,8 +101,8 @@ class TealiumHelper {
    * @param config - Optional overrides; omit to use DEFAULT_CONFIG
    * @returns true if creation succeeded
    */
-  async initialize(config?: Partial<TealiumHelperConfig>): Promise<boolean> {
-    const mergedConfig: TealiumHelperConfig = {
+  async initialize(config?: Partial<TealiumConfig>): Promise<boolean> {
+    const mergedConfig: TealiumConfig = {
       ...DEFAULT_CONFIG,
       ...config,
     };
@@ -146,18 +143,11 @@ class TealiumHelper {
   }
 
   /**
-   * Initialize with default development configuration.
-   */
-  async initializeDefault(): Promise<boolean> {
-    return this.initialize(DEFAULT_CONFIG);
-  }
-
-  /**
    * Create the SDK and apply initial data layer (key, key2, key3 removed, key4 incremented).
    * Use this for a one-shot "start" that matches the usual demo setup.
    * Uses transactionally() for atomic updates (mirrors Swift/Kotlin examples).
    */
-  async startTealium(config?: Partial<TealiumHelperConfig>): Promise<boolean> {
+  async startTealium(config?: Partial<TealiumConfig>): Promise<boolean> {
     const success = await this.initialize(config ?? DEFAULT_CONFIG);
     if (!success) return false;
 
@@ -245,7 +235,10 @@ class TealiumHelper {
    * Add key-value pairs to the data layer. Included on every subsequent dispatch.
    * @param expiry - 'session' | 'forever' | 'untilRestart'
    */
-  addData(data: Record<string, unknown>, expiry: Expiry = 'session'): void {
+  addData(
+    data: Record<string, DataLayerValue>,
+    expiry: Expiry = 'session'
+  ): void {
     if (!this._isEnabled) {
       console.warn('[TealiumHelper] Not initialized, skipping addData');
       return;
@@ -274,6 +267,39 @@ class TealiumHelper {
     }
 
     Tealium.dataLayer.remove(keys);
+  }
+
+  /**
+   * Get a list value from the data layer by key.
+   */
+  async getListData(key: string): Promise<unknown[] | null> {
+    if (!this._isEnabled) {
+      return null;
+    }
+
+    return Tealium.dataLayer.getList(key);
+  }
+
+  /**
+   * Get all data from the data layer.
+   */
+  async getAllData(): Promise<Record<string, unknown>> {
+    if (!this._isEnabled) {
+      return {};
+    }
+
+    return Tealium.dataLayer.getAll();
+  }
+
+  /**
+   * Clear all data from the data layer.
+   */
+  async clearDataLayer(): Promise<void> {
+    if (!this._isEnabled) {
+      return;
+    }
+
+    return Tealium.dataLayer.clear();
   }
 
   /**
@@ -371,6 +397,55 @@ class TealiumHelper {
 
     console.log('[TealiumHelper] Clearing stored visitor IDs');
     return Tealium.clearStoredVisitorIds();
+  }
+
+  // ============================================
+  // Consent
+  // ============================================
+
+  setConsentDecision(
+    decisionType: ConsentDecisionType,
+    purposes: string[]
+  ): void {
+    if (!this._isEnabled) {
+      console.warn(
+        '[TealiumHelper] Not initialized, skipping setConsentDecision'
+      );
+      return;
+    }
+
+    Tealium.consent.setDecision(decisionType, purposes);
+  }
+
+  async getConsentDecision(): Promise<ConsentDecision | null> {
+    if (!this._isEnabled) {
+      return null;
+    }
+
+    return Tealium.consent.getDecision();
+  }
+
+  resetConsentDecision(): void {
+    if (!this._isEnabled) {
+      return;
+    }
+
+    Tealium.consent.reset();
+  }
+
+  // ============================================
+  // Data Layer — Transactional
+  // ============================================
+
+  async transactionally(
+    block: (ctx: TransactionContext) => void,
+    keysToRead?: string[]
+  ): Promise<void> {
+    if (!this._isEnabled) {
+      return;
+    }
+
+    return Tealium.dataLayer.transactionally(block, keysToRead);
   }
 
   // ============================================

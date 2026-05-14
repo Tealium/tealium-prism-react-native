@@ -51,7 +51,7 @@ export type DispatchType = 'event' | 'view';
  * Configuration for the bridge CMP adapter used for consent management.
  * Mirrors the native CmpAdapter/CMPAdapter pattern.
  */
-export interface ConsentAdapterConfig {
+export interface CmpAdapterConfig {
   /**
    * Unique ID for the adapter. Must match the key used for ConsentConfiguration
    * in local/remote settings JSON.
@@ -135,7 +135,7 @@ export interface TealiumConfig {
    * When provided, consent management is enabled.
    * Mirrors native: TealiumConfig.cmpAdapter (Swift/Kotlin)
    */
-  consentAdapter?: ConsentAdapterConfig;
+  cmpAdapter?: CmpAdapterConfig;
 
   // ============================================
   // Core Settings (Advanced)
@@ -227,6 +227,22 @@ export class TealiumEvent implements TrackOptions {
 }
 
 /**
+ * A valid data layer value. Mirrors the JSON value set supported by the native SDK
+ * (DataItem variants: string, number, boolean, null, list, object).
+ *
+ * `undefined` is intentionally excluded — pass null to represent absence of a value.
+ * If native DataItem variants are added in the future (e.g. Date), extend this type
+ * in lockstep with the native bridge changes.
+ */
+export type DataLayerValue =
+  | string
+  | number
+  | boolean
+  | null
+  | DataLayerValue[]
+  | { [key: string]: DataLayerValue };
+
+/**
  * Options for setting data layer values.
  */
 export interface DataLayerOptions {
@@ -236,9 +252,9 @@ export interface DataLayerOptions {
   key: string;
 
   /**
-   * Value to store. Supports string, number, boolean, arrays, and objects.
+   * Value to store. Supports string, number, boolean, null, arrays, and objects.
    */
-  value: unknown;
+  value: DataLayerValue;
 
   /**
    * Expiry option for the value.
@@ -266,21 +282,6 @@ export type DataItem =
  * Mirrors native: DataList (Kotlin) / [DataItem] (Swift)
  */
 export type DataList = DataItem[];
-
-/**
- * Result of initialization.
- */
-export interface InitializationResult {
-  /**
-   * Whether initialization was successful.
-   */
-  success: boolean;
-
-  /**
-   * Error message if initialization failed.
-   */
-  error?: string;
-}
 
 /**
  * Event names emitted by the native module.

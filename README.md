@@ -131,6 +131,65 @@ const newId = await Tealium.resetVisitorId();
 const freshId = await Tealium.clearStoredVisitorIds();
 ```
 
+### Transactional Data Layer
+
+Atomic read-modify-write across multiple keys in a single native call.
+
+```typescript
+await Tealium.dataLayer.transactionally(
+  (ctx) => {
+    ctx.put('key1', 'value1', 'session');
+    ctx.put('key2', 'value2', 'forever');
+    ctx.remove('key3');
+    const count = (ctx.get('counter') as number) ?? 0;
+    ctx.put('counter', count + 1, 'forever');
+  },
+  ['counter'] // keys to pre-read before the transaction
+);
+```
+
+### Data Layer Events
+
+Subscribe to real-time data layer changes.
+
+```typescript
+// Subscribe to updates
+const sub = Tealium.dataLayer.onUpdated((data) => {
+  console.log('Updated keys:', Object.keys(data));
+});
+
+// Subscribe to removals
+const sub2 = Tealium.dataLayer.onRemoved((keys) => {
+  console.log('Removed keys:', keys);
+});
+
+// Unsubscribe
+sub.remove();
+sub2.remove();
+```
+
+### Consent
+
+```typescript
+// Set consent decision
+Tealium.consent.setDecision('explicit', ['analytics', 'marketing']);
+Tealium.consent.setDecision('implicit', ['analytics']);
+
+// Get current consent decision
+const decision = await Tealium.consent.getDecision();
+// decision: { decisionType: 'explicit', purposes: ['analytics', 'marketing'] } | null
+
+// Reset consent
+Tealium.consent.reset();
+```
+
+### Deep Links
+
+```typescript
+// Handle incoming deep link (call from Linking event listener)
+const handled = await Tealium.deepLink.handle(url, referrer);
+```
+
 ## Types
 
 ```typescript
@@ -172,17 +231,17 @@ yarn lint
 yarn prepare
 ```
 
-## Native SDK Versions
+## Native SDKs
 
-| SDK | Version | Repository |
-|-----|---------|------------|
-| [Tealium Prism Swift](https://github.com/Tealium/tealium-prism-swift) | 0.3.0+ | iOS |
-| [Tealium Prism Kotlin](https://github.com/Tealium/tealium-prism-kotlin) | 0.3.0+ | Android |
+| SDK | Platform |
+|-----|----------|
+| [Tealium Prism Swift](https://github.com/Tealium/tealium-prism-swift) | iOS |
+| [Tealium Prism Kotlin](https://github.com/Tealium/tealium-prism-kotlin) | Android |
 
 ## Requirements
 
-- React Native 0.83.0+
-- iOS 13.0+
+- React Native 0.83.0+ (New Architecture only)
+- iOS 15.1+
 - Android API 24+
 - Node.js 20+
 

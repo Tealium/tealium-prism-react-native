@@ -1,10 +1,6 @@
 #import "TealiumPrismReactNative.h"
 #import <React/RCTEventEmitter.h>
 
-#ifdef RCT_NEW_ARCH_ENABLED
-#import <TealiumPrismReactNativeSpec/TealiumPrismReactNativeSpec.h>
-#endif
-
 // Swift bridge (Xcode-generated header from TealiumPrismBridge.swift)
 #import "TealiumPrismReactNative-Swift.h"
 
@@ -13,6 +9,7 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 @implementation TealiumPrismReactNative {
     BOOL _hasListeners;
+    NSInteger _listenerCount;
 }
 
 // MARK: - Module Setup
@@ -65,28 +62,21 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         if (config.visitorIdentityKey()) {
             configDict[@"visitorIdentityKey"] = config.visitorIdentityKey();
         }
-        // Consent
-        if (config.consentAdapterId()) {
-            configDict[@"consentAdapterId"] = config.consentAdapterId();
-        }
-        if (config.consentPurposes().has_value()) {
-            auto purposes = config.consentPurposes().value();
-            NSMutableArray *purposesArray = [NSMutableArray arrayWithCapacity:purposes.size()];
-            for (size_t i = 0; i < purposes.size(); i++) {
-                [purposesArray addObject:purposes[i]];
+        // Consent adapter (nested object from JS)
+        NSDictionary *cmpAdapter = (NSDictionary *)config.cmpAdapter();
+        if (cmpAdapter) {
+            if (cmpAdapter[@"id"]) {
+                configDict[@"consentAdapterId"] = cmpAdapter[@"id"];
             }
-            configDict[@"consentPurposes"] = purposesArray;
-        }
-        if (config.consentDefaultDecisionType()) {
-            configDict[@"consentDefaultDecisionType"] = config.consentDefaultDecisionType();
-        }
-        if (config.consentDefaultPurposes().has_value()) {
-            auto purposes = config.consentDefaultPurposes().value();
-            NSMutableArray *purposesArray = [NSMutableArray arrayWithCapacity:purposes.size()];
-            for (size_t i = 0; i < purposes.size(); i++) {
-                [purposesArray addObject:purposes[i]];
+            if (cmpAdapter[@"allPurposes"]) {
+                configDict[@"consentPurposes"] = cmpAdapter[@"allPurposes"];
             }
-            configDict[@"consentDefaultPurposes"] = purposesArray;
+            if (cmpAdapter[@"defaultDecisionType"]) {
+                configDict[@"consentDefaultDecisionType"] = cmpAdapter[@"defaultDecisionType"];
+            }
+            if (cmpAdapter[@"defaultPurposes"]) {
+                configDict[@"consentDefaultPurposes"] = cmpAdapter[@"defaultPurposes"];
+            }
         }
 
         // Core Settings (optional)
@@ -158,46 +148,9 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 // MARK: - Data Layer
 
-- (void)setDataLayerString:(NSString *)key
-                     value:(NSString *)value
-                    expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerStringWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerNumber:(NSString *)key
-                     value:(double)value
-                    expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerNumberWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerBoolean:(NSString *)key
-                      value:(BOOL)value
-                     expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerBooleanWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerObject:(NSString *)key
-                     value:(NSDictionary *)value
-                    expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerObjectWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerStringArray:(NSString *)key
-                          value:(NSArray<NSString *> *)value
-                         expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerStringArrayWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerNumberArray:(NSString *)key
-                          value:(NSArray<NSNumber *> *)value
-                         expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerNumberArrayWithKey:key value:value expiry:expiry];
-}
-
-- (void)setDataLayerBooleanArray:(NSString *)key
-                           value:(NSArray<NSNumber *> *)value
-                          expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerBooleanArrayWithKey:key value:value expiry:expiry];
+- (void)setDataLayer:(NSDictionary *)record
+              expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] setDataLayerWithRecord:record expiry:expiry];
 }
 
 - (void)getDataLayerValue:(NSString *)key
@@ -256,8 +209,12 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     }
     [[TealiumPrismBridge shared] dataLayerTransactionalUpdateWithKeysToRead:keysToRead
                                                                  operations:operations
-                                                                 completion:^(NSDictionary *result) {
-        resolve(result ?: @{});
+                                                                 completion:^(NSDictionary *result, NSError *error) {
+        if (error) {
+            reject(@"TRANSACTION_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(result ?: @{});
+        }
     }];
 }
 
@@ -294,6 +251,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)resetVisitorId:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] resetVisitorIdWithCompletion:^(NSString *visitorId, NSError *error) {
         if (error) {
             reject(@"RESET_ERROR", error.localizedDescription, error);
@@ -305,6 +266,10 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 - (void)clearStoredVisitorIds:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] clearStoredVisitorIdsWithCompletion:^(NSString *visitorId, NSError *error) {
         if (error) {
             reject(@"CLEAR_ERROR", error.localizedDescription, error);
@@ -368,19 +333,15 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 }
 
 - (void)addListener:(NSString *)eventType {
+    _listenerCount++;
     _hasListeners = YES;
 }
 
 - (void)removeListeners:(double)count {
-    // Keep listeners enabled as long as any remain
-}
-
-- (void)startObserving {
-    _hasListeners = YES;
-}
-
-- (void)stopObserving {
-    _hasListeners = NO;
+    _listenerCount = MAX(0, _listenerCount - (NSInteger)count);
+    if (_listenerCount == 0) {
+        _hasListeners = NO;
+    }
 }
 
 // In bridgeless New Architecture mode (RN 0.73+), RCTEventEmitter.receiveEvent() is not

@@ -83,7 +83,7 @@ This is a **Yarn workspaces monorepo**: root = library, `example/` = separate wo
 
 ### Gotchas
 
-- **Data layer `put()` dispatches by JS type.** `DataLayerAPI.put()` inspects the value at runtime and calls the corresponding typed native method (`setDataLayerString`, `setDataLayerNumber`, etc.). Arrays of non-strings are silently dropped.
+- **Data layer `put()` dispatches by JS type.** `DataLayerAPI.put()` inspects the value at runtime and calls the corresponding typed native method (`setDataLayerString`, `setDataLayerNumber`, etc.). Homogeneous arrays use typed methods; heterogeneous (mixed) arrays use `setDataLayerList` which converts each element individually on the native side.
 - **Event subscriptions are auto-managed.** `DataLayerAPI` reference-counts listeners and calls `enableDataLayerEvents()` / `disableDataLayerEvents()` on the native module automatically when the first subscriber is added or last removed.
 - **`shutdown()` nullifies sub-API instances.** Any references captured before `shutdown()` (e.g. `const dl = Tealium.dataLayer`) will point to stale objects after shutdown.
 - **`create()` injects plugin metadata.** After `initialize()`, `Tealium.create()` auto-sets `plugin_name` and `plugin_version` in the data layer.
@@ -92,5 +92,5 @@ This is a **Yarn workspaces monorepo**: root = library, `example/` = separate wo
 ### Platform Requirements
 
 - iOS 15.1+ (set by RN's `min_ios_version_supported`), Xcode with Swift support, CocoaPods (`TealiumPrismReactNative.podspec`)
-- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK modules have distinct versions: `prism-core:0.3.0`, `prism-lifecycle:0.2.0`, `prism-moments-api:0.1.0`
+- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK modules: `prism-core:0.4.0`, `prism-lifecycle:0.3.0`, `prism-moments-api:0.2.0`
 - React Native 0.83+, Node 20+

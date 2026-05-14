@@ -168,40 +168,10 @@ public class TealiumPrismBridge: NSObject {
 
     // MARK: - Data Layer
 
-    @objc public func setDataLayerString(key: String, value: String, expiry: String?) {
+    @objc public func setDataLayer(record: NSDictionary, expiry: String?) {
         guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerNumber(key: String, value: Double, expiry: String?) {
-        guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerBoolean(key: String, value: Bool, expiry: String?) {
-        guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, value: value, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerObject(key: String, value: NSDictionary, expiry: String?) {
-        guard let tealium = tealium else { return }
-        let obj = dataObject(from: value as? [String: Any] ?? [:])
-        tealium.dataLayer.put(key: key, converting: obj, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerStringArray(key: String, value: [String], expiry: String?) {
-        guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerNumberArray(key: String, value: [Double], expiry: String?) {
-        guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
-    }
-
-    @objc public func setDataLayerBooleanArray(key: String, value: [Bool], expiry: String?) {
-        guard let tealium = tealium else { return }
-        tealium.dataLayer.put(key: key, converting: value, expiry: expiryFromString(expiry))
+        let obj = dataObject(from: record as? [String: Any] ?? [:])
+        tealium.dataLayer.put(data: obj, expiry: expiryFromString(expiry))
     }
 
     @objc public func getDataLayerValue(key: String, completion: @escaping (NSDictionary?) -> Void) {
@@ -374,10 +344,10 @@ public class TealiumPrismBridge: NSObject {
     @objc public func dataLayerTransactionalUpdate(
         keysToRead: [String],
         operations: [[String: Any]],
-        completion: @escaping (NSDictionary?) -> Void
+        completion: @escaping (NSDictionary?, NSError?) -> Void
     ) {
         guard let tealium = tealium else {
-            completion(nil)
+            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
             return
         }
 
@@ -389,16 +359,15 @@ public class TealiumPrismBridge: NSObject {
             for key in keysToRead {
                 group.enter()
                 tealium.dataLayer.getDataItem(key: key).subscribe { result in
-                    if case .success(let item) = result, let dataItem = item,
-                       let val = self.dataItemToAny(dataItem) {
-                        preReadValues[key] = val
+                    if case .success(let item) = result, let dataItem = item {
+                        preReadValues[key] = dataItem.toDataInput()
                     }
                     group.leave()
                 }
             }
 
             group.notify(queue: .main) {
-                completion(preReadValues as NSDictionary)
+                completion(preReadValues as NSDictionary, nil)
             }
             return
         }
@@ -412,20 +381,10 @@ public class TealiumPrismBridge: NSObject {
                     if type == "put" {
                         let expiry = expiryFromString(op["expiry"] as? String)
                         if let value = op["value"] {
-                            if let str = value as? String {
-                                apply(.put(key: key, value: str, expiry: expiry))
-                            } else if let b = value as? Bool {
-                                apply(.put(key: key, value: b, expiry: expiry))
-                            } else if let num = value as? NSNumber {
-                                if CFNumberIsFloatType(num) {
-                                    apply(.put(key: key, value: num.doubleValue, expiry: expiry))
-                                } else {
-                                    apply(.put(key: key, value: num.intValue, expiry: expiry))
-                                }
-                            } else if let arr = value as? [String] {
-                                apply(.put(key: key, value: arr.toDataInput(), expiry: expiry))
-                            } else if let arr = value as? [NSNumber] {
-                                apply(.put(key: key, value: arr.map { $0.doubleValue }.toDataInput(), expiry: expiry))
+                            if let dataInput = value as? DataInput {
+                                apply(.put(key: key, value: dataInput, expiry: expiry))
+                            } else if let arr = value as? [DataInput] {
+                                apply(.put(key: key, value: arr, expiry: expiry))
                             } else if let dict = value as? [String: Any] {
                                 apply(.put(key: key, value: dataObject(from: dict).toDataInput(), expiry: expiry))
                             }
@@ -434,21 +393,22 @@ public class TealiumPrismBridge: NSObject {
                         apply(.remove(key: key))
                     }
                 }
-                do {
-                    try commit()
-                } catch {
-                    // commit failed - logged by SDK internally
-                }
-            }.subscribe { _ in
+                try commit()
+            }.subscribe { result in
                 DispatchQueue.main.async {
-                    completion([:] as NSDictionary)
+                    switch result {
+                    case .success:
+                        completion([:] as NSDictionary, nil)
+                    case .failure(let err):
+                        completion(nil, err as NSError)
+                    }
                 }
             }
             return
         }
 
         // Empty call (no keys to read, no operations)
-        completion([:] as NSDictionary)
+        completion([:] as NSDictionary, nil)
     }
 
     // MARK: - Helpers
@@ -474,29 +434,11 @@ public class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Unwraps a DataItem to its raw Swift value (used for getAllData / transactional reads).
-    private func dataItemToAny(_ item: DataItem) -> Any? {
-        if let str = item.get(as: String.self) {
-            return str
-        } else if let b = item.get(as: Bool.self) {
-            return b
-        } else if let num = item.get(as: Double.self) {
-            return num
-        } else if let arr = item.getDataArray() {
-            return arr.compactMap { dataItemToAny($0) }
-        } else if let dict = item.getDataDictionary() {
-            return dict.compactMapValues { dataItemToAny($0) }
-        }
-        return nil
-    }
-
     private func dataObjectToDict(_ dataObject: DataObject) -> [String: Any] {
         var out: [String: Any] = [:]
         for key in dataObject.keys {
             guard let item = dataObject.getDataItem(key: key) else { continue }
-            if let val = dataItemToAny(item) {
-                out[key] = val
-            }
+            out[key] = item.toDataInput()
         }
         return out
     }
@@ -506,9 +448,9 @@ public class TealiumPrismBridge: NSObject {
 
 private func expiryFromString(_ expiry: String?) -> Expiry {
     switch expiry?.lowercased() {
-    case "forever": return .forever
+    case "session": return .session
     case "untilrestart": return .untilRestart
-    default: return .session
+    default: return .forever
     }
 }
 
@@ -516,24 +458,37 @@ private func expiryFromString(_ expiry: String?) -> Expiry {
 private func dataObject(from dict: [String: Any]) -> DataObject {
     var result = DataObject()
     for (key, value) in dict {
-        if let str = value as? String {
-            result.set(converting: str, key: key)
-        } else if let b = value as? Bool {
-            result.set(converting: b, key: key)
-        } else if let num = value as? NSNumber {
-            result.set(converting: num, key: key)
+        if let convertible = value as? DataInputConvertible {
+            result.set(converting: convertible, key: key)
+        } else if let arr = value as? [DataInputConvertible] {
+            result.set(converting: arr, key: key)
         } else if let nested = value as? [String: Any] {
             result.set(converting: dataObject(from: nested), key: key)
-        } else if let arr = value as? [String] {
-            result.set(converting: arr, key: key)
-        } else if let arr = value as? [NSNumber], let first = arr.first,
-                  CFGetTypeID(first) == CFBooleanGetTypeID() {
-            result.set(converting: arr.map { $0.boolValue }, key: key)
-        } else if let arr = value as? [NSNumber] {
-            result.set(converting: arr, key: key)
         } else if let arr = value as? [[String: Any]] {
-            let dataObjects = arr.map { dataObject(from: $0) }
-            result.set(converting: dataObjects, key: key)
+            result.set(converting: arr.map { dataObject(from: $0) }, key: key)
+        } else if let arr = value as? NSArray {
+            // Fallback for heterogeneous arrays (mixed element types) that
+            // don't match the homogeneous branches above.
+            result.set(converting: convertArrayToDataInputList(arr), key: key)
+        }
+    }
+    return result
+}
+
+/// Converts a heterogeneous NSArray from JS into a [DataInput] list.
+private func convertArrayToDataInputList(_ array: NSArray) -> [DataInput] {
+    var result: [DataInput] = []
+    for element in array {
+        if let str = element as? String {
+            result.append(str)
+        } else if let b = element as? Bool, CFGetTypeID(element as! CFTypeRef) == CFBooleanGetTypeID() {
+            result.append(b)
+        } else if let num = element as? NSNumber {
+            result.append(num.doubleValue)
+        } else if let dict = element as? [String: Any] {
+            result.append(dataObject(from: dict))
+        } else if let arr = element as? NSArray {
+            result.append(convertArrayToDataInputList(arr))
         }
     }
     return result
