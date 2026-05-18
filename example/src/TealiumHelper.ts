@@ -13,8 +13,17 @@ import Tealium, {
   type DataLayerValue,
   type ConsentDecision,
   type ConsentDecisionType,
-  type TransactionContext,
+  type Disposable as TealiumDisposable,
 } from 'tealium-prism-react-native';
+
+// Used by helpers when the SDK is not enabled — keeps the Disposable contract
+// without holding any native subscription.
+const DISPOSED_NOOP: TealiumDisposable = {
+  get isDisposed() {
+    return true;
+  },
+  dispose() {},
+};
 
 function unwrapDataItem(item: DataItem | null): unknown {
   if (item === null) return null;
@@ -143,25 +152,23 @@ class TealiumHelper {
   }
 
   /**
-   * Create the SDK and apply initial data layer (key, key2, key3 removed, key4 incremented).
-   * Use this for a one-shot "start" that matches the usual demo setup.
-   * Uses transactionally() for atomic updates (mirrors Swift/Kotlin examples).
+   * Create the SDK and apply initial data layer (key/key2 set, key3 removed,
+   * key4 incremented).
    */
   async startTealium(config?: Partial<TealiumConfig>): Promise<boolean> {
     const success = await this.initialize(config ?? DEFAULT_CONFIG);
     if (!success) return false;
 
-    // Use transactionally for atomic updates (mirrors Swift/Kotlin example)
-    await Tealium.dataLayer.transactionally(
-      (ctx) => {
-        ctx.put('key', 'value', 'forever');
-        ctx.put('key2', 'value2', 'forever');
-        ctx.remove('key3');
-        const count = (ctx.get('key4') as number) ?? 0;
-        ctx.put('key4', count + 1, 'forever');
-      },
-      ['key4']
+    // RMW on key4 — bridge cannot offer atomic transaction across IPC, so the
+    // read and write are explicitly two operations.
+    const item = await Tealium.dataLayer.getDataItem('key4');
+    const count = item?.type === 'number' ? item.value : 0;
+
+    Tealium.dataLayer.put(
+      { key: 'value', key2: 'value2', key4: count + 1 },
+      'forever'
     );
+    Tealium.dataLayer.remove('key3');
 
     return true;
   }
@@ -255,7 +262,7 @@ class TealiumHelper {
       return null;
     }
 
-    return unwrapDataItem(await Tealium.dataLayer.get(key));
+    return unwrapDataItem(await Tealium.dataLayer.getDataItem(key));
   }
 
   /**
@@ -277,7 +284,8 @@ class TealiumHelper {
       return null;
     }
 
-    return Tealium.dataLayer.getList(key);
+    const list = await Tealium.dataLayer.getDataList(key);
+    return list?.map(unwrapDataItem) ?? null;
   }
 
   /**
@@ -303,31 +311,29 @@ class TealiumHelper {
   }
 
   /**
-   * Subscribe to data layer updates. Call remove() on the returned object to unsubscribe.
+   * Subscribe to data layer updates. Call dispose() on the returned object to unsubscribe.
    */
-  onDataUpdated(callback: (data: Record<string, unknown>) => void): {
-    remove: () => void;
-  } {
+  onDataUpdated(
+    callback: (data: Record<string, unknown>) => void
+  ): TealiumDisposable {
     if (!this._isEnabled) {
-      return { remove: () => {} };
+      return DISPOSED_NOOP;
     }
 
     console.log('[TealiumHelper] Subscribing to data layer updates');
-    return Tealium.dataLayer.onUpdated(callback);
+    return Tealium.dataLayer.onDataUpdated(callback);
   }
 
   /**
-   * Subscribe to data layer removals. Call remove() on the returned object to unsubscribe.
+   * Subscribe to data layer removals. Call dispose() on the returned object to unsubscribe.
    */
-  onDataRemoved(callback: (keys: string[]) => void): {
-    remove: () => void;
-  } {
+  onDataRemoved(callback: (keys: string[]) => void): TealiumDisposable {
     if (!this._isEnabled) {
-      return { remove: () => {} };
+      return DISPOSED_NOOP;
     }
 
     console.log('[TealiumHelper] Subscribing to data layer removals');
-    return Tealium.dataLayer.onRemoved(callback);
+    return Tealium.dataLayer.onDataRemoved(callback);
   }
 
   // ============================================
@@ -431,21 +437,6 @@ class TealiumHelper {
     }
 
     Tealium.consent.reset();
-  }
-
-  // ============================================
-  // Data Layer — Transactional
-  // ============================================
-
-  async transactionally(
-    block: (ctx: TransactionContext) => void,
-    keysToRead?: string[]
-  ): Promise<void> {
-    if (!this._isEnabled) {
-      return;
-    }
-
-    return Tealium.dataLayer.transactionally(block, keysToRead);
   }
 
   // ============================================

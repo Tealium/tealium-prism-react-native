@@ -19,7 +19,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import Tealium, { TealiumView, TealiumEvent } from 'tealium-prism-react-native';
+import Tealium, {
+  TealiumView,
+  TealiumEvent,
+  type Disposable as TealiumDisposable,
+} from 'tealium-prism-react-native';
 import TealiumHelper from './TealiumHelper';
 import { version as sdkVersion } from 'tealium-prism-react-native/package.json';
 
@@ -118,16 +122,16 @@ export default function App() {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(80)).current;
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dataUpdateSubscription = useRef<{ remove: () => void } | null>(null);
-  const dataRemoveSubscription = useRef<{ remove: () => void } | null>(null);
+  const dataUpdateSubscription = useRef<TealiumDisposable | null>(null);
+  const dataRemoveSubscription = useRef<TealiumDisposable | null>(null);
 
   useEffect(() => {
     initializeTealium();
     return () => {
       TealiumHelper.stopTealium();
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-      dataUpdateSubscription.current?.remove();
-      dataRemoveSubscription.current?.remove();
+      dataUpdateSubscription.current?.dispose();
+      dataRemoveSubscription.current?.dispose();
     };
   }, []);
 
@@ -304,33 +308,6 @@ export default function App() {
   }, [showToast]);
 
   // ============================================
-  // Transactional Operations
-  // ============================================
-
-  const handleTransactionalUpdate = useCallback(async () => {
-    try {
-      await TealiumHelper.transactionally(
-        (ctx) => {
-          ctx.put('tx_key1', 'value1', 'session');
-          ctx.put('tx_key2', 'value2', 'forever');
-          ctx.remove('tx_key3');
-          const count = (ctx.get('tx_counter') as number) ?? 0;
-          ctx.put('tx_counter', count + 1, 'forever');
-        },
-        ['tx_counter']
-      );
-      showToast('Transactional update completed');
-    } catch {
-      showToast('Transactional update failed');
-    }
-  }, [showToast]);
-
-  const handleGetTransactionCounter = useCallback(async () => {
-    const count = await TealiumHelper.getData('tx_counter');
-    showToast(`tx_counter = ${count ?? 'null'}`);
-  }, [showToast]);
-
-  // ============================================
   // Trace Actions
   // ============================================
 
@@ -395,8 +372,8 @@ export default function App() {
 
   const handleToggleDataLayerEvents = useCallback(() => {
     if (dataLayerEventsEnabled) {
-      dataUpdateSubscription.current?.remove();
-      dataRemoveSubscription.current?.remove();
+      dataUpdateSubscription.current?.dispose();
+      dataRemoveSubscription.current?.dispose();
       dataUpdateSubscription.current = null;
       dataRemoveSubscription.current = null;
       setDataLayerEventsEnabled(false);
@@ -519,21 +496,6 @@ export default function App() {
             onPress={handleClearDataLayer}
             color="#dc3545"
           />
-        </Section>
-
-        <Section title="Transactional Operations">
-          <Button
-            title="Transactional Update"
-            onPress={handleTransactionalUpdate}
-          />
-          <Button
-            title="Get Transaction Counter"
-            onPress={handleGetTransactionCounter}
-          />
-          <Text style={styles.helperText}>
-            Atomically updates multiple keys: tx_key1, tx_key2, removes tx_key3,
-            and increments tx_counter.
-          </Text>
         </Section>
 
         <Section title="Trace">

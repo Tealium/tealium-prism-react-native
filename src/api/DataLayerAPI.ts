@@ -11,9 +11,9 @@ import type {
   DataItem,
   DataLayerValue,
   DataList,
+  DataObject,
+  Disposable,
   Expiry,
-  TransactionContext,
-  DataLayerOperation,
 } from '../types';
 import { TealiumEvents } from '../types';
 
@@ -27,6 +27,13 @@ export type DataLayerUpdateCallback = (data: Record<string, unknown>) => void;
  */
 export type DataLayerRemoveCallback = (keys: string[]) => void;
 
+// Native event payloads emitted via NativeEventEmitter. Shape must match
+// what TealiumPrismBridge+DataLayer.swift / DataLayerDelegate.kt sendEvent.
+type DataLayerUpdatedEvent = Record<string, unknown>;
+interface DataLayerRemovedEvent {
+  keys: string[];
+}
+
 /**
  * DataLayerAPI provides methods for managing the persistent data layer.
  *
@@ -39,20 +46,20 @@ export type DataLayerRemoveCallback = (keys: string[]) => void;
  * Tealium.dataLayer.put({ user_type: 'premium' }, 'session');
  *
  * // Get data
- * const value = await Tealium.dataLayer.get('user_type');
+ * const item = await Tealium.dataLayer.getDataItem('user_type');
  *
  * // Remove data
  * Tealium.dataLayer.remove('user_type');
  *
  * // Subscribe to updates
- * const subscription = Tealium.dataLayer.onUpdated((data) => {
+ * const sub = Tealium.dataLayer.onDataUpdated((data) => {
  *   console.log('Data updated:', data);
  * });
+ * sub.dispose();
  * ```
  */
 export class DataLayerAPI {
   private eventEmitter: NativeEventEmitter;
-  private listenerCount = 0;
 
   constructor(eventEmitter: NativeEventEmitter) {
     this.eventEmitter = eventEmitter;
@@ -78,34 +85,54 @@ export class DataLayerAPI {
    * ```
    */
   put(data: Record<string, DataLayerValue>, expiry: Expiry = 'forever'): void {
-    NativeTealiumPrism.setDataLayer(data, expiry);
+    NativeTealiumPrism.dataLayerPut(data, expiry);
   }
 
   /**
-   * Get a value from the data layer.
+   * Get a typed DataItem from the data layer.
+   * Mirrors native: `tealium.dataLayer.getDataItem(key:)`.
    *
    * @param key - Key to retrieve
-   * @returns Promise resolving to the value or null if not found
+   * @returns Promise resolving to the DataItem or null if not found
    *
    * @example
    * ```typescript
-   * const userId = await Tealium.dataLayer.get('user_id');
+   * const item = await Tealium.dataLayer.getDataItem('user_id');
+   * if (item?.type === 'string') console.log(item.value);
    * ```
    */
-  async get(key: string): Promise<DataItem | null> {
-    return (await NativeTealiumPrism.getDataLayerValue(key)) as DataItem | null;
+  async getDataItem(key: string): Promise<DataItem | null> {
+    return (await NativeTealiumPrism.dataLayerGetDataItem(
+      key
+    )) as DataItem | null;
   }
 
   /**
    * Get a list value from the data layer.
+   * Mirrors native: `getDataArray` (Swift) / `getDataList` (Kotlin).
    *
    * @param key - Key to retrieve
-   * @returns Promise resolving to the DataList or null if the value is not a list
+   * @returns Promise resolving to the DataList or null if the key is missing
+   *   or the stored value is not a list
    */
-  async getList(key: string): Promise<DataList | null> {
-    const item = await this.get(key);
-    if (!item || item.type !== 'list') return null;
-    return item.value;
+  async getDataList(key: string): Promise<DataList | null> {
+    return (await NativeTealiumPrism.dataLayerGetDataList(
+      key
+    )) as DataList | null;
+  }
+
+  /**
+   * Get an object (dictionary) value from the data layer.
+   * Mirrors native: `getDataDictionary` (Swift) / `getDataObject` (Kotlin).
+   *
+   * @param key - Key to retrieve
+   * @returns Promise resolving to the DataObject or null if the key is
+   *   missing or the stored value is not an object
+   */
+  async getDataObject(key: string): Promise<DataObject | null> {
+    return (await NativeTealiumPrism.dataLayerGetDataObject(
+      key
+    )) as DataObject | null;
   }
 
   /**
@@ -119,7 +146,9 @@ export class DataLayerAPI {
    * ```
    */
   getAll(): Promise<Record<string, unknown>> {
-    return NativeTealiumPrism.getAllData() as Promise<Record<string, unknown>>;
+    return NativeTealiumPrism.dataLayerGetAll() as Promise<
+      Record<string, unknown>
+    >;
   }
 
   /**
@@ -138,9 +167,9 @@ export class DataLayerAPI {
    */
   remove(keys: string | string[]): void {
     if (Array.isArray(keys)) {
-      NativeTealiumPrism.removeDataLayerValues(keys);
+      NativeTealiumPrism.dataLayerRemoveKeys(keys);
     } else {
-      NativeTealiumPrism.removeDataLayerValue(keys);
+      NativeTealiumPrism.dataLayerRemove(keys);
     }
   }
 
@@ -150,148 +179,101 @@ export class DataLayerAPI {
    * @returns Promise resolving when clear is complete
    */
   clear(): Promise<void> {
-    return NativeTealiumPrism.clearDataLayer();
+    return NativeTealiumPrism.dataLayerClear();
   }
 
   /**
-   * Subscribe to data layer update events.
-   * Called whenever data is added or modified.
+   * Subscribe to data layer update events. Called whenever data is added or
+   * modified. Mirrors native: `tealium.dataLayer.onDataUpdated.subscribe { ... }`.
    *
-   * @param callback - Function called with the updated data
-   * @returns Subscription object - call remove() to unsubscribe
+   * Multiple subscribers are supported — every JS callback receives every
+   * event. The native subscription is created on the first subscribe and
+   * disposed when the last subscriber disposes.
+   *
+   * @param observer - Function called with the updated data
+   * @returns Disposable — call dispose() to unsubscribe (idempotent)
    *
    * @example
    * ```typescript
-   * const subscription = Tealium.dataLayer.onUpdated((data) => {
+   * const sub = Tealium.dataLayer.onDataUpdated((data) => {
    *   console.log('Data updated:', data);
    * });
-   *
-   * // Later, to unsubscribe:
-   * subscription.remove();
+   * sub.dispose();
    * ```
    */
-  onUpdated(callback: DataLayerUpdateCallback): { remove: () => void } {
-    if (this.listenerCount === 0) {
-      NativeTealiumPrism.enableDataLayerEvents();
-    }
-    this.listenerCount++;
-
-    const subscription = this.eventEmitter.addListener(
+  onDataUpdated(observer: DataLayerUpdateCallback): Disposable {
+    return this.addEventSubscriber(
       TealiumEvents.DATA_LAYER_UPDATED,
-      callback as (data: unknown) => void
+      NativeTealiumPrism.dataLayerOnDataUpdatedSubscribe,
+      NativeTealiumPrism.dataLayerOnDataUpdatedDispose,
+      (raw) => observer(raw as DataLayerUpdatedEvent)
     );
-
-    let isRemoved = false;
-    return {
-      remove: () => {
-        if (isRemoved) return;
-        isRemoved = true;
-        subscription.remove();
-        this.listenerCount--;
-        if (this.listenerCount === 0) {
-          NativeTealiumPrism.disableDataLayerEvents();
-        }
-      },
-    };
   }
 
   /**
-   * Subscribe to data layer remove events.
-   * Called whenever data is removed from the data layer.
+   * Subscribe to data layer remove events. Called whenever data is removed.
+   * Mirrors native: `tealium.dataLayer.onDataRemoved.subscribe { ... }`.
    *
-   * @param callback - Function called with array of removed keys
-   * @returns Subscription object - call remove() to unsubscribe
+   * @param observer - Function called with the array of removed keys
+   * @returns Disposable — call dispose() to unsubscribe (idempotent)
    */
-  onRemoved(callback: DataLayerRemoveCallback): { remove: () => void } {
-    if (this.listenerCount === 0) {
-      NativeTealiumPrism.enableDataLayerEvents();
-    }
-    this.listenerCount++;
-
-    const subscription = this.eventEmitter.addListener(
+  onDataRemoved(observer: DataLayerRemoveCallback): Disposable {
+    return this.addEventSubscriber(
       TealiumEvents.DATA_LAYER_REMOVED,
-      (event: any) => callback(event.keys as string[])
+      NativeTealiumPrism.dataLayerOnDataRemovedSubscribe,
+      NativeTealiumPrism.dataLayerOnDataRemovedDispose,
+      (raw) => observer((raw as DataLayerRemovedEvent).keys)
     );
-
-    let isRemoved = false;
-    return {
-      remove: () => {
-        if (isRemoved) return;
-        isRemoved = true;
-        subscription.remove();
-        this.listenerCount--;
-        if (this.listenerCount === 0) {
-          NativeTealiumPrism.disableDataLayerEvents();
-        }
-      },
-    };
   }
 
   /**
-   * Execute multiple data layer operations as a batch.
-   *
-   * The callback receives a TransactionContext that allows:
-   * - get(key): Read a pre-fetched value (see `keysToRead`)
-   * - put(key, value, expiry): Queue a put operation
-   * - remove(key): Queue a remove operation
-   *
-   * All queued write operations are committed in a single native batch — no
-   * other writer can interleave between individual puts/removes within that
-   * batch. Pre-reads, however, are fetched in a separate native call before
-   * the batch is committed. Values returned by `ctx.get()` reflect the data
-   * layer state at the time of the pre-read, not at commit time.
-   *
-   * @param block - Function that receives a TransactionContext to build the transaction
-   * @param keysToRead - Array of keys to pre-read before executing the transaction
-   * @returns Promise resolving when the transaction is complete
-   *
-   * @example
-   * ```typescript
-   * await Tealium.dataLayer.transactionally(
-   *   (ctx) => {
-   *     ctx.put('key', 'value', 'forever');
-   *     ctx.remove('key3');
-   *     const count = (ctx.get('key4') as number) ?? 0;
-   *     ctx.put('key4', count + 1, 'forever');
-   *   },
-   *   ['key4'] // keys to pre-read
-   * );
-   * ```
+   * @internal
+   * Force teardown of native subscriptions on shutdown. Removes any JS
+   * listeners still attached to the emitter and stops native emission.
    */
-  async transactionally(
-    block: (context: TransactionContext) => void,
-    keysToRead: string[] = []
-  ): Promise<void> {
-    const operations: DataLayerOperation[] = [];
-    let preReadValues: Record<string, unknown> = {};
-
-    if (keysToRead.length > 0) {
-      const result = await NativeTealiumPrism.dataLayerTransactionalUpdate(
-        keysToRead,
-        []
-      );
-      preReadValues = (result as Record<string, unknown>) ?? {};
+  _forceDisposeAll(): void {
+    for (const eventName of [
+      TealiumEvents.DATA_LAYER_UPDATED,
+      TealiumEvents.DATA_LAYER_REMOVED,
+    ]) {
+      if (this.eventEmitter.listenerCount(eventName) > 0) {
+        this.eventEmitter.removeAllListeners(eventName);
+      }
     }
+    NativeTealiumPrism.dataLayerOnDataUpdatedDispose();
+    NativeTealiumPrism.dataLayerOnDataRemovedDispose();
+  }
 
-    const context: TransactionContext = {
-      get: (key: string): unknown => {
-        return preReadValues[key];
+  private addEventSubscriber(
+    eventName: string,
+    nativeSubscribe: () => void,
+    nativeDispose: () => void,
+    handler: (raw: unknown) => void
+  ): Disposable {
+    // Source of truth for ref counting is the emitter — addListener() below
+    // increments listenerCount(), so check before adding.
+    if (this.eventEmitter.listenerCount(eventName) === 0) nativeSubscribe();
+
+    const sub = this.eventEmitter.addListener(eventName, handler);
+
+    let disposed = false;
+    return {
+      get isDisposed() {
+        return disposed;
       },
-      put: (key: string, value: unknown, expiry: Expiry = 'forever'): void => {
-        operations.push({ type: 'put', key, value, expiry });
-      },
-      remove: (key: string): void => {
-        operations.push({ type: 'remove', key });
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        sub.remove();
+        if (this.eventEmitter.listenerCount(eventName) === 0) nativeDispose();
       },
     };
-
-    block(context);
-
-    if (operations.length > 0) {
-      await NativeTealiumPrism.dataLayerTransactionalUpdate(
-        [],
-        operations as unknown as Record<string, unknown>[]
-      );
-    }
   }
 }
+
+// Note: native `transactionally(block)` is intentionally NOT bridged.
+// The native API requires a synchronous callback running on the Tealium
+// thread with read-during-transaction semantics, which TurboModule cannot
+// provide (no sync native→JS callback). Multi-key `put({...})` and
+// `remove([...])` are already atomic on the native side and cover the
+// realistic batched-write use cases. See PR #1 description for details.

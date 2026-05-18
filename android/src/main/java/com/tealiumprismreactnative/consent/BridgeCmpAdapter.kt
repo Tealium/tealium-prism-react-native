@@ -1,13 +1,10 @@
-package com.tealiumprismreactnative
+package com.tealiumprismreactnative.consent
 
 import android.content.Context
 import com.tealium.prism.core.api.consent.CmpAdapter
 import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.pubsub.Observable
 import com.tealium.prism.core.api.pubsub.Observables
-
-private const val KEY_DECISION_TYPE = "decision_type"
-private const val KEY_DECISION_PURPOSES = "decision_purposes"
 
 /**
  * Bridge CMP adapter that receives consent decisions pushed from JavaScript.
@@ -23,6 +20,11 @@ internal class BridgeCmpAdapter(
     private val defaultDecision: ConsentDecision? = null
 ) : CmpAdapter {
 
+    companion object {
+        private const val KEY_DECISION_TYPE = "decision_type"
+        private const val KEY_DECISION_PURPOSES = "decision_purposes"
+    }
+
     private val prefs = context.getSharedPreferences(
         "tealium-prism-rn-consent-$id",
         Context.MODE_PRIVATE
@@ -33,6 +35,7 @@ internal class BridgeCmpAdapter(
     override var allPurposes: Set<String>? = null
 
     fun update(decision: ConsentDecision) {
+        if (_consentDecision.value == decision) return
         saveDecision(decision)
         _consentDecision.onNext(decision)
     }
@@ -46,18 +49,15 @@ internal class BridgeCmpAdapter(
 
     private fun readPersistedDecision(): ConsentDecision? {
         val typeStr = prefs.getString(KEY_DECISION_TYPE, null) ?: return null
-        val purposes = prefs.getStringSet(KEY_DECISION_PURPOSES, null) ?: return null
-        val type = if (typeStr == "explicit") ConsentDecision.DecisionType.Explicit
-                   else ConsentDecision.DecisionType.Implicit
-        return ConsentDecision(type, purposes)
+        val rawPurposes = prefs.getStringSet(KEY_DECISION_PURPOSES, null) ?: return null
+        val type = ConsentDecision.DecisionType.entries
+            .firstOrNull { it.name.equals(typeStr, ignoreCase = true) } ?: return null
+        return ConsentDecision(type, rawPurposes.toHashSet())
     }
 
     private fun saveDecision(decision: ConsentDecision) {
         prefs.edit()
-            .putString(
-                KEY_DECISION_TYPE,
-                if (decision.decisionType == ConsentDecision.DecisionType.Explicit) "explicit" else "implicit"
-            )
+            .putString(KEY_DECISION_TYPE, decision.decisionType.name.lowercase())
             .putStringSet(KEY_DECISION_PURPOSES, decision.purposes)
             .apply()
     }

@@ -1,0 +1,72 @@
+//
+//  TealiumPrismBridge+Trace.swift
+//  TealiumPrismReactNative
+//
+
+import Foundation
+import TealiumPrism
+
+extension TealiumPrismBridge {
+
+    // MARK: - Trace
+
+    @objc public func join(traceId: String) {
+        tealium?.trace.join(id: traceId)
+    }
+
+    @objc public func leave() {
+        tealium?.trace.leave()
+    }
+
+    @objc public func forceEndOfVisit() {
+        tealium?.trace.forceEndOfVisit()
+    }
+
+    // MARK: - Visitor
+
+    @objc public func resetVisitorId(completion: @escaping (String?, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.resetVisitorId().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let id): completion(id, nil)
+                case .failure(let err): completion(nil, err)
+                }
+            }
+        }
+    }
+
+    @objc public func clearStoredVisitorIds(completion: @escaping (String?, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.clearStoredVisitorIds().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let id): completion(id, nil)
+                case .failure(let err): completion(nil, err)
+                }
+            }
+        }
+    }
+
+    // MARK: - Deep Link
+
+    @objc public func handle(url: String, referrer: String?, completion: @escaping (Bool) -> Void) {
+        guard let tealium = tealium,
+              let deepLinkUrl = URL(string: url) else { completion(false); return }
+        let ref: Referrer? = referrer.flatMap { URL(string: $0) }.map { .url($0) }
+        tealium.deepLink.handle(link: deepLinkUrl, referrer: ref).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(true)
+                case .failure: completion(false)
+                }
+            }
+        }
+    }
+}

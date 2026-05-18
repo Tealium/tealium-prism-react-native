@@ -21,6 +21,11 @@ internal class BridgeCMPAdapter: CMPAdapter {
     private let _consentDecision: StateSubject<ConsentDecision?>
     var consentDecision: Observable<ConsentDecision?> { _consentDecision.asObservableState() }
 
+    // MARK: - Persistence keys
+
+    private static let keyDecisionType = "decisionType"
+    private static let keyPurposes = "purposes"
+
     init(id: String = "react-native-bridge", defaultDecision: ConsentDecision? = nil) {
         self.id = id
         self.defaultDecision = defaultDecision
@@ -29,6 +34,7 @@ internal class BridgeCMPAdapter: CMPAdapter {
     }
 
     func update(decision: ConsentDecision) {
+        guard _consentDecision.value != decision else { return }
         BridgeCMPAdapter.saveDecision(decision, adapterId: id)
         _consentDecision.publish(decision)
     }
@@ -50,18 +56,18 @@ internal class BridgeCMPAdapter: CMPAdapter {
 
     private static func readPersistedDecision(adapterId: String) -> ConsentDecision? {
         guard let dict = UserDefaults.standard.dictionary(forKey: storageKey(adapterId: adapterId)),
-              let typeString = dict["decisionType"] as? String else {
+              let typeString = dict[keyDecisionType] as? String,
+              let type = ConsentDecision.DecisionType(rawValue: typeString) else {
             return nil
         }
-        let type: ConsentDecision.DecisionType = typeString == "explicit" ? .explicit : .implicit
-        let purposes = Set(dict["purposes"] as? [String] ?? [])
+        let purposes = Set(dict[keyPurposes] as? [String] ?? [])
         return ConsentDecision(decisionType: type, purposes: purposes)
     }
 
     private static func saveDecision(_ decision: ConsentDecision, adapterId: String) {
         let dict: [String: Any] = [
-            "decisionType": decision.decisionType == .explicit ? "explicit" : "implicit",
-            "purposes": Array(decision.purposes)
+            keyDecisionType: decision.decisionType.rawValue,
+            keyPurposes: Array(decision.purposes)
         ]
         UserDefaults.standard.set(dict, forKey: storageKey(adapterId: adapterId))
     }

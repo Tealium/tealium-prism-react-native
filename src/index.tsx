@@ -241,7 +241,7 @@ export default class Tealium {
    */
   static shutdown(): void {
     if (this._dataLayer) {
-      NativeTealiumPrism.disableDataLayerEvents();
+      this._dataLayer._forceDisposeAll();
     }
 
     NativeTealiumPrism.shutdown();

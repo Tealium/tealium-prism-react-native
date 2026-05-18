@@ -45,6 +45,6 @@ export class DeepLinkAPI {
    * ```
    */
   handle(url: string, referrer?: string): Promise<boolean> {
-    return NativeTealiumPrism.handleDeepLink(url, referrer ?? null);
+    return NativeTealiumPrism.deepLinkHandle(url, referrer ?? null);
   }
 }

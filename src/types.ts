@@ -284,6 +284,23 @@ export type DataItem =
 export type DataList = DataItem[];
 
 /**
+ * A heterogeneous map of DataItems.
+ * Mirrors native: DataObject (Kotlin) / [String: DataItem] (Swift)
+ */
+export type DataObject = Record<string, DataItem>;
+
+/**
+ * A resource that can be disposed.
+ * Mirrors native: Disposable (Swift/Kotlin)
+ */
+export interface Disposable {
+  /** Whether this resource has been disposed. Idempotent — multiple dispose() calls are safe. */
+  readonly isDisposed: boolean;
+  /** Releases the resource. */
+  dispose(): void;
+}
+
+/**
  * Event names emitted by the native module.
  * @internal
  */
@@ -295,65 +312,3 @@ export const TealiumEvents = {
 /** @internal */
 export type TealiumEventName =
   (typeof TealiumEvents)[keyof typeof TealiumEvents];
-
-// ============================================
-// DataLayer Transactional Operations
-// ============================================
-
-/**
- * Type of operation in a transactional update.
- */
-export type DataLayerOperationType = 'put' | 'remove';
-
-/**
- * A put operation for transactional data layer updates.
- */
-export interface DataLayerPutOperation {
-  type: 'put';
-  key: string;
-  value: unknown;
-  expiry?: Expiry;
-}
-
-/**
- * A remove operation for transactional data layer updates.
- */
-export interface DataLayerRemoveOperation {
-  type: 'remove';
-  key: string;
-}
-
-/**
- * Union type for all data layer operations.
- */
-export type DataLayerOperation =
-  | DataLayerPutOperation
-  | DataLayerRemoveOperation;
-
-/**
- * Context object passed to the transactionally() callback.
- * Provides methods to read current values and queue operations.
- */
-export interface TransactionContext {
-  /**
-   * Get a value from the data layer.
-   * Note: This returns pre-read values, not pending changes from this transaction.
-   * @param key - Key to retrieve
-   * @returns The current value or undefined if not found
-   */
-  get(key: string): unknown;
-
-  /**
-   * Queue a put operation to store a value.
-   * @param key - Key to store the value under
-   * @param value - Value to store
-   * @param expiry - Expiry option (default: 'forever')
-   */
-  put(key: string, value: unknown, expiry?: Expiry): void;
-
-  /**
-   * Queue a remove operation to delete a value.
-   * @param key - Key to remove
-   */
-  remove(key: string): void;
-}

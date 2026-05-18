@@ -158,38 +158,62 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 // MARK: - Data Layer
 
-- (void)setDataLayer:(NSDictionary *)record
-              expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] setDataLayerWithRecord:record expiry:expiry];
+- (void)dataLayerPut:(NSDictionary *)record
+             expiry:(NSString *)expiry {
+    [[TealiumPrismBridge shared] putWithRecord:record expiry:expiry];
 }
 
-- (void)getDataLayerValue:(NSString *)key
-                  resolve:(RCTPromiseResolveBlock)resolve
-                   reject:(RCTPromiseRejectBlock)reject {
+- (void)dataLayerGetDataItem:(NSString *)key
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getDataLayerValueWithKey:key completion:^(NSDictionary *result) {
+    [[TealiumPrismBridge shared] getDataItemWithKey:key completion:^(NSDictionary *result) {
         resolve(result ?: [NSNull null]);
     }];
 }
 
-- (void)removeDataLayerValue:(NSString *)key {
-    [[TealiumPrismBridge shared] removeDataLayerValueWithKey:key];
-}
-
-- (void)removeDataLayerValues:(NSArray<NSString *> *)keys {
-    [[TealiumPrismBridge shared] removeDataLayerValuesWithKeys:keys];
-}
-
-- (void)clearDataLayer:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject {
+- (void)dataLayerGetDataList:(NSString *)key
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] clearDataLayerWithCompletion:^(BOOL success, NSError *error) {
+    [[TealiumPrismBridge shared] getDataListWithKey:key completion:^(NSArray *result) {
+        resolve(result ?: [NSNull null]);
+    }];
+}
+
+- (void)dataLayerGetDataObject:(NSString *)key
+                       resolve:(RCTPromiseResolveBlock)resolve
+                        reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] getDataObjectWithKey:key completion:^(NSDictionary *result) {
+        resolve(result ?: [NSNull null]);
+    }];
+}
+
+- (void)dataLayerRemove:(NSString *)key {
+    [[TealiumPrismBridge shared] removeWithKey:key];
+}
+
+- (void)dataLayerRemoveKeys:(NSArray<NSString *> *)keys {
+    [[TealiumPrismBridge shared] removeKeysWithKeys:keys];
+}
+
+- (void)dataLayerClear:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] clearWithCompletion:^(BOOL success, NSError *error) {
         if (error) {
             reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
         } else {
@@ -198,39 +222,20 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     }];
 }
 
-- (void)getAllData:(RCTPromiseResolveBlock)resolve
-            reject:(RCTPromiseRejectBlock)reject {
+- (void)dataLayerGetAll:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getAllDataWithCompletion:^(NSDictionary *data) {
+    [[TealiumPrismBridge shared] getAllWithCompletion:^(NSDictionary *data) {
         resolve(data ?: @{});
-    }];
-}
-
-- (void)dataLayerTransactionalUpdate:(NSArray<NSString *> *)keysToRead
-                          operations:(NSArray<NSDictionary *> *)operations
-                             resolve:(RCTPromiseResolveBlock)resolve
-                              reject:(RCTPromiseRejectBlock)reject {
-    if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
-        return;
-    }
-    [[TealiumPrismBridge shared] dataLayerTransactionalUpdateWithKeysToRead:keysToRead
-                                                                 operations:operations
-                                                                 completion:^(NSDictionary *result, NSError *error) {
-        if (error) {
-            reject(@"TRANSACTION_ERROR", error.localizedDescription, error);
-        } else {
-            resolve(result ?: @{});
-        }
     }];
 }
 
 // MARK: - Deep Link
 
-- (void)handleDeepLink:(NSString *)url
+- (void)deepLinkHandle:(NSString *)url
               referrer:(NSString *)referrer
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
@@ -238,22 +243,22 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
         reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] handleDeepLinkWithUrl:url referrer:referrer completion:^(BOOL success) {
+    [[TealiumPrismBridge shared] handleWithUrl:url referrer:referrer completion:^(BOOL success) {
         resolve(@(success));
     }];
 }
 
 // MARK: - Trace
 
-- (void)joinTrace:(NSString *)traceId {
-    [[TealiumPrismBridge shared] joinTraceWithTraceId:traceId];
+- (void)traceJoin:(NSString *)traceId {
+    [[TealiumPrismBridge shared] joinWithTraceId:traceId];
 }
 
-- (void)leaveTrace {
-    [[TealiumPrismBridge shared] leaveTrace];
+- (void)traceLeave {
+    [[TealiumPrismBridge shared] leave];
 }
 
-- (void)forceEndOfVisit {
+- (void)traceForceEndOfVisit {
     [[TealiumPrismBridge shared] forceEndOfVisit];
 }
 
@@ -291,27 +296,26 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 
 // MARK: - Consent
 
-- (void)setConsentDecision:(NSString *)decisionType
+- (void)consentSetDecision:(NSString *)decisionType
                   purposes:(NSArray<NSString *> *)purposes {
-    [[TealiumPrismBridge shared] setConsentDecisionWithDecisionType:decisionType purposes:purposes];
+    [[TealiumPrismBridge shared] setDecisionWithDecisionType:decisionType purposes:purposes];
 }
 
-- (void)getConsentDecision:(RCTPromiseResolveBlock)resolve
+- (void)consentGetDecision:(RCTPromiseResolveBlock)resolve
                     reject:(RCTPromiseRejectBlock)reject {
-    [[TealiumPrismBridge shared] getConsentDecisionWithCompletion:^(NSDictionary *result) {
+    [[TealiumPrismBridge shared] getDecisionWithCompletion:^(NSDictionary *result) {
         resolve(result ?: [NSNull null]);
     }];
 }
 
-- (void)resetConsentDecision {
-    [[TealiumPrismBridge shared] resetConsentDecision];
+- (void)consentReset {
+    [[TealiumPrismBridge shared] reset];
 }
 
 // MARK: - DataLayer Events
 
-- (void)enableDataLayerEvents {
+- (void)dataLayerOnDataUpdatedSubscribe {
     __weak TealiumPrismReactNative *weakSelf = self;
-
     TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
     bridge.onDataUpdated = ^(NSDictionary<NSString *, id> *data) {
         TealiumPrismReactNative *strongSelf = weakSelf;
@@ -319,21 +323,31 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             [strongSelf sendEventWithName:kEventDataLayerUpdated body:data];
         }
     };
+    [bridge dataLayerOnDataUpdatedSubscribe];
+}
+
+- (void)dataLayerOnDataUpdatedDispose {
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+    [bridge dataLayerOnDataUpdatedDispose];
+    bridge.onDataUpdated = nil;
+}
+
+- (void)dataLayerOnDataRemovedSubscribe {
+    __weak TealiumPrismReactNative *weakSelf = self;
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
     bridge.onDataRemoved = ^(NSArray<NSString *> *keys) {
         TealiumPrismReactNative *strongSelf = weakSelf;
         if (strongSelf && strongSelf->_hasListeners) {
             [strongSelf sendEventWithName:kEventDataLayerRemoved body:@{@"keys": keys}];
         }
     };
-
-    [bridge enableDataLayerEvents];
+    [bridge dataLayerOnDataRemovedSubscribe];
 }
 
-- (void)disableDataLayerEvents {
+- (void)dataLayerOnDataRemovedDispose {
     TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
-    bridge.onDataUpdated = nil;
+    [bridge dataLayerOnDataRemovedDispose];
     bridge.onDataRemoved = nil;
-    [bridge disableDataLayerEvents];
 }
 
 // MARK: - Event Emitter Support

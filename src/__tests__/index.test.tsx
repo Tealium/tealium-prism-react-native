@@ -14,31 +14,53 @@ jest.mock('../NativeTealiumPrismReactNative', () => ({
     flushEventQueue: jest.fn(),
     resetVisitorId: jest.fn(),
     clearStoredVisitorIds: jest.fn(),
-    setDataLayer: jest.fn(),
-    getDataLayerValue: jest.fn(),
-    removeDataLayerValue: jest.fn(),
-    removeDataLayerValues: jest.fn(),
-    clearDataLayer: jest.fn(),
-    getAllData: jest.fn(),
-    enableDataLayerEvents: jest.fn(),
-    disableDataLayerEvents: jest.fn(),
+    dataLayerPut: jest.fn(),
+    dataLayerGetDataItem: jest.fn(),
+    dataLayerGetDataList: jest.fn(),
+    dataLayerGetDataObject: jest.fn(),
+    dataLayerRemove: jest.fn(),
+    dataLayerRemoveKeys: jest.fn(),
+    dataLayerClear: jest.fn(),
+    dataLayerGetAll: jest.fn(),
+    dataLayerOnDataUpdatedSubscribe: jest.fn(),
+    dataLayerOnDataUpdatedDispose: jest.fn(),
+    dataLayerOnDataRemovedSubscribe: jest.fn(),
+    dataLayerOnDataRemovedDispose: jest.fn(),
     addListener: jest.fn(),
     removeListeners: jest.fn(),
-    joinTrace: jest.fn(),
-    leaveTrace: jest.fn(),
-    forceEndOfVisit: jest.fn(),
-    handleDeepLink: jest.fn(),
-    setConsentDecision: jest.fn(),
-    getConsentDecision: jest.fn(),
-    resetConsentDecision: jest.fn(),
-    dataLayerTransactionalUpdate: jest.fn(),
+    traceJoin: jest.fn(),
+    traceLeave: jest.fn(),
+    traceForceEndOfVisit: jest.fn(),
+    deepLinkHandle: jest.fn(),
+    consentSetDecision: jest.fn(),
+    consentGetDecision: jest.fn(),
+    consentReset: jest.fn(),
   },
 }));
 
 jest.mock('react-native', () => ({
-  NativeEventEmitter: jest.fn().mockImplementation(() => ({
-    addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
-  })),
+  // Each NativeEventEmitter instance owns its own per-event counts so
+  // DataLayerAPI's listenerCount-based ref counting behaves as it would at
+  // runtime. State resets when DataLayerAPI is re-created via shutdown().
+  NativeEventEmitter: jest.fn().mockImplementation(() => {
+    const counts: Record<string, number> = {};
+    return {
+      addListener: jest.fn((eventName: string) => {
+        counts[eventName] = (counts[eventName] ?? 0) + 1;
+        return {
+          remove: jest.fn(() => {
+            counts[eventName] = Math.max(0, (counts[eventName] ?? 0) - 1);
+          }),
+        };
+      }),
+      listenerCount: jest.fn(
+        (eventName: string): number => counts[eventName] ?? 0
+      ),
+      removeAllListeners: jest.fn((eventName: string) => {
+        counts[eventName] = 0;
+      }),
+    };
+  }),
   TurboModuleRegistry: {
     getEnforcing: jest.fn(
       () => jest.requireMock('../NativeTealiumPrismReactNative').default
@@ -66,6 +88,13 @@ function resetTealiumState() {
   (Tealium as any)._trace = null;
   (Tealium as any)._deepLink = null;
   (Tealium as any)._consent = null;
+
+  // The module-level NativeEventEmitter instance is shared across tests; clear
+  // its per-event listener counts so each test starts at 0.
+  const fresh = Tealium.dataLayer as any;
+  fresh.eventEmitter.removeAllListeners('TealiumDataLayerUpdated');
+  fresh.eventEmitter.removeAllListeners('TealiumDataLayerRemoved');
+  (Tealium as any)._dataLayer = null;
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -100,7 +129,7 @@ describe('Tealium.create', () => {
 
     await Tealium.create(BASE_CONFIG);
 
-    expect(mockNative.setDataLayer).toHaveBeenCalledWith(
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       {
         plugin_name: 'Tealium-Prism-ReactNative',
         plugin_version: expect.any(String),
@@ -225,11 +254,11 @@ describe('Tealium.track', () => {
 // ── DataLayerAPI.put ──────────────────────────────────────────────────────────
 
 describe('DataLayerAPI.put', () => {
-  it('forwards the whole record and expiry to setDataLayer', () => {
+  it('forwards the whole record and expiry to dataLayerPut', () => {
     Tealium.dataLayer.put({ user_type: 'premium', count: 42 }, 'session');
 
-    expect(mockNative.setDataLayer).toHaveBeenCalledTimes(1);
-    expect(mockNative.setDataLayer).toHaveBeenCalledWith(
+    expect(mockNative.dataLayerPut).toHaveBeenCalledTimes(1);
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { user_type: 'premium', count: 42 },
       'session'
     );
@@ -238,7 +267,7 @@ describe('DataLayerAPI.put', () => {
   it("defaults expiry to 'forever' when omitted", () => {
     Tealium.dataLayer.put({ flag: true });
 
-    expect(mockNative.setDataLayer).toHaveBeenCalledWith(
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { flag: true },
       'forever'
     );
@@ -247,7 +276,7 @@ describe('DataLayerAPI.put', () => {
   it('forwards mixed-type arrays intact', () => {
     Tealium.dataLayer.put({ mixed: [1, 'two', true] } as any);
 
-    expect(mockNative.setDataLayer).toHaveBeenCalledWith(
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { mixed: [1, 'two', true] },
       'forever'
     );
@@ -259,7 +288,7 @@ describe('DataLayerAPI.put', () => {
     Tealium.dataLayer.put({ nullable: null, ok: 'x' });
 
     expect(warn).not.toHaveBeenCalled();
-    expect(mockNative.setDataLayer).toHaveBeenCalledWith(
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { nullable: null, ok: 'x' },
       'forever'
     );
@@ -270,151 +299,160 @@ describe('DataLayerAPI.put', () => {
 // ── DataLayerAPI.remove ───────────────────────────────────────────────────────
 
 describe('DataLayerAPI.remove', () => {
-  it('calls removeDataLayerValue for single key', () => {
+  it('calls dataLayerRemove for single key', () => {
     Tealium.dataLayer.remove('user_id');
 
-    expect(mockNative.removeDataLayerValue).toHaveBeenCalledWith('user_id');
+    expect(mockNative.dataLayerRemove).toHaveBeenCalledWith('user_id');
   });
 
-  it('calls removeDataLayerValues for array of keys', () => {
+  it('calls dataLayerRemoveKeys for array of keys', () => {
     Tealium.dataLayer.remove(['user_id', 'user_type']);
 
-    expect(mockNative.removeDataLayerValues).toHaveBeenCalledWith([
+    expect(mockNative.dataLayerRemoveKeys).toHaveBeenCalledWith([
       'user_id',
       'user_type',
     ]);
   });
 });
 
-// ── DataLayerAPI events ───────────────────────────────────────────────────────
+// ── DataLayerAPI typed getters ────────────────────────────────────────────────
 
-describe('DataLayerAPI event subscriptions', () => {
-  it('enables native events when first listener is added', () => {
-    Tealium.dataLayer.onUpdated(() => {});
+describe('DataLayerAPI typed getters', () => {
+  it('getDataItem forwards to dataLayerGetDataItem', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({
+      type: 'string',
+      value: 'hello',
+    });
 
-    expect(mockNative.enableDataLayerEvents).toHaveBeenCalledTimes(1);
+    const result = await Tealium.dataLayer.getDataItem('greeting');
+
+    expect(mockNative.dataLayerGetDataItem).toHaveBeenCalledWith('greeting');
+    expect(result).toEqual({ type: 'string', value: 'hello' });
   });
 
-  it('does not re-enable events for second listener', () => {
-    Tealium.dataLayer.onUpdated(() => {});
-    Tealium.dataLayer.onUpdated(() => {});
+  it('getDataList forwards to dataLayerGetDataList and returns the array', async () => {
+    const list = [
+      { type: 'number', value: 1 },
+      { type: 'number', value: 2 },
+    ];
+    mockNative.dataLayerGetDataList.mockResolvedValue(list);
 
-    expect(mockNative.enableDataLayerEvents).toHaveBeenCalledTimes(1);
+    const result = await Tealium.dataLayer.getDataList('nums');
+
+    expect(mockNative.dataLayerGetDataList).toHaveBeenCalledWith('nums');
+    expect(result).toEqual(list);
   });
 
-  it('disables native events when last listener is removed', () => {
-    const sub = Tealium.dataLayer.onUpdated(() => {});
-    sub.remove();
+  it('getDataList returns null when native returns null', async () => {
+    mockNative.dataLayerGetDataList.mockResolvedValue(null as any);
 
-    expect(mockNative.disableDataLayerEvents).toHaveBeenCalledTimes(1);
+    const result = await Tealium.dataLayer.getDataList('notAList');
+
+    expect(result).toBeNull();
   });
 
-  it('does not disable events while other listeners remain', () => {
-    const sub1 = Tealium.dataLayer.onUpdated(() => {});
-    Tealium.dataLayer.onUpdated(() => {});
-    sub1.remove();
+  it('getDataObject forwards to dataLayerGetDataObject and returns the map', async () => {
+    const obj = {
+      a: { type: 'string', value: 'x' },
+      b: { type: 'boolean', value: true },
+    };
+    mockNative.dataLayerGetDataObject.mockResolvedValue(obj);
 
-    expect(mockNative.disableDataLayerEvents).not.toHaveBeenCalled();
+    const result = await Tealium.dataLayer.getDataObject('config');
+
+    expect(mockNative.dataLayerGetDataObject).toHaveBeenCalledWith('config');
+    expect(result).toEqual(obj);
   });
 
-  it('remove() is idempotent', () => {
-    const sub = Tealium.dataLayer.onUpdated(() => {});
-    sub.remove();
-    sub.remove();
+  it('getDataObject returns null when native returns null', async () => {
+    mockNative.dataLayerGetDataObject.mockResolvedValue(null as any);
 
-    expect(mockNative.disableDataLayerEvents).toHaveBeenCalledTimes(1);
-  });
+    const result = await Tealium.dataLayer.getDataObject('notAnObject');
 
-  it('mixes onUpdated and onRemoved listeners for ref-count', () => {
-    const sub1 = Tealium.dataLayer.onUpdated(() => {});
-    const sub2 = Tealium.dataLayer.onRemoved(() => {});
-
-    sub1.remove();
-    expect(mockNative.disableDataLayerEvents).not.toHaveBeenCalled();
-
-    sub2.remove();
-    expect(mockNative.disableDataLayerEvents).toHaveBeenCalledTimes(1);
+    expect(result).toBeNull();
   });
 });
 
-// ── DataLayerAPI.transactionally ──────────────────────────────────────────────
+// ── DataLayerAPI events ───────────────────────────────────────────────────────
 
-describe('DataLayerAPI.transactionally', () => {
-  it('sends operations to native in a single batch', async () => {
-    mockNative.dataLayerTransactionalUpdate.mockResolvedValue({});
+describe('DataLayerAPI event subscriptions', () => {
+  it('subscribes to native onDataUpdated when first listener is added', () => {
+    Tealium.dataLayer.onDataUpdated(() => {});
 
-    await Tealium.dataLayer.transactionally((ctx) => {
-      ctx.put('key1', 'value1', 'session');
-      ctx.remove('key2');
-    });
-
-    expect(mockNative.dataLayerTransactionalUpdate).toHaveBeenCalledTimes(1);
-    expect(mockNative.dataLayerTransactionalUpdate).toHaveBeenCalledWith(
-      [],
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'put', key: 'key1', value: 'value1' }),
-        expect.objectContaining({ type: 'remove', key: 'key2' }),
-      ])
-    );
+    expect(mockNative.dataLayerOnDataUpdatedSubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('pre-reads specified keys before the batch', async () => {
-    mockNative.dataLayerTransactionalUpdate
-      .mockResolvedValueOnce({ counter: 5 }) // pre-read
-      .mockResolvedValueOnce({}); // write batch
+  it('does not re-subscribe for a second onDataUpdated listener', () => {
+    Tealium.dataLayer.onDataUpdated(() => {});
+    Tealium.dataLayer.onDataUpdated(() => {});
 
-    let capturedValue: unknown;
-    await Tealium.dataLayer.transactionally(
-      (ctx) => {
-        capturedValue = ctx.get('counter');
-        ctx.put('counter', (capturedValue as number) + 1, 'forever');
-      },
-      ['counter']
-    );
-
-    // First call is the pre-read
-    expect(mockNative.dataLayerTransactionalUpdate).toHaveBeenNthCalledWith(
-      1,
-      ['counter'],
-      []
-    );
-    expect(capturedValue).toBe(5);
-    // Second call commits the incremented value
-    expect(mockNative.dataLayerTransactionalUpdate).toHaveBeenNthCalledWith(
-      2,
-      [],
-      expect.arrayContaining([
-        expect.objectContaining({ key: 'counter', value: 6 }),
-      ])
-    );
+    expect(mockNative.dataLayerOnDataUpdatedSubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('skips the write call when block queues no operations', async () => {
-    await Tealium.dataLayer.transactionally(() => {});
+  it('disposes native onDataUpdated when last listener is disposed', () => {
+    const sub = Tealium.dataLayer.onDataUpdated(() => {});
+    sub.dispose();
 
-    expect(mockNative.dataLayerTransactionalUpdate).not.toHaveBeenCalled();
+    expect(mockNative.dataLayerOnDataUpdatedDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not dispose while other onDataUpdated listeners remain', () => {
+    const sub1 = Tealium.dataLayer.onDataUpdated(() => {});
+    Tealium.dataLayer.onDataUpdated(() => {});
+    sub1.dispose();
+
+    expect(mockNative.dataLayerOnDataUpdatedDispose).not.toHaveBeenCalled();
+  });
+
+  it('dispose() is idempotent and reflects in isDisposed', () => {
+    const sub = Tealium.dataLayer.onDataUpdated(() => {});
+    expect(sub.isDisposed).toBe(false);
+
+    sub.dispose();
+    expect(sub.isDisposed).toBe(true);
+
+    sub.dispose();
+    expect(mockNative.dataLayerOnDataUpdatedDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps onDataUpdated and onDataRemoved ref counts independent', () => {
+    Tealium.dataLayer.onDataRemoved(() => {});
+
+    // Subscribing only to onDataRemoved must not activate the updated stream.
+    expect(mockNative.dataLayerOnDataUpdatedSubscribe).not.toHaveBeenCalled();
+    expect(mockNative.dataLayerOnDataRemovedSubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cross-dispose streams', () => {
+    const sub1 = Tealium.dataLayer.onDataUpdated(() => {});
+    Tealium.dataLayer.onDataRemoved(() => {});
+
+    sub1.dispose();
+
+    expect(mockNative.dataLayerOnDataUpdatedDispose).toHaveBeenCalledTimes(1);
+    expect(mockNative.dataLayerOnDataRemovedDispose).not.toHaveBeenCalled();
   });
 });
 
 // ── TraceAPI ──────────────────────────────────────────────────────────────────
 
 describe('TraceAPI', () => {
-  it('join calls native joinTrace', () => {
+  it('join calls native traceJoin', () => {
     Tealium.trace.join('abc123');
 
-    expect(mockNative.joinTrace).toHaveBeenCalledWith('abc123');
+    expect(mockNative.traceJoin).toHaveBeenCalledWith('abc123');
   });
 
-  it('leave calls native leaveTrace', () => {
+  it('leave calls native traceLeave', () => {
     Tealium.trace.leave();
 
-    expect(mockNative.leaveTrace).toHaveBeenCalled();
+    expect(mockNative.traceLeave).toHaveBeenCalled();
   });
 
-  it('forceEndOfVisit calls native forceEndOfVisit', () => {
+  it('forceEndOfVisit calls native traceForceEndOfVisit', () => {
     Tealium.trace.forceEndOfVisit();
 
-    expect(mockNative.forceEndOfVisit).toHaveBeenCalled();
+    expect(mockNative.traceForceEndOfVisit).toHaveBeenCalled();
   });
 });
 
@@ -422,11 +460,11 @@ describe('TraceAPI', () => {
 
 describe('DeepLinkAPI', () => {
   it('passes url and null referrer by default', async () => {
-    mockNative.handleDeepLink.mockResolvedValue(true);
+    mockNative.deepLinkHandle.mockResolvedValue(true);
 
     const result = await Tealium.deepLink.handle('myapp://product/123');
 
-    expect(mockNative.handleDeepLink).toHaveBeenCalledWith(
+    expect(mockNative.deepLinkHandle).toHaveBeenCalledWith(
       'myapp://product/123',
       null
     );
@@ -434,11 +472,11 @@ describe('DeepLinkAPI', () => {
   });
 
   it('passes referrer when provided', async () => {
-    mockNative.handleDeepLink.mockResolvedValue(true);
+    mockNative.deepLinkHandle.mockResolvedValue(true);
 
     await Tealium.deepLink.handle('myapp://x', 'https://referrer.com');
 
-    expect(mockNative.handleDeepLink).toHaveBeenCalledWith(
+    expect(mockNative.deepLinkHandle).toHaveBeenCalledWith(
       'myapp://x',
       'https://referrer.com'
     );
@@ -448,10 +486,10 @@ describe('DeepLinkAPI', () => {
 // ── ConsentAPI ────────────────────────────────────────────────────────────────
 
 describe('ConsentAPI', () => {
-  it('setDecision calls native setConsentDecision', () => {
+  it('setDecision calls native consentSetDecision', () => {
     Tealium.consent.setDecision('explicit', ['analytics', 'marketing']);
 
-    expect(mockNative.setConsentDecision).toHaveBeenCalledWith('explicit', [
+    expect(mockNative.consentSetDecision).toHaveBeenCalledWith('explicit', [
       'analytics',
       'marketing',
     ]);
@@ -459,16 +497,16 @@ describe('ConsentAPI', () => {
 
   it('getDecision returns native result', async () => {
     const decision = { decisionType: 'explicit', purposes: ['analytics'] };
-    mockNative.getConsentDecision.mockResolvedValue(decision);
+    mockNative.consentGetDecision.mockResolvedValue(decision);
 
     const result = await Tealium.consent.getDecision();
 
     expect(result).toEqual(decision);
   });
 
-  it('reset calls native resetConsentDecision', () => {
+  it('reset calls native consentReset', () => {
     Tealium.consent.reset();
 
-    expect(mockNative.resetConsentDecision).toHaveBeenCalled();
+    expect(mockNative.consentReset).toHaveBeenCalled();
   });
 });

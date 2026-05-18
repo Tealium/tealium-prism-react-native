@@ -53,7 +53,7 @@ export class ConsentAPI {
    * ```
    */
   setDecision(decisionType: ConsentDecisionType, purposes: string[]): void {
-    NativeTealiumPrism.setConsentDecision(decisionType, purposes);
+    NativeTealiumPrism.consentSetDecision(decisionType, purposes);
   }
 
   /**
@@ -73,7 +73,7 @@ export class ConsentAPI {
    * ```
    */
   async getDecision(): Promise<ConsentDecision | null> {
-    const result = await NativeTealiumPrism.getConsentDecision();
+    const result = await NativeTealiumPrism.consentGetDecision();
     return result as ConsentDecision | null;
   }
 
@@ -89,6 +89,6 @@ export class ConsentAPI {
    * ```
    */
   reset(): void {
-    NativeTealiumPrism.resetConsentDecision();
+    NativeTealiumPrism.consentReset();
   }
 }

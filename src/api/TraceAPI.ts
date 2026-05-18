@@ -42,7 +42,7 @@ export class TraceAPI {
    * ```
    */
   join(id: string): void {
-    NativeTealiumPrism.joinTrace(id);
+    NativeTealiumPrism.traceJoin(id);
   }
 
   /**
@@ -51,7 +51,7 @@ export class TraceAPI {
    * Stops adding the trace ID to future events.
    */
   leave(): void {
-    NativeTealiumPrism.leaveTrace();
+    NativeTealiumPrism.traceLeave();
   }
 
   /**
@@ -63,6 +63,6 @@ export class TraceAPI {
    * The trace will remain active until `leave()` is called.
    */
   forceEndOfVisit(): void {
-    NativeTealiumPrism.forceEndOfVisit();
+    NativeTealiumPrism.traceForceEndOfVisit();
   }
 }

@@ -68,7 +68,7 @@ export interface TrackDataSpec {
 }
 
 /**
- * Return type for getDataLayerValue (TurboModule spec).
+ * Return type for dataLayerGetDataItem (TurboModule spec).
  * Mirrors the DataItem discriminated union from the native SDK.
  * The `value` field is absent for null variants.
  */
@@ -133,38 +133,56 @@ export interface Spec extends TurboModule {
    * @param record - Key-value map of values to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
    */
-  setDataLayer(record: Object, expiry: ExpirySpec): void;
+  dataLayerPut(record: Object, expiry: ExpirySpec): void;
 
   /**
    * Get any value from the data layer with type information.
    * @param key - Key to retrieve
    * @returns Promise resolving with object containing type and value, or null
    */
-  getDataLayerValue(key: string): Promise<DataLayerValueSpec | null>;
+  dataLayerGetDataItem(key: string): Promise<DataLayerValueSpec | null>;
+
+  /**
+   * Get a list value from the data layer.
+   * Mirrors native: getDataArray (Swift) / getDataList (Kotlin).
+   * @param key - Key to retrieve
+   * @returns Promise resolving with an array of DataItems, or null if the
+   *   key is missing or the value is not a list
+   */
+  dataLayerGetDataList(key: string): Promise<Object | null>;
+
+  /**
+   * Get an object (dictionary) value from the data layer.
+   * Mirrors native: getDataDictionary (Swift) / getDataObject (Kotlin).
+   * @param key - Key to retrieve
+   * @returns Promise resolving with a {key: DataItem} map, or null if the
+   *   key is missing or the value is not an object
+   */
+  dataLayerGetDataObject(key: string): Promise<Object | null>;
 
   /**
    * Remove a value from the data layer.
    * @param key - Key to remove
    */
-  removeDataLayerValue(key: string): void;
+  dataLayerRemove(key: string): void;
 
   /**
    * Remove multiple values from the data layer.
    * @param keys - Array of keys to remove
    */
-  removeDataLayerValues(keys: string[]): void;
+  dataLayerRemoveKeys(keys: string[]): void;
 
   /**
    * Clear all data from the data layer.
    * @returns Promise resolving when clear is complete
    */
-  clearDataLayer(): Promise<void>;
+  dataLayerClear(): Promise<void>;
 
   /**
    * Get all data from the data layer.
    * @returns Promise resolving with all data layer values as an object
    */
-  getAllData(): Promise<Object>;
+  dataLayerGetAll(): Promise<Object>;
 
   // ============================================
   // Deep Link
@@ -176,7 +194,7 @@ export interface Spec extends TurboModule {
    * @param referrer - Optional referrer URL
    * @returns Promise resolving to true if handled successfully
    */
-  handleDeepLink(url: string, referrer: string | null): Promise<boolean>;
+  deepLinkHandle(url: string, referrer: string | null): Promise<boolean>;
 
   // ============================================
   // Trace
@@ -186,12 +204,17 @@ export interface Spec extends TurboModule {
    * Join a trace session for debugging.
    * @param traceId - The trace ID to join
    */
-  joinTrace(traceId: string): void;
+  traceJoin(traceId: string): void;
 
   /**
    * Leave the current trace session.
    */
-  leaveTrace(): void;
+  traceLeave(): void;
+
+  /**
+   * Force end of visitor session for trace purposes.
+   */
+  traceForceEndOfVisit(): void;
 
   // ============================================
   // Visitor / Identity
@@ -210,29 +233,32 @@ export interface Spec extends TurboModule {
   clearStoredVisitorIds(): Promise<string>;
 
   // ============================================
-  // Trace (Extended)
-  // ============================================
-
-  /**
-   * Force end of visitor session for trace purposes.
-   */
-  forceEndOfVisit(): void;
-
-  // ============================================
   // DataLayer Events
   // ============================================
 
   /**
-   * Enable data layer event listeners.
-   * After calling this, TealiumDataLayerUpdated and TealiumDataLayerRemoved
-   * events will be emitted via NativeEventEmitter.
+   * Subscribe to the native onDataUpdated stream. The native side starts
+   * emitting TealiumDataLayerUpdated events through NativeEventEmitter.
+   * Idempotent on the native side — only the first JS subscriber should
+   * call this.
    */
-  enableDataLayerEvents(): void;
+  dataLayerOnDataUpdatedSubscribe(): void;
 
   /**
-   * Disable data layer event listeners.
+   * Dispose the native onDataUpdated subscription. Stops emission.
    */
-  disableDataLayerEvents(): void;
+  dataLayerOnDataUpdatedDispose(): void;
+
+  /**
+   * Subscribe to the native onDataRemoved stream. The native side starts
+   * emitting TealiumDataLayerRemoved events through NativeEventEmitter.
+   */
+  dataLayerOnDataRemovedSubscribe(): void;
+
+  /**
+   * Dispose the native onDataRemoved subscription. Stops emission.
+   */
+  dataLayerOnDataRemovedDispose(): void;
 
   // ============================================
   // Event Emitter Support
@@ -257,33 +283,18 @@ export interface Spec extends TurboModule {
    * @param decisionType - 'implicit' or 'explicit'
    * @param purposes - Array of consented purpose IDs
    */
-  setConsentDecision(decisionType: string, purposes: string[]): void;
+  consentSetDecision(decisionType: string, purposes: string[]): void;
 
   /**
    * Get the current consent decision.
    * @returns Promise resolving to the consent decision object or null
    */
-  getConsentDecision(): Promise<Object | null>;
+  consentGetDecision(): Promise<Object | null>;
 
   /**
    * Reset the consent decision (revoke consent).
    */
-  resetConsentDecision(): void;
-
-  // ============================================
-  // DataLayer Transactional Operations
-  // ============================================
-
-  /**
-   * Execute a batch of data layer operations atomically.
-   * @param keysToRead - Keys to pre-read before executing operations
-   * @param operations - Array of put/remove operations
-   * @returns Promise with pre-read values as object
-   */
-  dataLayerTransactionalUpdate(
-    keysToRead: string[],
-    operations: Object[]
-  ): Promise<Object>;
+  consentReset(): void;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>(
