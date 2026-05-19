@@ -6,27 +6,9 @@
  */
 
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
+import type { TrackResultSpec } from '../NativeTealiumPrismReactNative';
+import type { TrackResult } from '../types';
 
-/**
- * TraceAPI provides methods for joining and leaving trace sessions.
- *
- * Joining a trace adds the trace ID to each event for server-side filtering
- * in Tealium's Event Stream Live debugging tool.
- *
- * @example
- * ```typescript
- * // Join a trace session
- * Tealium.trace.join('abc123');
- *
- * // ... track events ...
- *
- * // Force end of visit (optional)
- * Tealium.trace.forceEndOfVisit();
- *
- * // Leave the trace
- * Tealium.trace.leave();
- * ```
- */
 export class TraceAPI {
   /**
    * Join a trace session with the specified trace ID.
@@ -61,8 +43,19 @@ export class TraceAPI {
    * visit-level calculations and audiences.
    *
    * The trace will remain active until `leave()` is called.
+   *
+   * @returns Promise resolving with the TrackResult for the end-of-visit dispatch.
    */
-  forceEndOfVisit(): void {
-    NativeTealiumPrism.traceForceEndOfVisit();
+  async forceEndOfVisit(): Promise<TrackResult> {
+    const spec: TrackResultSpec = await NativeTealiumPrism.traceForceEndOfVisit();
+    return {
+      status: spec.status === 'accepted' ? 'accepted' : 'dropped',
+      info: spec.info,
+      dispatch: {
+        id: spec.dispatch.id,
+        timestamp: spec.dispatch.timestamp,
+        payload: spec.dispatch.payload as Record<string, unknown>,
+      },
+    };
   }
 }

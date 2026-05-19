@@ -22,6 +22,14 @@ import { TealiumEvents } from '../types';
  */
 export type DataLayerUpdateCallback = (data: Record<string, unknown>) => void;
 
+// Serializes the public Expiry union to the wire string the native bridge
+// expects. Named variants pass through; { after: Date } encodes as
+// "afterEpochSeconds:<n>" and is parsed by native ExpiryExtensions.
+function serializeExpiry(expiry: Expiry): string {
+  if (typeof expiry === 'string') return expiry;
+  return `afterEpochSeconds:${Math.floor(expiry.after.getTime() / 1000)}`;
+}
+
 /**
  * Callback for data layer remove events.
  */
@@ -85,7 +93,7 @@ export class DataLayerAPI {
    * ```
    */
   put(data: Record<string, DataLayerValue>, expiry: Expiry = 'forever'): void {
-    NativeTealiumPrism.dataLayerPut(data, expiry);
+    NativeTealiumPrism.dataLayerPut(data, serializeExpiry(expiry));
   }
 
   /**
@@ -133,6 +141,50 @@ export class DataLayerAPI {
     return (await NativeTealiumPrism.dataLayerGetDataObject(
       key
     )) as DataObject | null;
+  }
+
+  /**
+   * Get a string value from the data layer.
+   * Mirrors native: `get<String>(key:as:)` (Swift) / `getString(key)` (Kotlin).
+   *
+   * @returns Promise resolving to the string value, or null if not found or wrong type
+   */
+  async getString(key: string): Promise<string | null> {
+    const item = await this.getDataItem(key);
+    return item?.type === 'string' ? item.value : null;
+  }
+
+  /**
+   * Get an integer value from the data layer.
+   * Mirrors native: `get<Int>(key:as:)` (Swift) / `getInt(key)` (Kotlin).
+   *
+   * @returns Promise resolving to the number value, or null if not found or wrong type
+   */
+  async getInt(key: string): Promise<number | null> {
+    const item = await this.getDataItem(key);
+    return item?.type === 'number' ? Math.trunc(item.value) : null;
+  }
+
+  /**
+   * Get a double value from the data layer.
+   * Mirrors native: `get<Double>(key:as:)` (Swift) / `getDouble(key)` (Kotlin).
+   *
+   * @returns Promise resolving to the number value, or null if not found or wrong type
+   */
+  async getDouble(key: string): Promise<number | null> {
+    const item = await this.getDataItem(key);
+    return item?.type === 'number' ? item.value : null;
+  }
+
+  /**
+   * Get a boolean value from the data layer.
+   * Mirrors native: `get<Bool>(key:as:)` (Swift) / `getBoolean(key)` (Kotlin).
+   *
+   * @returns Promise resolving to the boolean value, or null if not found or wrong type
+   */
+  async getBoolean(key: string): Promise<boolean | null> {
+    const item = await this.getDataItem(key);
+    return item?.type === 'boolean' ? item.value : null;
   }
 
   /**

@@ -43,4 +43,32 @@ extension TealiumPrismBridge {
     @objc public func reset() {
         bridgeCMPAdapter?.reset()
     }
+
+    @objc public func getAllPurposes(completion: @escaping (NSArray?) -> Void) {
+        guard let purposes = bridgeCMPAdapter?.allPurposes else {
+            completion(nil)
+            return
+        }
+        completion(Array(purposes) as NSArray)
+    }
+
+    // MARK: - Consent Events
+
+    @objc public func consentOnDecisionChangedSubscribe() {
+        consentOnDecisionChangedDispose()
+        guard let adapter = bridgeCMPAdapter else {
+            NSLog("%@ consentOnDecisionChangedSubscribe called before initialization", bridgeLogTag)
+            return
+        }
+        consentDecisionSubscription = adapter.consentDecision.subscribe { [weak self] decision in
+            guard let bridge = self else { return }
+            let dict = decision?.toDictionary()
+            DispatchQueue.main.async { bridge.onConsentDecisionChanged?(dict) }
+        }
+    }
+
+    @objc public func consentOnDecisionChangedDispose() {
+        consentDecisionSubscription?.dispose()
+        consentDecisionSubscription = nil
+    }
 }

@@ -16,6 +16,24 @@ export interface CmpAdapterSpec {
 }
 
 /**
+ * Per-purpose dispatcher mapping (TurboModule spec).
+ */
+export interface ConsentPurposeSpec {
+  purposeId: string;
+  dispatcherIds: string[];
+}
+
+/**
+ * Programmatic consent configuration (TurboModule spec).
+ * Mirrors the native `ConsentConfigurationBuilder` block.
+ */
+export interface ConsentConfigurationSpec {
+  tealiumPurposeId: string;
+  purposes?: ConsentPurposeSpec[];
+  refireDispatcherIds?: string[];
+}
+
+/**
  * Configuration object for initializing Tealium (TurboModule spec).
  * Mirrors native: TealiumConfig
  */
@@ -40,6 +58,8 @@ export interface TealiumConfigSpec {
   visitorIdentityKey?: string;
   /** CMP adapter config — presence enables consent management */
   cmpAdapter?: CmpAdapterSpec;
+  /** Programmatic consent configuration (purpose → dispatcher mapping) */
+  consentConfiguration?: ConsentConfigurationSpec;
   /** Maximum queue size for offline events */
   maxQueueSize?: number;
   /** Queue expiration in seconds */
@@ -52,8 +72,12 @@ export interface TealiumConfigSpec {
 
 /**
  * Expiry type for data layer values (TurboModule spec).
+ *
+ * String values map to named constants. Time-based variants are serialized
+ * by DataLayerAPI as `"afterSeconds:<n>"` or `"afterEpochSeconds:<n>"` before
+ * reaching native — the bridge parses and reconstructs native Expiry objects.
  */
-export type ExpirySpec = 'session' | 'forever' | 'untilRestart';
+export type ExpirySpec = string;
 
 /**
  * Data to be tracked with an event or view.
@@ -75,6 +99,29 @@ export interface TrackDataSpec {
 export interface DataLayerValueSpec {
   type: string;
   value?: Object;
+}
+
+/**
+ * Wire-format enriched dispatch payload (TurboModule spec).
+ * Mirrors native: Dispatch (Swift/Kotlin)
+ */
+export interface DispatchSpec {
+  /** UUID identifying this dispatch. */
+  id: string;
+  /** Unix timestamp in milliseconds when the dispatch was created. */
+  timestamp: number;
+  /** Full enriched event payload including SDK-collected metadata. */
+  payload: Object;
+}
+
+/**
+ * Wire-format result of a track or forceEndOfVisit call.
+ * Native sends raw status string; TypeScript layer maps to typed union.
+ */
+export interface TrackResultSpec {
+  status: string;
+  info: string;
+  dispatch: DispatchSpec;
 }
 
 /**
@@ -114,7 +161,7 @@ export interface Spec extends TurboModule {
    * @param trackData - Track data containing name, type, and optional data payload
    * @returns Promise resolving when tracking is complete
    */
-  track(trackData: TrackDataSpec): Promise<void>;
+  track(trackData: TrackDataSpec): Promise<TrackResultSpec>;
 
   /**
    * Flush any queued events immediately.
@@ -214,7 +261,7 @@ export interface Spec extends TurboModule {
   /**
    * Force end of visitor session for trace purposes.
    */
-  traceForceEndOfVisit(): void;
+  traceForceEndOfVisit(): Promise<TrackResultSpec>;
 
   // ============================================
   // Visitor / Identity
@@ -295,6 +342,26 @@ export interface Spec extends TurboModule {
    * Reset the consent decision (revoke consent).
    */
   consentReset(): void;
+
+  /**
+   * Get all purposes the CMP adapter knows about.
+   * Mirrors native: CMPAdapter.allPurposes / CmpAdapter.allPurposes.
+   * Returns null when consent is not enabled or adapter has no purposes set.
+   */
+  consentGetAllPurposes(): Promise<string[] | null>;
+
+  /**
+   * Subscribe to the native consentDecision observable. The native side
+   * starts emitting TealiumConsentDecisionChanged events through
+   * NativeEventEmitter. Idempotent on the native side — only the first JS
+   * subscriber should call this.
+   */
+  consentOnDecisionChangedSubscribe(): void;
+
+  /**
+   * Dispose the native consentDecision subscription. Stops emission.
+   */
+  consentOnDecisionChangedDispose(): void;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>(

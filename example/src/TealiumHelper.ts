@@ -8,6 +8,7 @@
 import Tealium, {
   type TealiumConfig,
   type TrackData,
+  type TrackResult,
   type Expiry,
   type DataItem,
   type DataLayerValue,
@@ -58,6 +59,14 @@ const DEFAULT_CONFIG: TealiumConfig = {
   visitorIdentityKey: 'email',
   cmpAdapter: {
     allPurposes: ['analytics', 'marketing', 'personalization'],
+  },
+  // Programmatic purpose mapping. Mirrors the native example apps:
+  // tealium SDK requires the 'analytics' purpose; 'collect' dispatcher
+  // additionally requires 'marketing'.
+  consentConfiguration: {
+    tealiumPurposeId: 'analytics',
+    purposes: [{ purposeId: 'marketing', dispatcherIds: ['collect'] }],
+    refireDispatcherIds: ['collect'],
   },
 };
 
@@ -367,14 +376,15 @@ class TealiumHelper {
 
   /**
    * Force end of the current visit (e.g. for trace/testing).
+   * @returns The TrackResult for the end-of-visit dispatch, or null if not initialized.
    */
-  forceEndOfVisit(): void {
+  async forceEndOfVisit(): Promise<TrackResult | null> {
     if (!this._isEnabled) {
-      return;
+      return null;
     }
 
     console.log('[TealiumHelper] Forcing end of visit');
-    Tealium.trace.forceEndOfVisit();
+    return Tealium.trace.forceEndOfVisit();
   }
 
   // ============================================
@@ -437,6 +447,26 @@ class TealiumHelper {
     }
 
     Tealium.consent.reset();
+  }
+
+  async getAllConsentPurposes(): Promise<string[] | null> {
+    if (!this._isEnabled) {
+      return null;
+    }
+    return Tealium.consent.getAllPurposes();
+  }
+
+  /**
+   * Subscribe to consent decision change events. Fires whenever decision is
+   * pushed via setDecision or cleared via reset. Call dispose() to unsubscribe.
+   */
+  onConsentDecisionChanged(
+    callback: (decision: ConsentDecision | null) => void
+  ): TealiumDisposable {
+    if (!this._isEnabled) {
+      return DISPOSED_NOOP;
+    }
+    return Tealium.consent.onDecisionChanged(callback);
   }
 
   // ============================================

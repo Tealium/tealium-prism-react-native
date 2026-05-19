@@ -11,3 +11,5 @@ export type {
   DataLayerUpdateCallback,
   DataLayerRemoveCallback,
 } from './DataLayerAPI';
+
+export type { ConsentDecisionChangedCallback } from './ConsentAPI';

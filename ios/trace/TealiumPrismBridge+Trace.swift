@@ -18,8 +18,32 @@ extension TealiumPrismBridge {
         tealium?.trace.leave()
     }
 
-    @objc public func forceEndOfVisit() {
-        tealium?.trace.forceEndOfVisit()
+    @objc public func forceEndOfVisit(completion: @escaping (NSDictionary?, Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(nil, NSError(domain: "TealiumPrism", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.trace.forceEndOfVisit().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let trackResult):
+                    let dispatch = trackResult.dispatch
+                    let dict: NSDictionary = [
+                        "status": trackResult.status == .accepted ? "accepted" : "dropped",
+                        "info": trackResult.info,
+                        "dispatch": [
+                            "id": dispatch.id,
+                            "timestamp": dispatch.timestamp,
+                            "payload": dispatch.payload.toRawDict(),
+                        ] as [String: Any],
+                    ]
+                    completion(dict, nil)
+                case .failure(let err):
+                    completion(nil, err)
+                }
+            }
+        }
     }
 
     // MARK: - Visitor

@@ -12,19 +12,23 @@ extension DataItem {
 
     // Converts a DataItem into {type, value} format for get(key).
     // JS needs the "type" field to tell apart numbers, strings, lists, etc.
+    // Uses only public DataItem API because DataItem.value is internal to the SDK module.
     func toJSDictionary() -> [String: Any] {
-        switch value {
-        case let str as String: return ["type": "string", "value": str]
-        case let b as Bool: return ["type": "boolean", "value": b]
-        case let n as NSNumber: return ["type": "number", "value": n.doubleValue]
-        case is [Any]:
-            return ["type": "list", "value": getDataArray()?.map { $0.toJSDictionary() } ?? []]
-        case is [String: Any]:
-            return [
-                "type": "object",
-                "value": getDataDictionary()?.mapValues { $0.toJSDictionary() } ?? [:],
-            ]
-        default: return ["type": "null"]
+        if let array = getDataArray() {
+            return ["type": "list", "value": array.map { $0.toJSDictionary() }]
         }
+        if let dict = getDataDictionary() {
+            return ["type": "object", "value": dict.mapValues { $0.toJSDictionary() }]
+        }
+        if let str: String = get() {
+            return ["type": "string", "value": str]
+        }
+        if let b: Bool = get() {
+            return ["type": "boolean", "value": b]
+        }
+        if let n: Double = get() {
+            return ["type": "number", "value": n]
+        }
+        return ["type": "null"]
     }
 }

@@ -26,9 +26,13 @@ import { DataLayerAPI, TraceAPI, DeepLinkAPI, ConsentAPI } from './api';
 export * from './types';
 
 // Re-export API types
-export type { DataLayerUpdateCallback, DataLayerRemoveCallback } from './api';
+export type {
+  DataLayerUpdateCallback,
+  DataLayerRemoveCallback,
+  ConsentDecisionChangedCallback,
+} from './api';
 
-import type { TealiumConfig, TrackData, DispatchType } from './types';
+import type { TealiumConfig, TrackData, DispatchType, TrackResult } from './types';
 
 // Instantiated before create() — safe because the emitter is a JS wrapper that
 // doesn't call native until addListener is invoked.
@@ -153,7 +157,7 @@ export default class Tealium {
    */
   static get consent(): ConsentAPI {
     if (!this._consent) {
-      this._consent = new ConsentAPI();
+      this._consent = new ConsentAPI(eventEmitter);
     }
     return this._consent;
   }
@@ -203,7 +207,7 @@ export default class Tealium {
    * ```
    */
   static async create(config: TealiumConfig): Promise<boolean> {
-    const { cmpAdapter, ...rest } = config;
+    const { cmpAdapter, consentConfiguration, ...rest } = config;
     const spec: TealiumConfigSpec = {
       ...rest,
       cmpAdapter: cmpAdapter
@@ -214,6 +218,8 @@ export default class Tealium {
             defaultPurposes: cmpAdapter.defaultDecision?.purposes,
           }
         : undefined,
+      consentConfiguration:
+        cmpAdapter && consentConfiguration ? consentConfiguration : undefined,
     };
     const result = await NativeTealiumPrism.initialize(spec);
     Tealium._initialized = result;
@@ -242,6 +248,9 @@ export default class Tealium {
   static shutdown(): void {
     if (this._dataLayer) {
       this._dataLayer._forceDisposeAll();
+    }
+    if (this._consent) {
+      this._consent._forceDisposeAll();
     }
 
     NativeTealiumPrism.shutdown();
@@ -284,13 +293,22 @@ export default class Tealium {
     name: string,
     type: DispatchType = 'event',
     data?: TrackData
-  ): Promise<void> {
+  ): Promise<TrackResult> {
     const trackData: TrackDataSpec = {
       name,
       type,
       data: data as Record<string, unknown> | undefined,
     };
-    return NativeTealiumPrism.track(trackData);
+    const spec = await NativeTealiumPrism.track(trackData);
+    return {
+      status: spec.status === 'accepted' ? 'accepted' : 'dropped',
+      info: spec.info,
+      dispatch: {
+        id: spec.dispatch.id,
+        timestamp: spec.dispatch.timestamp,
+        payload: spec.dispatch.payload as Record<string, unknown>,
+      },
+    };
   }
 
   /**

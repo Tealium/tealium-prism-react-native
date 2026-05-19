@@ -39,13 +39,84 @@ export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
 /**
  * Data expiry options for data layer values.
+ *
+ * - `'session'` — expires when the app session ends
+ * - `'forever'` — persisted indefinitely
+ * - `'untilRestart'` — survives session but cleared on app restart
+ * - `{ after: Date }` — expires at the given JS Date
+ *
+ * Mirrors native: `case after(Date)` (Swift) / `Expiry.After` (Kotlin).
+ * For relative expiry use `new Date(Date.now() + n * 1000)`.
  */
-export type Expiry = 'session' | 'forever' | 'untilRestart';
+export type Expiry =
+  | 'session'
+  | 'forever'
+  | 'untilRestart'
+  | { after: Date };
 
 /**
  * Dispatch type for tracking calls.
  */
 export type DispatchType = 'event' | 'view';
+
+/**
+ * Mapping between a consent purpose and the dispatchers it gates.
+ * Mirrors native: `ConsentPurpose` (Swift/Kotlin internal model), exposed
+ * via `ConsentConfigurationBuilder.addPurpose(purposeId:, dispatcherIds:)`.
+ */
+export interface ConsentPurpose {
+  /**
+   * The purpose ID as provided by the CMP, e.g. `'tracking'`, `'analytics'`.
+   * Matches a string the user can accept in their `ConsentDecision.purposes`.
+   */
+  purposeId: string;
+
+  /**
+   * Dispatcher IDs that require this purpose to be accepted before they
+   * can fire (e.g. `['collect']`).
+   */
+  dispatcherIds: string[];
+}
+
+/**
+ * Programmatic consent configuration. Mirrors the native
+ * `ConsentConfigurationBuilder` block passed to
+ * `TealiumConfig.enableConsentIntegration(adapter, builder)`.
+ *
+ * Use this to map CMP purposes to dispatcher IDs and to control which
+ * dispatchers refire on consent changes. When omitted, consent purpose
+ * mapping must come from `settingsFile` / `settingsUrl` JSON.
+ *
+ * Field optionality mirrors the native builder API, not the internal parsed
+ * model: only `setTealiumPurposeId` is required to invoke; `addPurpose` and
+ * `setRefireDispatcherIds` are optional and default to no purposes / no
+ * refire dispatchers when not called.
+ *
+ * Naming note: the bridge uses `refireDispatcherIds` (singular "Dispatcher")
+ * to match Kotlin SDK and the JSON settings key. Swift SDK uses the plural
+ * `refireDispatchersIds` form internally — the bridge maps between them.
+ */
+export interface ConsentConfiguration {
+  /**
+   * The purpose ID required for any SDK tracking to proceed. Must match a
+   * purpose accepted in the user's `ConsentDecision`.
+   */
+  tealiumPurposeId: string;
+
+  /**
+   * Per-purpose dispatcher mapping. A dispatcher only fires events when the
+   * user has accepted the listed purpose. Optional — if omitted, only
+   * `tealiumPurposeId` gates dispatch.
+   */
+  purposes?: ConsentPurpose[];
+
+  /**
+   * Dispatcher IDs that should refire queued events when the user changes
+   * their consent decision (typically just `'collect'`). Optional — if
+   * omitted, no queued events refire on consent change.
+   */
+  refireDispatcherIds?: string[];
+}
 
 /**
  * Configuration for the bridge CMP adapter used for consent management.
@@ -137,6 +208,15 @@ export interface TealiumConfig {
    */
   cmpAdapter?: CmpAdapterConfig;
 
+  /**
+   * Programmatic consent configuration (purpose → dispatcher mapping).
+   * When provided alongside `cmpAdapter`, the bridge calls native
+   * `enableConsentIntegration(adapter, builder)`. Without this, consent
+   * still works but purpose mapping must come from settings JSON.
+   * Ignored if `cmpAdapter` is not provided.
+   */
+  consentConfiguration?: ConsentConfiguration;
+
   // ============================================
   // Core Settings (Advanced)
   // ============================================
@@ -227,6 +307,36 @@ export class TealiumEvent implements TrackOptions {
 }
 
 /**
+ * The enriched event payload as it was processed by the SDK.
+ * Mirrors native: Dispatch (Swift/Kotlin)
+ *
+ * `id` is the UUID of the dispatch, useful for correlating with server-side logs.
+ * `payload` is the full enriched event — contains the original data plus SDK-collected
+ * fields (device info, timestamps, visitor id, etc.).
+ */
+export interface Dispatch {
+  /** UUID identifying this dispatch. */
+  id: string;
+  /** Unix timestamp in milliseconds when the dispatch was created. */
+  timestamp: number;
+  /** Full enriched event payload including SDK-collected metadata. */
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Result of a track or forceEndOfVisit call.
+ * Mirrors native: TrackResult (Swift/Kotlin)
+ */
+export interface TrackResult {
+  /** Whether the dispatch was accepted or dropped by the SDK. */
+  status: 'accepted' | 'dropped';
+  /** Human-readable message from the SDK describing the outcome. */
+  info: string;
+  /** The enriched dispatch payload that was processed. */
+  dispatch: Dispatch;
+}
+
+/**
  * A valid data layer value. Mirrors the JSON value set supported by the native SDK
  * (DataItem variants: string, number, boolean, null, list, object).
  *
@@ -307,6 +417,7 @@ export interface Disposable {
 export const TealiumEvents = {
   DATA_LAYER_UPDATED: 'TealiumDataLayerUpdated',
   DATA_LAYER_REMOVED: 'TealiumDataLayerRemoved',
+  CONSENT_DECISION_CHANGED: 'TealiumConsentDecisionChanged',
 } as const;
 
 /** @internal */

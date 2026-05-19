@@ -6,6 +6,7 @@
 
 static NSString *const kEventDataLayerUpdated = @"TealiumDataLayerUpdated";
 static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
+static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionChanged";
 
 @implementation TealiumPrismReactNative {
     BOOL _hasListeners;
@@ -89,6 +90,43 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
             }
         }
 
+        // Consent configuration (purpose mapping for enableConsentIntegration builder)
+        if (auto consentCfgOpt = config.consentConfiguration(); consentCfgOpt.has_value()) {
+            auto consentCfg = consentCfgOpt.value();
+            NSMutableDictionary *consentDict = [NSMutableDictionary dictionary];
+            if (consentCfg.tealiumPurposeId()) {
+                consentDict[@"tealiumPurposeId"] = consentCfg.tealiumPurposeId();
+            }
+            auto purposesOpt = consentCfg.purposes();
+            if (purposesOpt.has_value()) {
+                NSMutableArray *purposesArr = [NSMutableArray array];
+                auto lazyArray = purposesOpt.value();
+                for (size_t i = 0; i < lazyArray.size(); i++) {
+                    auto purpose = lazyArray[i];
+                    NSMutableDictionary *purposeDict = [NSMutableDictionary dictionary];
+                    if (purpose.purposeId()) {
+                        purposeDict[@"purposeId"] = purpose.purposeId();
+                    }
+                    NSMutableArray *dispatcherIds = [NSMutableArray array];
+                    for (NSString *did : purpose.dispatcherIds()) {
+                        [dispatcherIds addObject:did];
+                    }
+                    purposeDict[@"dispatcherIds"] = dispatcherIds;
+                    [purposesArr addObject:purposeDict];
+                }
+                consentDict[@"purposes"] = purposesArr;
+            }
+            auto refireOpt = consentCfg.refireDispatcherIds();
+            if (refireOpt.has_value()) {
+                NSMutableArray *refireArr = [NSMutableArray array];
+                for (NSString *rd : refireOpt.value()) {
+                    [refireArr addObject:rd];
+                }
+                consentDict[@"refireDispatcherIds"] = refireArr;
+            }
+            configDict[@"consentConfiguration"] = consentDict;
+        }
+
         // Core Settings (optional)
         if (config.maxQueueSize().has_value()) {
             configDict[@"maxQueueSize"] = @(config.maxQueueSize().value());
@@ -132,11 +170,11 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     NSString *name = trackData.name();
     NSString *type = trackData.type() ?: @"event";
     NSDictionary *dataDict = trackData.data() ? (NSDictionary *)trackData.data() : nil;
-    [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict completion:^(BOOL success, NSError *error) {
-        if (!success || error) {
+    [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict completion:^(NSDictionary *result, NSError *error) {
+        if (error) {
             reject(@"TRACK_ERROR", error.localizedDescription ?: @"Track dispatch failed", error);
         } else {
-            resolve(nil);
+            resolve(result);
         }
     }];
 }
@@ -258,8 +296,19 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     [[TealiumPrismBridge shared] leave];
 }
 
-- (void)traceForceEndOfVisit {
-    [[TealiumPrismBridge shared] forceEndOfVisit];
+- (void)traceForceEndOfVisit:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        return;
+    }
+    [[TealiumPrismBridge shared] forceEndOfVisitWithCompletion:^(NSDictionary *result, NSError *error) {
+        if (error) {
+            reject(@"TRACE_ERROR", error.localizedDescription ?: @"Force end of visit failed", error);
+        } else {
+            resolve(result);
+        }
+    }];
 }
 
 // MARK: - Visitor / Identity
@@ -312,6 +361,32 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
     [[TealiumPrismBridge shared] reset];
 }
 
+- (void)consentGetAllPurposes:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] getAllPurposesWithCompletion:^(NSArray<NSString *> *purposes) {
+        resolve(purposes ?: [NSNull null]);
+    }];
+}
+
+- (void)consentOnDecisionChangedSubscribe {
+    __weak TealiumPrismReactNative *weakSelf = self;
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+    bridge.onConsentDecisionChanged = ^(NSDictionary<NSString *, id> *decision) {
+        TealiumPrismReactNative *strongSelf = weakSelf;
+        if (strongSelf && strongSelf->_hasListeners) {
+            [strongSelf sendEventWithName:kEventConsentDecisionChanged
+                                     body:@{@"decision": decision ?: [NSNull null]}];
+        }
+    };
+    [bridge consentOnDecisionChangedSubscribe];
+}
+
+- (void)consentOnDecisionChangedDispose {
+    TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
+    [bridge consentOnDecisionChangedDispose];
+    bridge.onConsentDecisionChanged = nil;
+}
+
 // MARK: - DataLayer Events
 
 - (void)dataLayerOnDataUpdatedSubscribe {
@@ -353,7 +428,7 @@ static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 // MARK: - Event Emitter Support
 
 - (NSArray<NSString *> *)supportedEvents {
-    return @[kEventDataLayerUpdated, kEventDataLayerRemoved];
+    return @[kEventDataLayerUpdated, kEventDataLayerRemoved, kEventConsentDecisionChanged];
 }
 
 - (void)addListener:(NSString *)eventType {

@@ -30,11 +30,14 @@ jest.mock('../NativeTealiumPrismReactNative', () => ({
     removeListeners: jest.fn(),
     traceJoin: jest.fn(),
     traceLeave: jest.fn(),
-    traceForceEndOfVisit: jest.fn(),
+    traceForceEndOfVisit: jest.fn().mockResolvedValue({ status: 'accepted', info: '', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } }),
     deepLinkHandle: jest.fn(),
     consentSetDecision: jest.fn(),
     consentGetDecision: jest.fn(),
     consentReset: jest.fn(),
+    consentGetAllPurposes: jest.fn(),
+    consentOnDecisionChangedSubscribe: jest.fn(),
+    consentOnDecisionChangedDispose: jest.fn(),
   },
 }));
 
@@ -94,6 +97,7 @@ function resetTealiumState() {
   const fresh = Tealium.dataLayer as any;
   fresh.eventEmitter.removeAllListeners('TealiumDataLayerUpdated');
   fresh.eventEmitter.removeAllListeners('TealiumDataLayerRemoved');
+  fresh.eventEmitter.removeAllListeners('TealiumConsentDecisionChanged');
   (Tealium as any)._dataLayer = null;
 }
 
@@ -229,7 +233,7 @@ describe('Tealium.isInitialized', () => {
 
 describe('Tealium.track', () => {
   it('calls native track with correct shape', async () => {
-    mockNative.track.mockResolvedValue(undefined);
+    mockNative.track.mockResolvedValue({ status: 'accepted', info: '', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } });
 
     await Tealium.track('button_click', 'event', { button_id: 'submit' });
 
@@ -241,13 +245,31 @@ describe('Tealium.track', () => {
   });
 
   it('defaults type to event', async () => {
-    mockNative.track.mockResolvedValue(undefined);
+    mockNative.track.mockResolvedValue({ status: 'accepted', info: '', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } });
 
     await Tealium.track('page_view');
 
     expect(mockNative.track).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'event' })
     );
+  });
+
+  it('returns mapped TrackResult', async () => {
+    mockNative.track.mockResolvedValue({ status: 'dropped', info: 'consent blocked', dispatch: { id: 'uuid-2', timestamp: 2000, payload: { k: 'v' } } });
+
+    const result = await Tealium.track('test_event');
+
+    expect(result.status).toBe('dropped');
+    expect(result.info).toBe('consent blocked');
+    expect(result.dispatch).toEqual({ id: 'uuid-2', timestamp: 2000, payload: { k: 'v' } });
+  });
+
+  it('maps unknown status to dropped', async () => {
+    mockNative.track.mockResolvedValue({ status: 'unknown', info: 'x', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } });
+
+    const result = await Tealium.track('test_event');
+
+    expect(result.status).toBe('dropped');
   });
 });
 
@@ -293,6 +315,16 @@ describe('DataLayerAPI.put', () => {
       'forever'
     );
     warn.mockRestore();
+  });
+
+  it('serializes { after: Date } expiry to epoch wire string', () => {
+    const date = new Date(1893456000 * 1000);
+    Tealium.dataLayer.put({ tok: 'abc' }, { after: date });
+
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
+      { tok: 'abc' },
+      'afterEpochSeconds:1893456000'
+    );
   });
 });
 
@@ -373,6 +405,58 @@ describe('DataLayerAPI typed getters', () => {
   });
 });
 
+// ── DataLayerAPI typed scalar getters ─────────────────────────────────────────
+
+describe('DataLayerAPI typed scalar getters', () => {
+  it('getString returns string value', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'string', value: 'hello' });
+
+    expect(await Tealium.dataLayer.getString('k')).toBe('hello');
+  });
+
+  it('getString returns null for non-string item', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'number', value: 42 });
+
+    expect(await Tealium.dataLayer.getString('k')).toBeNull();
+  });
+
+  it('getString returns null when key not found', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue(null);
+
+    expect(await Tealium.dataLayer.getString('k')).toBeNull();
+  });
+
+  it('getInt returns truncated integer', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'number', value: 3.9 });
+
+    expect(await Tealium.dataLayer.getInt('k')).toBe(3);
+  });
+
+  it('getInt returns null for non-number item', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'string', value: '5' });
+
+    expect(await Tealium.dataLayer.getInt('k')).toBeNull();
+  });
+
+  it('getDouble returns number value as-is', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'number', value: 3.14 });
+
+    expect(await Tealium.dataLayer.getDouble('k')).toBe(3.14);
+  });
+
+  it('getBoolean returns boolean value', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'boolean', value: true });
+
+    expect(await Tealium.dataLayer.getBoolean('k')).toBe(true);
+  });
+
+  it('getBoolean returns null for non-boolean item', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ type: 'number', value: 1 });
+
+    expect(await Tealium.dataLayer.getBoolean('k')).toBeNull();
+  });
+});
+
 // ── DataLayerAPI events ───────────────────────────────────────────────────────
 
 describe('DataLayerAPI event subscriptions', () => {
@@ -449,10 +533,23 @@ describe('TraceAPI', () => {
     expect(mockNative.traceLeave).toHaveBeenCalled();
   });
 
-  it('forceEndOfVisit calls native traceForceEndOfVisit', () => {
-    Tealium.trace.forceEndOfVisit();
+  it('forceEndOfVisit calls native and returns TrackResult', async () => {
+    mockNative.traceForceEndOfVisit.mockResolvedValue({ status: 'accepted', info: 'ok', dispatch: { id: 'uuid-3', timestamp: 3000, payload: { event: 'end_of_visit' } } });
+
+    const result = await Tealium.trace.forceEndOfVisit();
 
     expect(mockNative.traceForceEndOfVisit).toHaveBeenCalled();
+    expect(result.status).toBe('accepted');
+    expect(result.info).toBe('ok');
+    expect(result.dispatch).toEqual({ id: 'uuid-3', timestamp: 3000, payload: { event: 'end_of_visit' } });
+  });
+
+  it('forceEndOfVisit maps unknown status to dropped', async () => {
+    mockNative.traceForceEndOfVisit.mockResolvedValue({ status: 'something_else', info: 'x', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } });
+
+    const result = await Tealium.trace.forceEndOfVisit();
+
+    expect(result.status).toBe('dropped');
   });
 });
 
@@ -508,5 +605,124 @@ describe('ConsentAPI', () => {
     Tealium.consent.reset();
 
     expect(mockNative.consentReset).toHaveBeenCalled();
+  });
+
+  it('getAllPurposes forwards to consentGetAllPurposes', async () => {
+    mockNative.consentGetAllPurposes.mockResolvedValue([
+      'analytics',
+      'marketing',
+    ]);
+
+    const result = await Tealium.consent.getAllPurposes();
+
+    expect(mockNative.consentGetAllPurposes).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(['analytics', 'marketing']);
+  });
+
+  it('getAllPurposes returns null when native returns null', async () => {
+    mockNative.consentGetAllPurposes.mockResolvedValue(null);
+
+    const result = await Tealium.consent.getAllPurposes();
+
+    expect(result).toBeNull();
+  });
+});
+
+// ── ConsentAPI.onDecisionChanged ──────────────────────────────────────────────
+
+describe('ConsentAPI.onDecisionChanged', () => {
+  it('subscribes to native when first listener added', () => {
+    Tealium.consent.onDecisionChanged(() => {});
+
+    expect(mockNative.consentOnDecisionChangedSubscribe).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it('does not re-subscribe for a second listener', () => {
+    Tealium.consent.onDecisionChanged(() => {});
+    Tealium.consent.onDecisionChanged(() => {});
+
+    expect(mockNative.consentOnDecisionChangedSubscribe).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it('disposes native subscription when last listener is disposed', () => {
+    const sub = Tealium.consent.onDecisionChanged(() => {});
+    sub.dispose();
+
+    expect(mockNative.consentOnDecisionChangedDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not dispose while other listeners remain', () => {
+    const sub1 = Tealium.consent.onDecisionChanged(() => {});
+    Tealium.consent.onDecisionChanged(() => {});
+    sub1.dispose();
+
+    expect(mockNative.consentOnDecisionChangedDispose).not.toHaveBeenCalled();
+  });
+
+  it('dispose is idempotent', () => {
+    const sub = Tealium.consent.onDecisionChanged(() => {});
+    expect(sub.isDisposed).toBe(false);
+
+    sub.dispose();
+    expect(sub.isDisposed).toBe(true);
+
+    sub.dispose();
+    expect(mockNative.consentOnDecisionChangedDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shutdown disposes native consent subscription', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+    await Tealium.create(BASE_CONFIG);
+
+    Tealium.consent.onDecisionChanged(() => {});
+    Tealium.shutdown();
+
+    expect(mockNative.consentOnDecisionChangedDispose).toHaveBeenCalled();
+  });
+});
+
+// ── Tealium.create — consentConfiguration passthrough ─────────────────────────
+
+describe('Tealium.create consentConfiguration', () => {
+  it('passes consentConfiguration to native when cmpAdapter present', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+
+    await Tealium.create({
+      ...BASE_CONFIG,
+      cmpAdapter: { allPurposes: ['analytics', 'marketing'] },
+      consentConfiguration: {
+        tealiumPurposeId: 'analytics',
+        purposes: [{ purposeId: 'marketing', dispatcherIds: ['collect'] }],
+        refireDispatcherIds: ['collect'],
+      },
+    });
+
+    expect(mockNative.initialize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        consentConfiguration: {
+          tealiumPurposeId: 'analytics',
+          purposes: [{ purposeId: 'marketing', dispatcherIds: ['collect'] }],
+          refireDispatcherIds: ['collect'],
+        },
+      })
+    );
+  });
+
+  it('omits consentConfiguration from spec when cmpAdapter absent', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+
+    await Tealium.create({
+      ...BASE_CONFIG,
+      consentConfiguration: {
+        tealiumPurposeId: 'analytics',
+      },
+    });
+
+    const spec = mockNative.initialize.mock.calls[0]?.[0] as any;
+    expect(spec.consentConfiguration).toBeUndefined();
   });
 });

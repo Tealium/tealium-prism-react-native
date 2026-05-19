@@ -1,7 +1,9 @@
 package com.tealiumprismreactnative.trace
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.tealium.prism.core.api.Tealium
+import com.tealiumprismreactnative.datalayer.toRawWritableMap
 
 internal class TraceDelegate(private val getTealium: () -> Tealium?) {
 
@@ -15,8 +17,28 @@ internal class TraceDelegate(private val getTealium: () -> Tealium?) {
         getTealium()?.trace?.leave()
     }
 
-    fun forceEndOfVisit() {
-        getTealium()?.trace?.forceEndOfVisit()
+    fun forceEndOfVisit(promise: Promise) {
+        val teal = getTealium()
+        if (teal == null) { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        teal.trace.forceEndOfVisit().subscribe { result ->
+            val trackResult = result.getOrNull()
+            if (trackResult != null) {
+                val dispatch = trackResult.dispatch
+                val map = Arguments.createMap().apply {
+                    putString("status", trackResult.status.name.lowercase())
+                    putString("info", trackResult.info)
+                    putMap("dispatch", Arguments.createMap().apply {
+                        putString("id", dispatch.id)
+                        putDouble("timestamp", dispatch.timestamp.toDouble())
+                        putMap("payload", dispatch.payload().toRawWritableMap())
+                    })
+                }
+                promise.resolve(map)
+            } else {
+                val err = result.exceptionOrNull()
+                promise.reject("TRACE_ERROR", err?.message ?: "Force end of visit failed", err)
+            }
+        }
     }
 
     // MARK: - Visitor

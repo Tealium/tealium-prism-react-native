@@ -1,6 +1,7 @@
 package com.tealiumprismreactnative
 
 import android.app.Application
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -13,6 +14,7 @@ import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.data.DataObject
 import com.tealiumprismreactnative.bridge.toStringSet
 import com.tealiumprismreactnative.consent.BridgeCmpAdapter
+import com.tealiumprismreactnative.datalayer.toRawWritableMap
 import com.tealiumprismreactnative.consent.ConsentDelegate
 import com.tealiumprismreactnative.datalayer.DataLayerDelegate
 import com.tealiumprismreactnative.trace.TraceDelegate
@@ -34,13 +36,14 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         const val NAME = NativeTealiumPrismReactNativeSpec.NAME
         const val EVENT_DATA_LAYER_UPDATED = "TealiumDataLayerUpdated"
         const val EVENT_DATA_LAYER_REMOVED = "TealiumDataLayerRemoved"
+        const val EVENT_CONSENT_DECISION_CHANGED = "TealiumConsentDecisionChanged"
     }
 
     private var tealium: Tealium? = null
     private var bridgeCmpAdapter: BridgeCmpAdapter? = null
 
     private val dataLayer = DataLayerDelegate(getTealium = { tealium }, sendEvent = ::sendEvent)
-    private val consent = ConsentDelegate(getAdapter = { bridgeCmpAdapter })
+    private val consent = ConsentDelegate(getAdapter = { bridgeCmpAdapter }, sendEvent = ::sendEvent)
     private val trace = TraceDelegate(getTealium = { tealium })
 
     // ============================================
@@ -122,8 +125,31 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     cmpAdapterMap.getArray("allPurposes")?.let { arr ->
                         adapter.allPurposes = arr.toStringSet()
                     }
-                    configBuilder.enableConsentIntegration(adapter)
                     bridgeCmpAdapter = adapter
+
+                    // Use 2-arg enableConsentIntegration when programmatic consentConfiguration
+                    // provided. Otherwise plain adapter — purpose mapping comes from settings JSON.
+                    val consentCfgMap = config.getMap("consentConfiguration")
+                    val purposeId = consentCfgMap?.getString("tealiumPurposeId")
+                    if (consentCfgMap != null && purposeId != null) {
+                        configBuilder.enableConsentIntegration(adapter) { builder ->
+                            builder.setTealiumPurposeId(purposeId)
+                            consentCfgMap.getArray("purposes")?.let { purposesArr ->
+                                for (i in 0 until purposesArr.size()) {
+                                    val p = purposesArr.getMap(i) ?: continue
+                                    val purposeId = p.getString("purposeId") ?: continue
+                                    val dispIds = p.getArray("dispatcherIds")?.toStringSet() ?: continue
+                                    builder.addPurpose(purposeId, dispIds)
+                                }
+                            }
+                            consentCfgMap.getArray("refireDispatcherIds")?.toStringSet()?.let {
+                                builder.setRefireDispatcherIds(it)
+                            }
+                            builder
+                        }
+                    } else {
+                        configBuilder.enableConsentIntegration(adapter)
+                    }
                 }
             }
 
@@ -140,6 +166,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun shutdown() {
         dataLayer.onDataUpdatedDispose()
         dataLayer.onDataRemovedDispose()
+        consent.onDecisionChangedDispose()
         tealium?.shutdown()
         tealium = null
         bridgeCmpAdapter = null
@@ -167,8 +194,20 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 DataObject.EMPTY_OBJECT
             }
             teal.track(name, type, data).subscribe { result ->
-                if (result.isSuccess) promise.resolve(null)
-                else {
+                val trackResult = result.getOrNull()
+                if (trackResult != null) {
+                    val dispatch = trackResult.dispatch
+                    val map = Arguments.createMap().apply {
+                        putString("status", trackResult.status.name.lowercase())
+                        putString("info", trackResult.info)
+                        putMap("dispatch", Arguments.createMap().apply {
+                            putString("id", dispatch.id)
+                            putDouble("timestamp", dispatch.timestamp.toDouble())
+                            putMap("payload", dispatch.payload().toRawWritableMap())
+                        })
+                    }
+                    promise.resolve(map)
+                } else {
                     val err = result.exceptionOrNull()
                     promise.reject("TRACK_ERROR", err?.message ?: "Track dispatch failed", err)
                 }
@@ -213,6 +252,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     override fun consentSetDecision(decisionType: String, purposes: ReadableArray) = consent.setDecision(decisionType, purposes)
     override fun consentGetDecision(promise: Promise) = consent.getDecision(promise)
     override fun consentReset() = consent.reset()
+    override fun consentGetAllPurposes(promise: Promise) = consent.getAllPurposes(promise)
+    override fun consentOnDecisionChangedSubscribe() = consent.onDecisionChangedSubscribe()
+    override fun consentOnDecisionChangedDispose() = consent.onDecisionChangedDispose()
 
     // ============================================
     // Trace / Visitor / Deep Link — delegated
@@ -220,7 +262,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     override fun traceJoin(traceId: String) = trace.join(traceId)
     override fun traceLeave() = trace.leave()
-    override fun traceForceEndOfVisit() = trace.forceEndOfVisit()
+    override fun traceForceEndOfVisit(promise: Promise) = trace.forceEndOfVisit(promise)
     override fun resetVisitorId(promise: Promise) = trace.resetVisitorId(promise)
     override fun clearStoredVisitorIds(promise: Promise) = trace.clearStoredVisitorIds(promise)
     override fun deepLinkHandle(url: String, referrer: String?, promise: Promise) = trace.handle(url, referrer, promise)
