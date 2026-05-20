@@ -1,16 +1,18 @@
 # Tealium Prism React Native
 
-React Native wrapper for the Tealium Prism mobile SDKs (iOS and Android).
+React Native TurboModule bridge for the Tealium Prism mobile SDKs (iOS Swift and Android Kotlin). Exposes a unified TypeScript API for event tracking, data layer management, consent, trace sessions, and deep link attribution.
 
-Provides a unified TypeScript API for event tracking, data layer management, and visitor identity management.
+> **New Architecture only.** Requires React Native 0.85+ with TurboModules enabled.
 
 ## Features
 
-- **Initialization** - Promise-based SDK setup with configuration options
-- **Event Tracking** - Track views and events with custom data payloads
-- **Data Layer** - Persistent key-value storage with expiry options
-- **Trace** - Debug mode for real-time event monitoring
-- **Visitor Identity** - Manage visitor IDs and identity
+- **Initialization** — Promise-based setup with typed configuration
+- **Event and view tracking** — Returns a full `TrackResult` with dispatch metadata
+- **Persistent data layer** — Typed get/put/remove with expiry options and real-time subscriptions
+- **Consent management** — Bridge CMP adapter with purpose-level control
+- **Trace sessions** — Join/leave debug sessions for Tealium Event Stream Live
+- **Deep link attribution** — Forward incoming links for attribution and trace parameter extraction
+- **Visitor identity** — Reset or clear stored visitor IDs
 
 ## Installation
 
@@ -20,33 +22,28 @@ npm install tealium-prism-react-native
 yarn add tealium-prism-react-native
 ```
 
-### iOS Setup
+### iOS
 
 ```sh
 cd ios && pod install
 ```
 
-### Android Setup
+### Android
 
-No additional setup required - dependencies are automatically resolved via Gradle.
+No extra setup — Gradle resolves native SDK dependencies automatically.
 
 ## Quick Start
 
 ```typescript
 import Tealium from 'tealium-prism-react-native';
 
-// Initialize Tealium
 await Tealium.create({
   account: 'your-account',
   profile: 'your-profile',
-  environment: 'dev', // 'dev', 'qa', or 'prod'
-  logLevel: 'debug',  // optional
+  environment: 'prod',
 });
 
-// Track a view
 await Tealium.track('home_screen', 'view', { category: 'main' });
-
-// Track an event
 await Tealium.track('button_click', 'event', { button_id: 'submit' });
 ```
 
@@ -55,161 +52,180 @@ await Tealium.track('button_click', 'event', { button_id: 'submit' });
 ### Initialization
 
 ```typescript
-// Create instance with configuration
 const success = await Tealium.create({
-  account: 'your-account',
-  profile: 'your-profile',
-  environment: 'dev', // 'dev' | 'qa' | 'prod'
-  dataSource: 'abc123',       // optional
-  logLevel: 'debug',          // optional: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+  account: 'your-account',           // required
+  profile: 'your-profile',           // required
+  environment: 'dev',                // 'dev' | 'qa' | 'prod'
+  dataSource: 'abc123',              // optional
+  logLevel: 'debug',                 // 'trace'|'debug'|'info'|'warn'|'error'|'silent'
+  existingVisitorId: 'abc',          // optional: supply a known visitor ID
+  visitorIdentityKey: 'email',       // optional: data layer key used as identity signal
+  maxQueueSize: 100,                 // default: 100
+  queueExpirationSeconds: 86400,     // default: 86400 (1 day)
+  refreshIntervalSeconds: 900,       // default: 900 (15 min)
+  sessionTimeoutSeconds: 300,        // default: 300 (5 min); clamped 5s–30m
 });
 
-// Check initialization status
-const isInit = await Tealium.isInitialized();
-const isReady = Tealium.isReady; // Synchronous check
+const initialized = await Tealium.isInitialized(); // authoritative async check
+const ready = Tealium.isReady;                      // synchronous local flag
 
-// Shutdown
-Tealium.shutdown();
+await Tealium.shutdown();
 ```
 
 ### Tracking
 
 ```typescript
-// Track a view
-await Tealium.track('screen_name', 'view', { key: 'value' });
+const result = await Tealium.track('screen_name', 'view', { key: 'value' });
+// result: { status: 'accepted' | 'dropped', info: string, dispatch: Dispatch }
 
-// Track an event (type defaults to 'event')
 await Tealium.track('event_name', 'event', { key: 'value' });
+await Tealium.track('user_login'); // type defaults to 'event'
 
-// Simple event without data
-await Tealium.track('user_login');
-
-// Flush queued events
 await Tealium.flushEventQueue();
 ```
 
 ### Data Layer
 
 ```typescript
-// Add data with expiry
-Tealium.dataLayer.put({
-  user_id: '12345',
-  user_type: 'premium',
-}, 'session'); // 'session', 'forever', or 'untilRestart'
+// Write — multi-key, atomic on the native side
+await Tealium.dataLayer.put({ user_id: '123', user_type: 'premium' }, 'session');
+// Expiry: 'session' | 'forever' | 'untilRestart' | { after: Date }
 
-// Get data
-const value = await Tealium.dataLayer.get('user_id');
+// Read — typed accessors
+const item    = await Tealium.dataLayer.getDataItem('user_id'); // { type, value }
+const str     = await Tealium.dataLayer.getString('user_id');
+const num     = await Tealium.dataLayer.getDouble('score');
+const flag    = await Tealium.dataLayer.getBoolean('opted_in');
+const list    = await Tealium.dataLayer.getDataList('tags');
+const obj     = await Tealium.dataLayer.getDataObject('metadata');
+const all     = await Tealium.dataLayer.getAll();
 
-// Get all data
-const allData = await Tealium.dataLayer.getAll();
-
-// Remove data
-Tealium.dataLayer.remove('user_id');
-Tealium.dataLayer.remove(['user_id', 'user_type']); // Multiple keys
+// Remove
+await Tealium.dataLayer.remove('user_id');
+await Tealium.dataLayer.remove(['user_id', 'user_type']); // batched, atomic
+await Tealium.dataLayer.clear();
 ```
 
-### Trace (Debugging)
+### Data Layer Subscriptions
 
 ```typescript
-// Join a trace session
-Tealium.trace.join('your-trace-id');
-
-// Force end of visit (for testing visit-level calculations)
-Tealium.trace.forceEndOfVisit();
-
-// Leave trace
-Tealium.trace.leave();
-```
-
-### Visitor Identity
-
-```typescript
-// Reset visitor ID (generates new anonymous ID)
-const newId = await Tealium.resetVisitorId();
-
-// Clear all stored visitor IDs
-const freshId = await Tealium.clearStoredVisitorIds();
-```
-
-### Transactional Data Layer
-
-Atomic read-modify-write across multiple keys in a single native call.
-
-```typescript
-await Tealium.dataLayer.transactionally(
-  (ctx) => {
-    ctx.put('key1', 'value1', 'session');
-    ctx.put('key2', 'value2', 'forever');
-    ctx.remove('key3');
-    const count = (ctx.get('counter') as number) ?? 0;
-    ctx.put('counter', count + 1, 'forever');
-  },
-  ['counter'] // keys to pre-read before the transaction
-);
-```
-
-### Data Layer Events
-
-Subscribe to real-time data layer changes.
-
-```typescript
-// Subscribe to updates
-const sub = Tealium.dataLayer.onUpdated((data) => {
+// Subscribe — returns Disposable
+const sub = Tealium.dataLayer.onDataUpdated((data) => {
   console.log('Updated keys:', Object.keys(data));
 });
 
-// Subscribe to removals
-const sub2 = Tealium.dataLayer.onRemoved((keys) => {
+const sub2 = Tealium.dataLayer.onDataRemoved((keys) => {
   console.log('Removed keys:', keys);
 });
 
 // Unsubscribe
-sub.remove();
-sub2.remove();
+sub.dispose();
+sub2.dispose();
 ```
+
+Native emission starts on first subscriber and stops when the last one disposes. Subscriptions are ref-counted automatically.
 
 ### Consent
 
+Consent management requires `cmpAdapter` in the config. All consent methods reject with `CONSENT_NOT_ENABLED` if it is not provided.
+
 ```typescript
-// Set consent decision
-Tealium.consent.setDecision('explicit', ['analytics', 'marketing']);
-Tealium.consent.setDecision('implicit', ['analytics']);
+await Tealium.create({
+  // ...
+  cmpAdapter: {
+    id: 'my-cmp',                       // optional, default: 'react-native-bridge'
+    allPurposes: ['analytics', 'ads'],  // optional
+    defaultDecision: {
+      decisionType: 'implicit',
+      purposes: ['analytics'],
+    },
+  },
+  consentConfiguration: {
+    tealiumPurposeId: 'tealium',        // required when using consent
+    purposes: [
+      { purposeId: 'analytics', dispatcherIds: ['collect'] },
+    ],
+    refireDispatcherIds: ['collect'],
+  },
+});
 
-// Get current consent decision
+await Tealium.consent.setDecision('explicit', ['analytics', 'ads']);
+
 const decision = await Tealium.consent.getDecision();
-// decision: { decisionType: 'explicit', purposes: ['analytics', 'marketing'] } | null
+// { decisionType: 'explicit', purposes: ['analytics', 'ads'] } | null
 
-// Reset consent
-Tealium.consent.reset();
+const purposes = await Tealium.consent.getAllPurposes();
+
+await Tealium.consent.reset(); // revokes consent, clears stored decision
+
+// Subscribe to changes
+const sub = Tealium.consent.onDecisionChanged((decision) => {
+  console.log('Consent changed:', decision);
+});
+sub.dispose();
+```
+
+Decisions are persisted across app restarts (UserDefaults on iOS, SharedPreferences on Android).
+
+### Trace
+
+All trace methods return `Promise` so errors (e.g. joining while not initialized) are observable.
+
+```typescript
+await Tealium.trace.join('your-trace-id');
+
+const result = await Tealium.trace.forceEndOfVisit(); // TrackResult
+
+await Tealium.trace.leave();
 ```
 
 ### Deep Links
 
 ```typescript
-// Handle incoming deep link (call from Linking event listener)
+// Call from your Linking event listener
 const handled = await Tealium.deepLink.handle(url, referrer);
 ```
 
-## Types
+### Visitor Identity
 
 ```typescript
-type Environment = 'dev' | 'qa' | 'prod';
-type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
-type Expiry = 'session' | 'forever' | 'untilRestart';
+const newId   = await Tealium.resetVisitorId();        // new anonymous ID
+const freshId = await Tealium.clearStoredVisitorIds(); // wipe all stored IDs
+```
+
+## Key Types
+
+```typescript
+type Environment  = 'dev' | 'qa' | 'prod';
+type LogLevel     = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
+type Expiry       = 'session' | 'forever' | 'untilRestart' | { after: Date };
+
+interface TrackResult {
+  status: 'accepted' | 'dropped';
+  info: string;
+  dispatch: Dispatch;
+}
+
+interface Dispatch {
+  id: string;
+  timestamp: number; // ms since epoch
+  payload: Record<string, unknown>;
+}
+
+interface Disposable {
+  readonly isDisposed: boolean;
+  dispose(): void;
+}
 ```
 
 ## Example App
 
-See the [example](./example) directory for a complete React Native app demonstrating all features.
-
-To run the example:
+See [example/](./example) for a complete app demonstrating all features.
 
 ```sh
-# Install dependencies
 yarn install
 
 # iOS
-cd example/ios && pod install && cd ..
 yarn example ios
 
 # Android
@@ -218,37 +234,51 @@ yarn example android
 
 ## Development
 
-### Building
-
 ```sh
-# Type check
-yarn typecheck
-
-# Lint
-yarn lint
-
-# Build
-yarn prepare
+yarn typecheck   # TypeScript check
+yarn lint        # ESLint
+yarn test        # Jest
+yarn prepare     # Build → lib/
 ```
+
+## Requirements
+
+| | Minimum |
+|---|---|
+| React Native | 0.85.0 (New Architecture) |
+| iOS | 15.1 |
+| Android API | 24 |
+| Node.js | 20 |
+
+## Roadmap
+
+### Planned separate packages
+
+| Package | Status | Notes |
+|---|---|---|
+| `tealium-prism-lifecycle-react-native` | Planned | Auto-tracking of app foreground/background lifecycle events |
+| `tealium-prism-moments-api-react-native` | Planned | MomentsAPI — no shared state with core, self-contained |
+
+### Not bridged in this package
+
+| Feature | Reason |
+|---|---|
+| `addBarrier()` | Requires native `BarrierFactory` objects that cannot be serialized as JS config |
+| `addLoadRule()` | Requires native `Rule<Condition>` objects that cannot be serialized as JS config |
+| `addTransformation()` | Requires native `TransformationSettings` objects that cannot be serialized as JS config |
+| `setLogHandler()` | Requires a native→JS callback held open indefinitely; no clear bridging strategy yet |
+| `DataLayer.transactionally(block)` | Native API requires a synchronous callback holding the Tealium thread. TurboModule cannot make a synchronous round-trip into JS while holding that lock — any async approach either deadlocks or closes the editor before JS responds. Multi-key `put({...})` already commits atomically on the native side. |
+| `DataLayer.getLong()` | JS `number` is IEEE-754 double; values above 2^53 lose precision regardless of the method used. `getDouble` covers the representable range. |
+| `Tealium.key` (Kotlin only) | Internal instance lookup key. JS supplies config directly at `create()` time and has no use for it. Not exposed on iOS either. |
+| `TealiumConfig.addModule()` | Allows injecting custom native modules at config time. Requires passing native `ModuleFactory` objects across the bridge — no serialization strategy defined yet. |
 
 ## Native SDKs
 
 | SDK | Platform |
-|-----|----------|
+|---|---|
 | [Tealium Prism Swift](https://github.com/Tealium/tealium-prism-swift) | iOS |
 | [Tealium Prism Kotlin](https://github.com/Tealium/tealium-prism-kotlin) | Android |
-
-## Requirements
-
-- React Native 0.83.0+ (New Architecture only)
-- iOS 15.1+
-- Android API 24+
-- Node.js 20+
 
 ## License
 
 MIT
-
----
-
-Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
