@@ -28,8 +28,8 @@ jest.mock('../NativeTealiumPrismReactNative', () => ({
     dataLayerOnDataRemovedDispose: jest.fn(),
     addListener: jest.fn(),
     removeListeners: jest.fn(),
-    traceJoin: jest.fn(),
-    traceLeave: jest.fn(),
+    traceJoin: jest.fn().mockResolvedValue(undefined),
+    traceLeave: jest.fn().mockResolvedValue(undefined),
     traceForceEndOfVisit: jest.fn().mockResolvedValue({ status: 'accepted', info: '', dispatch: { id: 'uuid-1', timestamp: 1000, payload: {} } }),
     deepLinkHandle: jest.fn(),
     consentSetDecision: jest.fn(),
@@ -521,14 +521,14 @@ describe('DataLayerAPI event subscriptions', () => {
 // ── TraceAPI ──────────────────────────────────────────────────────────────────
 
 describe('TraceAPI', () => {
-  it('join calls native traceJoin', () => {
-    Tealium.trace.join('abc123');
+  it('join calls native traceJoin and returns Promise', async () => {
+    await Tealium.trace.join('abc123');
 
     expect(mockNative.traceJoin).toHaveBeenCalledWith('abc123');
   });
 
-  it('leave calls native traceLeave', () => {
-    Tealium.trace.leave();
+  it('leave calls native traceLeave and returns Promise', async () => {
+    await Tealium.trace.leave();
 
     expect(mockNative.traceLeave).toHaveBeenCalled();
   });

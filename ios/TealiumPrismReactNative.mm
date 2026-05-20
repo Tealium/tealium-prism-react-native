@@ -288,12 +288,21 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 
 // MARK: - Trace
 
-- (void)traceJoin:(NSString *)traceId {
-    [[TealiumPrismBridge shared] joinWithTraceId:traceId];
+- (void)traceJoin:(NSString *)traceId
+          resolve:(RCTPromiseResolveBlock)resolve
+           reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] joinWithTraceId:traceId completion:^(NSError *error) {
+        if (error) { reject(@"TRACE_ERROR", error.localizedDescription, error); }
+        else { resolve(nil); }
+    }];
 }
 
-- (void)traceLeave {
-    [[TealiumPrismBridge shared] leave];
+- (void)traceLeave:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] leaveWithCompletion:^(NSError *error) {
+        if (error) { reject(@"TRACE_ERROR", error.localizedDescription, error); }
+        else { resolve(nil); }
+    }];
 }
 
 - (void)traceForceEndOfVisit:(RCTPromiseResolveBlock)resolve

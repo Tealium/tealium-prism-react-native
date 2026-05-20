@@ -352,26 +352,26 @@ class TealiumHelper {
   /**
    * Join a trace session (e.g. for Tealium iQ debugging).
    */
-  joinTrace(traceId: string): void {
+  async joinTrace(traceId: string): Promise<void> {
     if (!this._isEnabled) {
       console.warn('[TealiumHelper] Not initialized, skipping joinTrace');
       return;
     }
 
     console.log('[TealiumHelper] Joining trace:', traceId);
-    Tealium.trace.join(traceId);
+    return Tealium.trace.join(traceId);
   }
 
   /**
    * Leave the current trace session.
    */
-  leaveTrace(): void {
+  async leaveTrace(): Promise<void> {
     if (!this._isEnabled) {
       return;
     }
 
     console.log('[TealiumHelper] Leaving trace');
-    Tealium.trace.leave();
+    return Tealium.trace.leave();
   }
 
   /**

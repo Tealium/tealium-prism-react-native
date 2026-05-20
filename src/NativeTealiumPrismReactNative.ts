@@ -251,12 +251,12 @@ export interface Spec extends TurboModule {
    * Join a trace session for debugging.
    * @param traceId - The trace ID to join
    */
-  traceJoin(traceId: string): void;
+  traceJoin(traceId: string): Promise<void>;
 
   /**
    * Leave the current trace session.
    */
-  traceLeave(): void;
+  traceLeave(): Promise<void>;
 
   /**
    * Force end of visitor session for trace purposes.

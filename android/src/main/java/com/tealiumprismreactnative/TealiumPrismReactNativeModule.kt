@@ -260,8 +260,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Trace / Visitor / Deep Link — delegated
     // ============================================
 
-    override fun traceJoin(traceId: String) = trace.join(traceId)
-    override fun traceLeave() = trace.leave()
+    override fun traceJoin(traceId: String, promise: Promise) = trace.join(traceId, promise)
+    override fun traceLeave(promise: Promise) = trace.leave(promise)
     override fun traceForceEndOfVisit(promise: Promise) = trace.forceEndOfVisit(promise)
     override fun resetVisitorId(promise: Promise) = trace.resetVisitorId(promise)
     override fun clearStoredVisitorIds(promise: Promise) = trace.clearStoredVisitorIds(promise)

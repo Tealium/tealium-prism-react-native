@@ -23,8 +23,8 @@ export class TraceAPI {
    * Tealium.trace.join('abc123');
    * ```
    */
-  join(id: string): void {
-    NativeTealiumPrism.traceJoin(id);
+  join(id: string): Promise<void> {
+    return NativeTealiumPrism.traceJoin(id);
   }
 
   /**
@@ -32,8 +32,8 @@ export class TraceAPI {
    *
    * Stops adding the trace ID to future events.
    */
-  leave(): void {
-    NativeTealiumPrism.traceLeave();
+  leave(): Promise<void> {
+    return NativeTealiumPrism.traceLeave();
   }
 
   /**

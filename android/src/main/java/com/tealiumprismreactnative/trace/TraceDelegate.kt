@@ -9,12 +9,22 @@ internal class TraceDelegate(private val getTealium: () -> Tealium?) {
 
     // MARK: - Trace
 
-    fun join(traceId: String) {
-        getTealium()?.trace?.join(traceId)
+    fun join(traceId: String, promise: Promise) {
+        val teal = getTealium()
+        if (teal == null) { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        teal.trace.join(traceId).subscribe { result ->
+            result.onSuccess { promise.resolve(null) }
+                  .onFailure { err -> promise.reject("TRACE_ERROR", err.message ?: "Failed to join trace", err) }
+        }
     }
 
-    fun leave() {
-        getTealium()?.trace?.leave()
+    fun leave(promise: Promise) {
+        val teal = getTealium()
+        if (teal == null) { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        teal.trace.leave().subscribe { result ->
+            result.onSuccess { promise.resolve(null) }
+                  .onFailure { err -> promise.reject("TRACE_ERROR", err.message ?: "Failed to leave trace", err) }
+        }
     }
 
     fun forceEndOfVisit(promise: Promise) {

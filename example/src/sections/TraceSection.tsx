@@ -10,17 +10,17 @@ interface Props {
 export const TraceSection: React.FC<Props> = ({ showToast }) => {
   const [traceId, setTraceId] = useState('demo-trace');
 
-  const handleJoinTrace = useCallback(() => {
+  const handleJoinTrace = useCallback(async () => {
     if (!traceId) {
       showToast('Please enter a trace ID');
       return;
     }
-    TealiumHelper.joinTrace(traceId);
+    await TealiumHelper.joinTrace(traceId);
     showToast(`Joined trace: ${traceId}`);
   }, [traceId, showToast]);
 
-  const handleLeaveTrace = useCallback(() => {
-    TealiumHelper.leaveTrace();
+  const handleLeaveTrace = useCallback(async () => {
+    await TealiumHelper.leaveTrace();
     showToast('Left trace session');
   }, [showToast]);
 

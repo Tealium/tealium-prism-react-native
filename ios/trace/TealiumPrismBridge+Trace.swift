@@ -10,12 +10,34 @@ extension TealiumPrismBridge {
 
     // MARK: - Trace
 
-    @objc public func join(traceId: String) {
-        tealium?.trace.join(id: traceId)
+    @objc public func join(traceId: String, completion: @escaping (Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.trace.join(id: traceId).subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(nil)
+                case .failure(let err): completion(err)
+                }
+            }
+        }
     }
 
-    @objc public func leave() {
-        tealium?.trace.leave()
+    @objc public func leave(completion: @escaping (Error?) -> Void) {
+        guard let tealium = tealium else {
+            completion(NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            return
+        }
+        tealium.trace.leave().subscribe { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success: completion(nil)
+                case .failure(let err): completion(err)
+                }
+            }
+        }
     }
 
     @objc public func forceEndOfVisit(completion: @escaping (NSDictionary?, Error?) -> Void) {
