@@ -147,9 +147,7 @@ export const DataLayerSection: React.FC<Props> = ({
       showToast('DataLayer events disabled');
     } else {
       dataUpdateSub.current = TealiumHelper.onDataUpdated((data) => {
-        showStreamToast(
-          `[onDataUpdated] ${Object.keys(data).join(', ')}`
-        );
+        showStreamToast(`[onDataUpdated] ${Object.keys(data).join(', ')}`);
       });
       dataRemoveSub.current = TealiumHelper.onDataRemoved((keys) => {
         showStreamToast(`[onDataRemoved] ${keys.join(', ')}`);
@@ -157,7 +155,7 @@ export const DataLayerSection: React.FC<Props> = ({
       setEventsEnabled(true);
       showToast('DataLayer events enabled');
     }
-  }, [eventsEnabled, showToast]);
+  }, [eventsEnabled, showToast, showStreamToast]);
 
   return (
     <>
@@ -168,8 +166,8 @@ export const DataLayerSection: React.FC<Props> = ({
           color={eventsEnabled ? '#dc3545' : '#28a745'}
         />
         <Text style={styles.helperText}>
-          Subscribes to dataLayer.onDataUpdated / onDataRemoved streams.
-          Native callbacks fire a blue toast at the top of the screen.
+          Subscribes to dataLayer.onDataUpdated / onDataRemoved streams. Native
+          callbacks fire a blue toast at the top of the screen.
         </Text>
       </Section>
 

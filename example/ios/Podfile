@@ -19,10 +19,9 @@ end
 target 'TealiumPrismReactNativeExample' do
   config = use_native_modules!
 
-  # Tealium Prism SDK - Local development (same layout as Android includeBuild)
+  # Tealium Prism Swift SDK - mirrors version declared in TealiumPrismReactNative.podspec
   # https://github.com/Tealium/tealium-prism-swift
-  # Path: example/ios -> ../.. = repo root -> .. = parent dir -> tealium-prism-swift
-  pod 'tealium-prism', :path => '../../../tealium-prism-swift'
+  pod 'tealium-prism', :git => 'https://github.com/Tealium/tealium-prism-swift', :tag => '0.4.0'
 
   use_react_native!(
     :path => config[:reactNativePath],

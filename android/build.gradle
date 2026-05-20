@@ -75,6 +75,4 @@ dependencies {
   // Tealium Prism Kotlin SDK
   // https://github.com/Tealium/tealium-prism-kotlin
   implementation "com.tealium.prism:prism-core:0.4.0"
-  implementation "com.tealium.prism:prism-lifecycle:0.3.0"
-  implementation "com.tealium.prism:prism-moments-api:0.2.0"
 }

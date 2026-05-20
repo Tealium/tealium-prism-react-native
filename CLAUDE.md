@@ -40,13 +40,13 @@ TypeScript API (src/)
 
 ### Project Layout
 
-- **`src/index.tsx`** — The `Tealium` singleton class. Owns lazy-initialized sub-API instances and the `NativeEventEmitter` for data layer events. All public API surface lives here.
+- **`src/index.tsx`** — The `Tealium` singleton class. Owns lazy-initialized sub-API instances and the `NativeEventEmitter`. Core methods (`create`, `shutdown`, `track`, `flushEventQueue`, `resetVisitorId`, `clearStoredVisitorIds`) live directly on this class; domain-specific methods live in sub-APIs.
 - **`src/NativeTealiumPrismReactNative.ts`** — TurboModule specification. Every native method must be declared here as the JS↔Native contract.
 - **`src/types.ts`** — All shared TypeScript types (`TealiumConfig`, `EngineResponse`, `Expiry`, etc.).
-- **`src/api/`** — Sub-API classes (`DataLayerAPI`, `TraceAPI`, `DeepLinkAPI`, `LifecycleAPI`, `MomentsAPI`, `ConsentAPI`). Each wraps a slice of the native module interface.
+- **`src/api/`** — Sub-API classes (`DataLayerAPI`, `TraceAPI`, `DeepLinkAPI`, `ConsentAPI`). Each wraps a slice of the native module interface.
 - **`ios/TealiumPrismReactNative.mm`** — Objective-C++ TurboModule entry point. Registers the module, defines supported events and constants, and delegates to the Swift bridge.
-- **`ios/TealiumPrismBridge.swift`** — Swift implementation. Maps JS types to native Tealium SDK types and calls the Prism Swift SDK.
-- **`android/.../TealiumPrismReactNativeModule.kt`** — Kotlin implementation. Extends the generated `NativeTealiumPrismReactNativeSpec`.
+- **`ios/TealiumPrismBridge.swift`** — Swift bridge core (init, shutdown, track). Feature-specific logic lives in extensions: `TealiumPrismBridge+DataLayer.swift`, `TealiumPrismBridge+Consent.swift`, `TealiumPrismBridge+Trace.swift`. Helper files in `ios/datalayer/` and `ios/consent/` handle serialization and adapter logic.
+- **`android/.../TealiumPrismReactNativeModule.kt`** — Kotlin entry point. Extends `NativeTealiumPrismReactNativeSpec` and delegates feature logic to per-domain classes: `DataLayerDelegate.kt`, `ConsentDelegate.kt`, `TraceDelegate.kt` (in subdirs). Extensions in `bridge/`, `datalayer/`, `consent/` handle type conversions.
 - **`example/src/App.tsx`** — Full-featured demo exercising every API surface. Useful as a reference when adding new features.
 - **`lib/`** — Generated build output (ESM + TypeScript declarations). Never edit manually; produced by `yarn prepare`.
 
@@ -57,15 +57,14 @@ TypeScript API (src/)
 Tealium.dataLayer   // DataLayerAPI
 Tealium.trace       // TraceAPI
 Tealium.deepLink    // DeepLinkAPI
-Tealium.lifecycle   // LifecycleAPI
-Tealium.momentsAPI  // MomentsAPI
 Tealium.consent     // ConsentAPI
 ```
+Lifecycle and MomentsAPI are planned as separate packages (`tealium-prism-lifecycle-react-native`, `tealium-prism-moments-api-react-native`).
 Each sub-API holds a reference to the `NativeTealiumPrism` module and delegates calls to it.
 
 ### Native Event Emission
 
-Data layer change events (`TealiumDataLayerUpdated`, `TealiumDataLayerRemoved`) flow native→JS via `NativeEventEmitter`. Event name constants are defined in `TealiumEvents` in `src/types.ts`. The emitter is created once in `Tealium` and passed down to `DataLayerAPI`, which manages subscriptions via `addListener`/`removeListener`.
+Events (`TealiumDataLayerUpdated`, `TealiumDataLayerRemoved`, `TealiumConsentDecisionChanged`) flow native→JS via `NativeEventEmitter`. Event name constants are defined in `TealiumEvents` in `src/types.ts`. The emitter is created once in `Tealium` and passed to `DataLayerAPI` and `ConsentAPI`, which manage subscriptions via reference-counted `subscribe`/`dispose` calls on the native module.
 
 ### Adding a New Native Method
 
@@ -83,14 +82,14 @@ This is a **Yarn workspaces monorepo**: root = library, `example/` = separate wo
 
 ### Gotchas
 
-- **Data layer `put()` dispatches by JS type.** `DataLayerAPI.put()` inspects the value at runtime and calls the corresponding typed native method (`setDataLayerString`, `setDataLayerNumber`, etc.). Homogeneous arrays use typed methods; heterogeneous (mixed) arrays use `setDataLayerList` which converts each element individually on the native side.
-- **Event subscriptions are auto-managed.** `DataLayerAPI` reference-counts listeners and calls `enableDataLayerEvents()` / `disableDataLayerEvents()` on the native module automatically when the first subscriber is added or last removed.
+- **Data layer `put()` sends a whole record.** `DataLayerAPI.put()` forwards the entire key-value map to a single native `dataLayerPut()` call. There is no per-type dispatch.
+- **Event subscriptions are auto-managed.** `DataLayerAPI` and `ConsentAPI` reference-count listeners and call native `*Subscribe()` / `*Dispose()` methods automatically when the first subscriber is added or last removed.
 - **`shutdown()` nullifies sub-API instances.** Any references captured before `shutdown()` (e.g. `const dl = Tealium.dataLayer`) will point to stale objects after shutdown.
 - **`create()` injects plugin metadata.** After `initialize()`, `Tealium.create()` auto-sets `plugin_name` and `plugin_version` in the data layer.
-- **Transactional data layer.** `DataLayerAPI.transactionally()` enables atomic multi-key read-modify-write operations via a `TransactionContext` callback. Operations are batched and sent to native in a single call.
+- **Transactional data layer is NOT bridged.** The native `transactionally()` API requires a synchronous callback on the Tealium thread which TurboModule cannot provide. Multi-key `put({...})` and `remove([...])` are atomic on the native side and cover realistic batched-write use cases.
 
 ### Platform Requirements
 
 - iOS 15.1+ (set by RN's `min_ios_version_supported`), Xcode with Swift support, CocoaPods (`TealiumPrismReactNative.podspec`)
-- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK modules: `prism-core:0.4.0`, `prism-lifecycle:0.3.0`, `prism-moments-api:0.2.0`
-- React Native 0.83+, Node 20+
+- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK module: `prism-core:0.4.0`
+- React Native 0.85+, Node 20+
