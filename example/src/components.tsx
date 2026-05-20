@@ -36,17 +36,19 @@ export const Button: React.FC<ButtonProps> = ({
   </TouchableOpacity>
 );
 
-export const Section: React.FC<{ title: string; children: React.ReactNode }> =
-  ({ title, children }) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionLine} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.sectionLine} />
-      </View>
-      {children}
+export const Section: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionLine} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionLine} />
     </View>
-  );
+    {children}
+  </View>
+);
 
 export const TOAST_DURATION_MS = 3000;
 
@@ -55,11 +57,17 @@ export const Snackbar: React.FC<{
   visible: boolean;
   opacity: Animated.Value;
   translateY: Animated.Value;
-}> = ({ message, visible, opacity, translateY }) => {
+  variant?: 'action' | 'stream';
+}> = ({ message, visible, opacity, translateY, variant = 'action' }) => {
   if (!visible || !message) return null;
+  const isStream = variant === 'stream';
   return (
     <Animated.View
-      style={[styles.snackbar, { opacity, transform: [{ translateY }] }]}
+      style={[
+        styles.snackbar,
+        isStream && styles.snackbarStream,
+        { opacity, transform: [{ translateY }] },
+      ]}
       pointerEvents="none"
     >
       <Text style={styles.snackbarText} numberOfLines={10}>
@@ -95,6 +103,11 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 6,
+  },
+  snackbarStream: {
+    bottom: undefined,
+    top: Platform.select({ ios: 60, android: 40 }),
+    backgroundColor: '#1565C0',
   },
   snackbarText: {
     color: '#fff',

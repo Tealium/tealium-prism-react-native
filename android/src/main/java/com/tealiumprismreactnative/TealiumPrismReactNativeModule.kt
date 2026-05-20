@@ -8,10 +8,12 @@ import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.ReadableType
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.tealium.prism.core.api.Modules
 import com.tealium.prism.core.api.Tealium
 import com.tealium.prism.core.api.TealiumConfig
 import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.data.DataObject
+import com.tealium.prism.core.api.modules.ModuleFactory
 import com.tealiumprismreactnative.bridge.toStringSet
 import com.tealiumprismreactnative.consent.BridgeCmpAdapter
 import com.tealiumprismreactnative.datalayer.toRawWritableMap
@@ -70,9 +72,16 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 else -> Environment.DEV
             }
 
+            // Default factories registered by Modules.defaultModules pass null
+            // enforcedSettings, meaning trace/deepLink only initialize if local
+            // or remote settings provide them. JS callers expect these always
+            // available, so register them explicitly with default settings.
             val configBuilder = TealiumConfig.Builder(
                 application = application,
-                modules = emptyList(),
+                modules = listOf(
+                    Modules.trace(),
+                    Modules.deepLink()
+                ),
                 accountName = account,
                 profileName = profile,
                 environment = environment
@@ -163,13 +172,14 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    override fun shutdown() {
+    override fun shutdown(promise: Promise) {
         dataLayer.onDataUpdatedDispose()
         dataLayer.onDataRemovedDispose()
         consent.onDecisionChangedDispose()
         tealium?.shutdown()
         tealium = null
         bridgeCmpAdapter = null
+        promise.resolve(null)
     }
 
     override fun isInitialized(promise: Promise) {
@@ -232,12 +242,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Data Layer — delegated
     // ============================================
 
-    override fun dataLayerPut(record: ReadableMap, expiry: String) = dataLayer.put(record, expiry)
+    override fun dataLayerPut(record: ReadableMap, expiry: String, promise: Promise) = dataLayer.put(record, expiry, promise)
     override fun dataLayerGetDataItem(key: String, promise: Promise) = dataLayer.getDataItem(key, promise)
     override fun dataLayerGetDataList(key: String, promise: Promise) = dataLayer.getDataList(key, promise)
     override fun dataLayerGetDataObject(key: String, promise: Promise) = dataLayer.getDataObject(key, promise)
-    override fun dataLayerRemove(key: String) = dataLayer.remove(key)
-    override fun dataLayerRemoveKeys(keys: ReadableArray) = dataLayer.removeKeys(keys)
+    override fun dataLayerRemove(key: String, promise: Promise) = dataLayer.remove(key, promise)
+    override fun dataLayerRemoveKeys(keys: ReadableArray, promise: Promise) = dataLayer.removeKeys(keys, promise)
     override fun dataLayerClear(promise: Promise) = dataLayer.clear(promise)
     override fun dataLayerGetAll(promise: Promise) = dataLayer.getAll(promise)
     override fun dataLayerOnDataUpdatedSubscribe() = dataLayer.onDataUpdatedSubscribe()
@@ -249,9 +259,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Consent — delegated
     // ============================================
 
-    override fun consentSetDecision(decisionType: String, purposes: ReadableArray) = consent.setDecision(decisionType, purposes)
+    override fun consentSetDecision(decisionType: String, purposes: ReadableArray, promise: Promise) = consent.setDecision(decisionType, purposes, promise)
     override fun consentGetDecision(promise: Promise) = consent.getDecision(promise)
-    override fun consentReset() = consent.reset()
+    override fun consentReset(promise: Promise) = consent.reset(promise)
     override fun consentGetAllPurposes(promise: Promise) = consent.getAllPurposes(promise)
     override fun consentOnDecisionChangedSubscribe() = consent.onDecisionChangedSubscribe()
     override fun consentOnDecisionChangedDispose() = consent.onDecisionChangedDispose()

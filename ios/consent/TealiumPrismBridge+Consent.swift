@@ -26,10 +26,25 @@ extension TealiumPrismBridge {
 
     // MARK: - Consent
 
-    @objc public func setDecision(decisionType: String, purposes: [String]) {
-        guard let adapter = bridgeCMPAdapter,
-              let type = ConsentDecision.DecisionType(rawValue: decisionType.lowercased()) else { return }
+    @objc public func setDecision(decisionType: String, purposes: [String], completion: @escaping (Bool, Error?) -> Void) {
+        guard let adapter = bridgeCMPAdapter else {
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Consent integration not enabled"]))
+            return
+        }
+        guard let type = ConsentDecision.DecisionType(rawValue: decisionType.lowercased()) else {
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid decisionType: \(decisionType)"]))
+            return
+        }
         adapter.update(decision: ConsentDecision(decisionType: type, purposes: Set(purposes)))
+        completion(true, nil)
     }
 
     @objc public func getDecision(completion: @escaping (NSDictionary?) -> Void) {
@@ -40,8 +55,17 @@ extension TealiumPrismBridge {
         completion(decision.toDictionary() as NSDictionary)
     }
 
-    @objc public func reset() {
-        bridgeCMPAdapter?.reset()
+    @objc public func reset(completion: @escaping (Bool, Error?) -> Void) {
+        guard let adapter = bridgeCMPAdapter else {
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Consent integration not enabled"]))
+            return
+        }
+        adapter.reset()
+        completion(true, nil)
     }
 
     @objc public func getAllPurposes(completion: @escaping (NSArray?) -> Void) {

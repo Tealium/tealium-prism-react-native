@@ -48,11 +48,7 @@ export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
  * Mirrors native: `case after(Date)` (Swift) / `Expiry.After` (Kotlin).
  * For relative expiry use `new Date(Date.now() + n * 1000)`.
  */
-export type Expiry =
-  | 'session'
-  | 'forever'
-  | 'untilRestart'
-  | { after: Date };
+export type Expiry = 'session' | 'forever' | 'untilRestart' | { after: Date };
 
 /**
  * Dispatch type for tracking calls.

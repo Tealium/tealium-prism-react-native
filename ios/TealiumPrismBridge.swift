@@ -142,7 +142,7 @@ public class TealiumPrismBridge: NSObject {
         }
     }
 
-    @objc public func shutdown() {
+    @objc public func shutdown(completion: @escaping () -> Void) {
         dataLayerOnDataUpdatedDispose()
         dataLayerOnDataRemovedDispose()
         consentOnDecisionChangedDispose()
@@ -151,6 +151,7 @@ public class TealiumPrismBridge: NSObject {
         onConsentDecisionChanged = nil
         bridgeCMPAdapter = nil
         tealium = nil
+        completion()
     }
 
     @objc public func isInitialized() -> Bool {

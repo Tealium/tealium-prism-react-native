@@ -143,8 +143,9 @@ export interface Spec extends TurboModule {
 
   /**
    * Shutdown the Tealium instance and release resources.
+   * Resolves once native teardown returns. Always resolves; native shutdown is sync and infallible.
    */
-  shutdown(): void;
+  shutdown(): Promise<void>;
 
   /**
    * Check if Tealium is currently initialized.
@@ -179,8 +180,10 @@ export interface Spec extends TurboModule {
    * the bridge (iOS: dataObject(from:), Android: readableMapToDataObject()).
    * @param record - Key-value map of values to store
    * @param expiry - Expiry type: 'session', 'forever', or 'untilRestart'
+   * @returns Promise rejecting with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerPut(record: Object, expiry: ExpirySpec): void;
+  dataLayerPut(record: Object, expiry: ExpirySpec): Promise<void>;
 
   /**
    * Get any value from the data layer with type information.
@@ -210,14 +213,18 @@ export interface Spec extends TurboModule {
   /**
    * Remove a value from the data layer.
    * @param key - Key to remove
+   * @returns Promise rejecting with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerRemove(key: string): void;
+  dataLayerRemove(key: string): Promise<void>;
 
   /**
    * Remove multiple values from the data layer.
    * @param keys - Array of keys to remove
+   * @returns Promise rejecting with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerRemoveKeys(keys: string[]): void;
+  dataLayerRemoveKeys(keys: string[]): Promise<void>;
 
   /**
    * Clear all data from the data layer.
@@ -329,8 +336,11 @@ export interface Spec extends TurboModule {
    * Set the consent decision from JavaScript.
    * @param decisionType - 'implicit' or 'explicit'
    * @param purposes - Array of consented purpose IDs
+   * @returns Promise rejecting with `CONSENT_NOT_ENABLED` if `cmpAdapter` was
+   *   not provided in the config; rejecting with `INVALID_DECISION_TYPE` if
+   *   `decisionType` is not parseable.
    */
-  consentSetDecision(decisionType: string, purposes: string[]): void;
+  consentSetDecision(decisionType: string, purposes: string[]): Promise<void>;
 
   /**
    * Get the current consent decision.
@@ -340,8 +350,10 @@ export interface Spec extends TurboModule {
 
   /**
    * Reset the consent decision (revoke consent).
+   * @returns Promise rejecting with `CONSENT_NOT_ENABLED` if `cmpAdapter` was
+   *   not provided in the config.
    */
-  consentReset(): void;
+  consentReset(): Promise<void>;
 
   /**
    * Get all purposes the CMP adapter knows about.

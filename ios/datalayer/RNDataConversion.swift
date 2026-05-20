@@ -12,7 +12,13 @@ import TealiumPrism
 func dataObject(from dict: [String: Any]) -> DataObject {
     var result = DataObject()
     for (key, value) in dict {
-        if let convertible = value as? DataInputConvertible {
+        // Explicit String cast first: values bridged from JS arrive as NSString
+        // (ObjC class), and `as? DataInputConvertible` does not look up the
+        // Swift `String` extension via NSString→String bridging, so without
+        // this branch all string values would be silently dropped.
+        if let str = value as? String {
+            result.set(str, key: key)
+        } else if let convertible = value as? DataInputConvertible {
             result.set(converting: convertible, key: key)
         } else if let arr = value as? [String] {
             result.set(converting: arr, key: key)

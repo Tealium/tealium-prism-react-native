@@ -82,18 +82,24 @@ export class DataLayerAPI {
    * @param data - Object containing key-value pairs to add
    * @param expiry - When the data should expire: 'session', 'forever', or 'untilRestart'
    * @default 'forever'
+   * @returns Promise rejecting with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized. Callers that don't
+   *   need the result should attach `.catch(log)` to avoid unhandled rejections.
    *
    * @example
    * ```typescript
-   * Tealium.dataLayer.put({
+   * await Tealium.dataLayer.put({
    *   user_type: 'premium',
    *   user_id: '12345',
    *   preferences: { dark_mode: true }
    * });
    * ```
    */
-  put(data: Record<string, DataLayerValue>, expiry: Expiry = 'forever'): void {
-    NativeTealiumPrism.dataLayerPut(data, serializeExpiry(expiry));
+  put(
+    data: Record<string, DataLayerValue>,
+    expiry: Expiry = 'forever'
+  ): Promise<void> {
+    return NativeTealiumPrism.dataLayerPut(data, serializeExpiry(expiry));
   }
 
   /**
@@ -207,22 +213,23 @@ export class DataLayerAPI {
    * Remove one or more keys from the data layer.
    *
    * @param keys - Key or array of keys to remove
+   * @returns Promise rejecting with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized. Callers that don't
+   *   need the result should attach `.catch(log)` to avoid unhandled rejections.
    *
    * @example
    * ```typescript
    * // Remove single key
-   * Tealium.dataLayer.remove('user_id');
+   * await Tealium.dataLayer.remove('user_id');
    *
    * // Remove multiple keys
-   * Tealium.dataLayer.remove(['user_id', 'user_type']);
+   * await Tealium.dataLayer.remove(['user_id', 'user_type']);
    * ```
    */
-  remove(keys: string | string[]): void {
-    if (Array.isArray(keys)) {
-      NativeTealiumPrism.dataLayerRemoveKeys(keys);
-    } else {
-      NativeTealiumPrism.dataLayerRemove(keys);
-    }
+  remove(keys: string | string[]): Promise<void> {
+    return Array.isArray(keys)
+      ? NativeTealiumPrism.dataLayerRemoveKeys(keys)
+      : NativeTealiumPrism.dataLayerRemove(keys);
   }
 
   /**

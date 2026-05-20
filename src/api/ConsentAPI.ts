@@ -68,18 +68,24 @@ export class ConsentAPI {
    *
    * @param decisionType - Type of consent: 'implicit' or 'explicit'
    * @param purposes - Array of consented purpose IDs (e.g., ['analytics', 'marketing'])
+   * @returns Promise rejecting with `CONSENT_NOT_ENABLED` if `cmpAdapter` was
+   *   not provided in the config; rejecting with `INVALID_DECISION_TYPE` if
+   *   `decisionType` is not parseable.
    *
    * @example
    * ```typescript
    * // Explicit consent for all purposes
-   * Tealium.consent.setDecision('explicit', ['analytics', 'marketing', 'personalization']);
+   * await Tealium.consent.setDecision('explicit', ['analytics', 'marketing', 'personalization']);
    *
    * // Implicit consent (e.g., app launch in implied-consent jurisdictions)
-   * Tealium.consent.setDecision('implicit', ['analytics']);
+   * await Tealium.consent.setDecision('implicit', ['analytics']);
    * ```
    */
-  setDecision(decisionType: ConsentDecisionType, purposes: string[]): void {
-    NativeTealiumPrism.consentSetDecision(decisionType, purposes);
+  setDecision(
+    decisionType: ConsentDecisionType,
+    purposes: string[]
+  ): Promise<void> {
+    return NativeTealiumPrism.consentSetDecision(decisionType, purposes);
   }
 
   /**
@@ -109,13 +115,16 @@ export class ConsentAPI {
    * Clears the current consent decision on the native bridge adapter.
    * After reset, the SDK will queue dispatches until a new decision is provided.
    *
+   * @returns Promise rejecting with `CONSENT_NOT_ENABLED` if `cmpAdapter` was
+   *   not provided in the config.
+   *
    * @example
    * ```typescript
-   * Tealium.consent.reset();
+   * await Tealium.consent.reset();
    * ```
    */
-  reset(): void {
-    NativeTealiumPrism.consentReset();
+  reset(): Promise<void> {
+    return NativeTealiumPrism.consentReset();
   }
 
   /**

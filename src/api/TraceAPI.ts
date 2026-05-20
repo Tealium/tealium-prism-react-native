@@ -47,7 +47,8 @@ export class TraceAPI {
    * @returns Promise resolving with the TrackResult for the end-of-visit dispatch.
    */
   async forceEndOfVisit(): Promise<TrackResult> {
-    const spec: TrackResultSpec = await NativeTealiumPrism.traceForceEndOfVisit();
+    const spec: TrackResultSpec =
+      await NativeTealiumPrism.traceForceEndOfVisit();
     return {
       status: spec.status === 'accepted' ? 'accepted' : 'dropped',
       info: spec.info,

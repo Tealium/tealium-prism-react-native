@@ -141,13 +141,17 @@ class TealiumHelper {
         console.log('[TealiumHelper] Instance created successfully');
 
         // Add some initial data layer values using new API: Tealium.dataLayer.put()
-        Tealium.dataLayer.put(
-          {
-            app_name: 'TealiumPrismReactNativeExample',
-            sdk_version: '0.1.0',
-          },
-          'forever'
-        );
+        Tealium.dataLayer
+          .put(
+            {
+              app_name: 'TealiumPrismReactNativeExample',
+              sdk_version: '0.1.0',
+            },
+            'forever'
+          )
+          .catch((err) =>
+            console.warn('[TealiumHelper] initial put failed:', err)
+          );
 
         return true;
       } else {
@@ -173,11 +177,16 @@ class TealiumHelper {
     const item = await Tealium.dataLayer.getDataItem('key4');
     const count = item?.type === 'number' ? item.value : 0;
 
-    Tealium.dataLayer.put(
-      { key: 'value', key2: 'value2', key4: count + 1 },
-      'forever'
-    );
-    Tealium.dataLayer.remove('key3');
+    Tealium.dataLayer
+      .put({ key: 'value', key2: 'value2', key4: count + 1 }, 'forever')
+      .catch((err) =>
+        console.warn('[TealiumHelper] startTealium put failed:', err)
+      );
+    Tealium.dataLayer
+      .remove('key3')
+      .catch((err) =>
+        console.warn('[TealiumHelper] startTealium remove failed:', err)
+      );
 
     return true;
   }
@@ -185,17 +194,17 @@ class TealiumHelper {
   /**
    * Shut down the SDK and clear the instance.
    */
-  stopTealium(): void {
-    this.shutdown();
+  async stopTealium(): Promise<void> {
+    await this.shutdown();
   }
 
   /**
    * Shutdown the SDK and release resources. Call create/startTealium again to reuse.
    */
-  shutdown(): void {
+  async shutdown(): Promise<void> {
     if (this._isEnabled) {
       console.log('[TealiumHelper] Shutting down');
-      Tealium.shutdown();
+      await Tealium.shutdown();
       this._isEnabled = false;
       this._config = null;
     }
@@ -215,7 +224,9 @@ class TealiumHelper {
     }
 
     console.log('[TealiumHelper] Tracking view:', viewName);
-    Tealium.track(viewName, 'view', data);
+    Tealium.track(viewName, 'view', data).catch((err) =>
+      console.warn('[TealiumHelper] track view failed:', err)
+    );
   }
 
   /**
@@ -228,7 +239,9 @@ class TealiumHelper {
     }
 
     console.log('[TealiumHelper] Tracking event:', eventName);
-    Tealium.track(eventName, 'event', data);
+    Tealium.track(eventName, 'event', data).catch((err) =>
+      console.warn('[TealiumHelper] track event failed:', err)
+    );
   }
 
   /**
@@ -260,7 +273,9 @@ class TealiumHelper {
       return;
     }
 
-    Tealium.dataLayer.put(data, expiry);
+    Tealium.dataLayer
+      .put(data, expiry)
+      .catch((err) => console.warn('[TealiumHelper] addData failed:', err));
   }
 
   /**
@@ -282,7 +297,9 @@ class TealiumHelper {
       return;
     }
 
-    Tealium.dataLayer.remove(keys);
+    Tealium.dataLayer
+      .remove(keys)
+      .catch((err) => console.warn('[TealiumHelper] removeData failed:', err));
   }
 
   /**
@@ -430,7 +447,11 @@ class TealiumHelper {
       return;
     }
 
-    Tealium.consent.setDecision(decisionType, purposes);
+    Tealium.consent
+      .setDecision(decisionType, purposes)
+      .catch((err) =>
+        console.warn('[TealiumHelper] setConsentDecision failed:', err)
+      );
   }
 
   async getConsentDecision(): Promise<ConsentDecision | null> {
@@ -446,7 +467,11 @@ class TealiumHelper {
       return;
     }
 
-    Tealium.consent.reset();
+    Tealium.consent
+      .reset()
+      .catch((err) =>
+        console.warn('[TealiumHelper] resetConsentDecision failed:', err)
+      );
   }
 
   async getAllConsentPurposes(): Promise<string[] | null> {

@@ -10,13 +10,22 @@ extension TealiumPrismBridge {
 
     // MARK: - Data Layer
 
-    @objc public func put(record: NSDictionary, expiry: String?) {
+    @objc public func put(record: NSDictionary, expiry: String?, completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ put called before initialization", bridgeLogTag)
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
             return
         }
         let obj = dataObject(from: record as? [String: Any] ?? [:])
-        tealium.dataLayer.put(data: obj, expiry: Expiry(rnString: expiry))
+        tealium.dataLayer.put(data: obj, expiry: Expiry(rnString: expiry)).subscribe { result in
+            switch result {
+            case .success: completion(true, nil)
+            case .failure(let err): completion(false, err)
+            }
+        }
     }
 
     @objc public func getDataItem(key: String, completion: @escaping (NSDictionary?) -> Void) {
@@ -64,21 +73,42 @@ extension TealiumPrismBridge {
         }
     }
 
-    @objc public func remove(key: String) {
+    @objc public func remove(key: String, completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ remove called before initialization", bridgeLogTag)
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
             return
         }
-        tealium.dataLayer.remove(key: key)
+        tealium.dataLayer.remove(key: key).subscribe { result in
+            switch result {
+            case .success: completion(true, nil)
+            case .failure(let err): completion(false, err)
+            }
+        }
     }
 
-    @objc public func removeKeys(keys: [String]) {
-        guard !keys.isEmpty else { return }
+    @objc public func removeKeys(keys: [String], completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ removeKeys called before initialization", bridgeLogTag)
+            completion(
+                false,
+                NSError(
+                    domain: "TealiumPrism", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
             return
         }
-        tealium.dataLayer.remove(keys: keys)
+        guard !keys.isEmpty else {
+            completion(true, nil)
+            return
+        }
+        tealium.dataLayer.remove(keys: keys).subscribe { result in
+            switch result {
+            case .success: completion(true, nil)
+            case .failure(let err): completion(false, err)
+            }
+        }
     }
 
     @objc public func clear(completion: @escaping (Bool, Error?) -> Void) {

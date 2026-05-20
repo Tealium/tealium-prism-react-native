@@ -1,14 +1,20 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Text, TextInput } from 'react-native';
-import Tealium, { type Disposable as TealiumDisposable } from 'tealium-prism-react-native';
+import Tealium, {
+  type Disposable as TealiumDisposable,
+} from 'tealium-prism-react-native';
 import { Button, Section, styles } from '../components';
 import TealiumHelper from '../TealiumHelper';
 
 interface Props {
   showToast: (msg: string) => void;
+  showStreamToast: (msg: string) => void;
 }
 
-export const DataLayerSection: React.FC<Props> = ({ showToast }) => {
+export const DataLayerSection: React.FC<Props> = ({
+  showToast,
+  showStreamToast,
+}) => {
   const [dataKey, setDataKey] = useState('example_key');
   const [dataValue, setDataValue] = useState('example_value');
   const [eventsEnabled, setEventsEnabled] = useState(false);
@@ -48,25 +54,37 @@ export const DataLayerSection: React.FC<Props> = ({ showToast }) => {
   }, [dataKey, showToast]);
 
   const handleGetString = useCallback(async () => {
-    if (!dataKey) { showToast('Please enter a key'); return; }
+    if (!dataKey) {
+      showToast('Please enter a key');
+      return;
+    }
     const v = await Tealium.dataLayer.getString(dataKey);
     showToast(v != null ? `getString: "${v}"` : `getString: null`);
   }, [dataKey, showToast]);
 
   const handleGetInt = useCallback(async () => {
-    if (!dataKey) { showToast('Please enter a key'); return; }
+    if (!dataKey) {
+      showToast('Please enter a key');
+      return;
+    }
     const v = await Tealium.dataLayer.getInt(dataKey);
     showToast(v != null ? `getInt: ${v}` : `getInt: null`);
   }, [dataKey, showToast]);
 
   const handleGetBoolean = useCallback(async () => {
-    if (!dataKey) { showToast('Please enter a key'); return; }
+    if (!dataKey) {
+      showToast('Please enter a key');
+      return;
+    }
     const v = await Tealium.dataLayer.getBoolean(dataKey);
     showToast(v != null ? `getBoolean: ${v}` : `getBoolean: null`);
   }, [dataKey, showToast]);
 
   const handleAddWithTtl = useCallback(() => {
-    if (!dataKey || !dataValue) { showToast('Please enter key and value'); return; }
+    if (!dataKey || !dataValue) {
+      showToast('Please enter key and value');
+      return;
+    }
     TealiumHelper.addData(
       { [dataKey]: dataValue },
       { after: new Date(Date.now() + 60_000) }
@@ -129,10 +147,12 @@ export const DataLayerSection: React.FC<Props> = ({ showToast }) => {
       showToast('DataLayer events disabled');
     } else {
       dataUpdateSub.current = TealiumHelper.onDataUpdated((data) => {
-        showToast(`DataLayer updated: ${Object.keys(data).join(', ')}`);
+        showStreamToast(
+          `[onDataUpdated] ${Object.keys(data).join(', ')}`
+        );
       });
       dataRemoveSub.current = TealiumHelper.onDataRemoved((keys) => {
-        showToast(`DataLayer keys removed: ${keys.join(', ')}`);
+        showStreamToast(`[onDataRemoved] ${keys.join(', ')}`);
       });
       setEventsEnabled(true);
       showToast('DataLayer events enabled');
@@ -148,7 +168,8 @@ export const DataLayerSection: React.FC<Props> = ({ showToast }) => {
           color={eventsEnabled ? '#dc3545' : '#28a745'}
         />
         <Text style={styles.helperText}>
-          When enabled, adding/removing data will show a toast.
+          Subscribes to dataLayer.onDataUpdated / onDataRemoved streams.
+          Native callbacks fire a blue toast at the top of the screen.
         </Text>
       </Section>
 

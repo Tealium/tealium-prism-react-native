@@ -11,7 +11,9 @@ export const TrackingSection: React.FC<Props> = ({ showToast }) => {
   const handleTrackView = useCallback(async () => {
     const view = new TealiumView('screen_view', { section: 'demo' });
     const result = await Tealium.track(view.name, view.type, view.data);
-    showToast(`View tracked: ${result.status} [${result.dispatch.id.slice(0, 8)}]`);
+    showToast(
+      `View tracked: ${result.status} [${result.dispatch.id.slice(0, 8)}]`
+    );
   }, [showToast]);
 
   const handleTrackEvent = useCallback(async () => {
@@ -21,7 +23,9 @@ export const TrackingSection: React.FC<Props> = ({ showToast }) => {
       event_label: 'Track Event',
     });
     const result = await Tealium.track(event.name, event.type, event.data);
-    showToast(`Event tracked: ${result.status} [${result.dispatch.id.slice(0, 8)}]`);
+    showToast(
+      `Event tracked: ${result.status} [${result.dispatch.id.slice(0, 8)}]`
+    );
   }, [showToast]);
 
   const handleFlush = useCallback(async () => {

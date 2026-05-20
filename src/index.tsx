@@ -32,7 +32,12 @@ export type {
   ConsentDecisionChangedCallback,
 } from './api';
 
-import type { TealiumConfig, TrackData, DispatchType, TrackResult } from './types';
+import type {
+  TealiumConfig,
+  TrackData,
+  DispatchType,
+  TrackResult,
+} from './types';
 
 // Instantiated before create() — safe because the emitter is a JS wrapper that
 // doesn't call native until addListener is invoked.
@@ -226,13 +231,17 @@ export default class Tealium {
 
     // Add plugin metadata to data layer
     if (result) {
-      this.dataLayer.put(
-        {
-          plugin_name: 'Tealium-Prism-ReactNative',
-          plugin_version: PLUGIN_VERSION,
-        },
-        'forever'
-      );
+      this.dataLayer
+        .put(
+          {
+            plugin_name: 'Tealium-Prism-ReactNative',
+            plugin_version: PLUGIN_VERSION,
+          },
+          'forever'
+        )
+        .catch((err) =>
+          console.warn('[Tealium] plugin metadata put failed:', err)
+        );
     }
 
     return result;
@@ -244,8 +253,11 @@ export default class Tealium {
    * Mirrors native: `tealium.shutdown()` (Kotlin) / deinit (Swift)
    *
    * After calling this, you must call create() again to use Tealium.
+   *
+   * @returns Promise resolving once native teardown returns. Always resolves;
+   *   native shutdown is sync and infallible.
    */
-  static shutdown(): void {
+  static async shutdown(): Promise<void> {
     if (this._dataLayer) {
       this._dataLayer._forceDisposeAll();
     }
@@ -253,10 +265,10 @@ export default class Tealium {
       this._consent._forceDisposeAll();
     }
 
-    NativeTealiumPrism.shutdown();
+    await NativeTealiumPrism.shutdown();
     Tealium._initialized = false;
 
-    // Reset lazy instances
+    // Reset lazy instances after native teardown completes.
     this._dataLayer = null;
     this._trace = null;
     this._deepLink = null;

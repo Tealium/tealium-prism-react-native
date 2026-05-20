@@ -149,8 +149,11 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     }
 }
 
-- (void)shutdown {
-    [[TealiumPrismBridge shared] shutdown];
+- (void)shutdown:(RCTPromiseResolveBlock)resolve
+          reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] shutdownWithCompletion:^{
+        resolve(nil);
+    }];
 }
 
 - (void)isInitialized:(RCTPromiseResolveBlock)resolve
@@ -197,8 +200,16 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 // MARK: - Data Layer
 
 - (void)dataLayerPut:(NSDictionary *)record
-             expiry:(NSString *)expiry {
-    [[TealiumPrismBridge shared] putWithRecord:record expiry:expiry];
+              expiry:(NSString *)expiry
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] putWithRecord:record expiry:expiry completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
 - (void)dataLayerGetDataItem:(NSString *)key
@@ -237,12 +248,28 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     }];
 }
 
-- (void)dataLayerRemove:(NSString *)key {
-    [[TealiumPrismBridge shared] removeWithKey:key];
+- (void)dataLayerRemove:(NSString *)key
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] removeWithKey:key completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
-- (void)dataLayerRemoveKeys:(NSArray<NSString *> *)keys {
-    [[TealiumPrismBridge shared] removeKeysWithKeys:keys];
+- (void)dataLayerRemoveKeys:(NSArray<NSString *> *)keys
+                    resolve:(RCTPromiseResolveBlock)resolve
+                     reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] removeKeysWithKeys:keys completion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
 - (void)dataLayerClear:(RCTPromiseResolveBlock)resolve
@@ -355,8 +382,19 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 // MARK: - Consent
 
 - (void)consentSetDecision:(NSString *)decisionType
-                  purposes:(NSArray<NSString *> *)purposes {
-    [[TealiumPrismBridge shared] setDecisionWithDecisionType:decisionType purposes:purposes];
+                  purposes:(NSArray<NSString *> *)purposes
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] setDecisionWithDecisionType:decisionType purposes:purposes completion:^(BOOL success, NSError *error) {
+        if (error) {
+            NSString *code = [error.localizedDescription containsString:@"Invalid decisionType"]
+                ? @"INVALID_DECISION_TYPE"
+                : @"CONSENT_NOT_ENABLED";
+            reject(code, error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
 - (void)consentGetDecision:(RCTPromiseResolveBlock)resolve
@@ -366,8 +404,15 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     }];
 }
 
-- (void)consentReset {
-    [[TealiumPrismBridge shared] reset];
+- (void)consentReset:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject {
+    [[TealiumPrismBridge shared] resetWithCompletion:^(BOOL success, NSError *error) {
+        if (error) {
+            reject(@"CONSENT_NOT_ENABLED", error.localizedDescription, error);
+        } else {
+            resolve(nil);
+        }
+    }];
 }
 
 - (void)consentGetAllPurposes:(RCTPromiseResolveBlock)resolve

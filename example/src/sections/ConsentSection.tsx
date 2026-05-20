@@ -57,15 +57,17 @@ export const ConsentSection: React.FC<Props> = ({ showToast }) => {
 
   const handleSubscribe = useCallback(() => {
     if (subscribed) return;
-    subscription.current = TealiumHelper.onConsentDecisionChanged((decision) => {
-      if (decision) {
-        setLastDecision(
-          `${decision.decisionType}: ${decision.purposes.join(', ')}`
-        );
-      } else {
-        setLastDecision('null (reset)');
+    subscription.current = TealiumHelper.onConsentDecisionChanged(
+      (decision) => {
+        if (decision) {
+          setLastDecision(
+            `${decision.decisionType}: ${decision.purposes.join(', ')}`
+          );
+        } else {
+          setLastDecision('null (reset)');
+        }
       }
-    });
+    );
     setSubscribed(true);
     showToast('Subscribed to consent changes');
   }, [subscribed, showToast]);
@@ -111,11 +113,7 @@ export const ConsentSection: React.FC<Props> = ({ showToast }) => {
           onPress={handlePartial}
         />
         <Button title="Implicit (Analytics Only)" onPress={handleImplicit} />
-        <Button
-          title="Revoke Consent"
-          onPress={handleRevoke}
-          color="#dc3545"
-        />
+        <Button title="Revoke Consent" onPress={handleRevoke} color="#dc3545" />
         <Button title="Get Consent Status" onPress={handleGetDecision} />
         <Button title="Get All Purposes" onPress={handleGetAllPurposes} />
       </Section>

@@ -27,7 +27,9 @@ export const TraceSection: React.FC<Props> = ({ showToast }) => {
   const handleForceEndOfVisit = useCallback(async () => {
     const result = await TealiumHelper.forceEndOfVisit();
     if (result) {
-      showToast(`End of visit: ${result.status} — ${result.info} [${result.dispatch.id.slice(0, 8)}]`);
+      showToast(
+        `End of visit: ${result.status} — ${result.info} [${result.dispatch.id.slice(0, 8)}]`
+      );
     } else {
       showToast('Forced end of visit (not initialized)');
     }

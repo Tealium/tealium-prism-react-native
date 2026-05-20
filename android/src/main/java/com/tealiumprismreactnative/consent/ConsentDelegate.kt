@@ -17,13 +17,19 @@ internal class ConsentDelegate(
 ) {
     private var decisionSubscription: Disposable? = null
 
-    fun setDecision(decisionType: String, purposes: ReadableArray) {
-        val adapter = getAdapter() ?: return
+    fun setDecision(decisionType: String, purposes: ReadableArray, promise: Promise) {
+        val adapter = getAdapter() ?: run {
+            promise.reject("CONSENT_NOT_ENABLED", "Consent integration not enabled")
+            return
+        }
         val type = ConsentDecision.DecisionType.entries
             .firstOrNull { it.name.equals(decisionType, ignoreCase = true) }
-            ?: return
-        val purposeSet = purposes.toStringSet()
-        adapter.update(ConsentDecision(type, purposeSet))
+            ?: run {
+                promise.reject("INVALID_DECISION_TYPE", "Unknown decisionType: $decisionType")
+                return
+            }
+        adapter.update(ConsentDecision(type, purposes.toStringSet()))
+        promise.resolve(null)
     }
 
     fun getDecision(promise: Promise) {
@@ -35,8 +41,13 @@ internal class ConsentDelegate(
         promise.resolve(decision.toWritableMap())
     }
 
-    fun reset() {
-        getAdapter()?.reset()
+    fun reset(promise: Promise) {
+        val adapter = getAdapter() ?: run {
+            promise.reject("CONSENT_NOT_ENABLED", "Consent integration not enabled")
+            return
+        }
+        adapter.reset()
+        promise.resolve(null)
     }
 
     fun getAllPurposes(promise: Promise) {

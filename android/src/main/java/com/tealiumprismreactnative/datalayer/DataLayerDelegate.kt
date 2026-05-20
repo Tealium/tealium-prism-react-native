@@ -21,14 +21,13 @@ internal class DataLayerDelegate(
     private var updateSubscription: Disposable? = null
     private var removeSubscription: Disposable? = null
 
-    fun put(record: ReadableMap, expiry: String) {
-        val teal = getTealium() ?: run {
-            Log.w(TAG, "put called before initialization")
-            return
-        }
+    fun put(record: ReadableMap, expiry: String, promise: Promise) {
+        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
         teal.dataLayer.put(DataObject.fromMap(record.toHashMap()), Expiry.fromRNString(expiry)).subscribe { result ->
-            result.exceptionOrNull()?.let {
-                Log.w(TAG, "put failed: ${it.message}", it)
+            if (result.isSuccess) promise.resolve(null)
+            else {
+                val err = result.exceptionOrNull()
+                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to put data", err)
             }
         }
     }
@@ -69,21 +68,31 @@ internal class DataLayerDelegate(
         }
     }
 
-    fun remove(key: String) {
-        val teal = getTealium() ?: run {
-            Log.w(TAG, "remove called before initialization")
-            return
+    fun remove(key: String, promise: Promise) {
+        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        teal.dataLayer.remove(key).subscribe { result ->
+            if (result.isSuccess) promise.resolve(null)
+            else {
+                val err = result.exceptionOrNull()
+                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to remove key", err)
+            }
         }
-        teal.dataLayer.remove(key)
     }
 
-    fun removeKeys(keys: ReadableArray) {
-        val teal = getTealium() ?: run {
-            Log.w(TAG, "removeKeys called before initialization")
+    fun removeKeys(keys: ReadableArray, promise: Promise) {
+        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val keyList = keys.toStringList()
+        if (keyList.isEmpty()) {
+            promise.resolve(null)
             return
         }
-        val keyList = keys.toStringList()
-        if (keyList.isNotEmpty()) teal.dataLayer.remove(keyList)
+        teal.dataLayer.remove(keyList).subscribe { result ->
+            if (result.isSuccess) promise.resolve(null)
+            else {
+                val err = result.exceptionOrNull()
+                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to remove keys", err)
+            }
+        }
     }
 
     fun clear(promise: Promise) {
