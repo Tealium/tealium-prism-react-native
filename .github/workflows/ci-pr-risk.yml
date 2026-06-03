@@ -12,3 +12,13 @@ jobs:
     uses: Tealium/github-actions-shared/.github/workflows/ci-pr-risk.yml@main
     with:
       risk-entries: |
+        - path: "ios/**"
+          reason: "Native iOS Swift bridge changed"
+        - path: "android/**"
+          reason: "Native Android Kotlin module changed"
+        - path: "src/NativeTealiumPrismReactNative.ts"
+          reason: "TurboModule JS<->Native contract changed"
+        - path: "package.json"
+          reason: "Dependency/runtime surface changed"
+        - path: "*.podspec"
+          reason: "iOS native dependency spec changed"
