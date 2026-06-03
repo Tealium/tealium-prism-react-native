@@ -10,17 +10,17 @@ extension TealiumPrismBridge {
 
     // MARK: - Data Layer
 
-    @objc public func put(record: NSDictionary, expiry: String?, completion: @escaping (Bool, Error?) -> Void) {
+    @objc public func put(record: NSDictionary, expiry: Double, completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         let obj = dataObject(from: record as? [String: Any] ?? [:])
-        tealium.dataLayer.put(data: obj, expiry: Expiry(rnString: expiry)).subscribe { result in
+        tealium.dataLayer.put(data: obj, expiry: Expiry(timestamp: Int64(expiry))).subscribe { result in
             switch result {
             case .success: completion(true, nil)
             case .failure(let err): completion(false, err)
@@ -28,48 +28,60 @@ extension TealiumPrismBridge {
         }
     }
 
-    @objc public func getDataItem(key: String, completion: @escaping (NSDictionary?) -> Void) {
+    @objc public func getDataItem(key: String, completion: @escaping (NSDictionary?, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ getDataItem called before initialization", bridgeLogTag)
-            completion(nil)
+            completion(
+                nil,
+                NSError(
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.getDataItem(key: key).subscribe { result in
-            guard case .success(let dataItem) = result, let item = dataItem else {
-                completion(nil)
-                return
+            switch result {
+            case .success(let dataItem):
+                completion(dataItem.map { $0.toValueWrapper() as NSDictionary }, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
-            completion(item.toJSDictionary() as NSDictionary)
         }
     }
 
-    @objc public func getDataList(key: String, completion: @escaping (NSArray?) -> Void) {
+    @objc public func getDataList(key: String, completion: @escaping (NSArray?, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ getDataList called before initialization", bridgeLogTag)
-            completion(nil)
+            completion(
+                nil,
+                NSError(
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.getDataArray(key: key).subscribe { result in
-            guard case .success(let array) = result, let items = array else {
-                completion(nil)
-                return
+            switch result {
+            case .success(let array):
+                completion(array.map { $0.map { $0.toRawValue() } as NSArray }, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
-            completion(items.map { $0.toJSDictionary() } as NSArray)
         }
     }
 
-    @objc public func getDataObject(key: String, completion: @escaping (NSDictionary?) -> Void) {
+    @objc public func getDataObject(key: String, completion: @escaping (NSDictionary?, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ getDataObject called before initialization", bridgeLogTag)
-            completion(nil)
+            completion(
+                nil,
+                NSError(
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.getDataDictionary(key: key).subscribe { result in
-            guard case .success(let dict) = result, let map = dict else {
-                completion(nil)
-                return
+            switch result {
+            case .success(let dict):
+                completion(dict.map { $0.mapValues { $0.toRawValue() } as NSDictionary }, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
-            completion(map.mapValues { $0.toJSDictionary() } as NSDictionary)
         }
     }
 
@@ -78,8 +90,8 @@ extension TealiumPrismBridge {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.remove(key: key).subscribe { result in
@@ -95,8 +107,8 @@ extension TealiumPrismBridge {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         guard !keys.isEmpty else {
@@ -116,8 +128,8 @@ extension TealiumPrismBridge {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.clear().subscribe { result in
@@ -128,21 +140,22 @@ extension TealiumPrismBridge {
         }
     }
 
-    @objc public func getAll(completion: @escaping (NSDictionary?) -> Void) {
+    @objc public func getAll(completion: @escaping (NSDictionary?, Error?) -> Void) {
         guard let tealium = tealium else {
-            NSLog("%@ getAll called before initialization", bridgeLogTag)
-            completion(nil)
+            completion(
+                nil,
+                NSError(
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.dataLayer.getAll().subscribe { result in
-            guard case .success(let dataObject) = result else {
-                if case .failure(let err) = result {
-                    NSLog("%@ getAll failed: %@", bridgeLogTag, err.localizedDescription)
-                }
-                completion(nil)
-                return
+            switch result {
+            case .success(let dataObject):
+                completion(dataObject.asDictionary() as NSDictionary, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
-            completion(dataObject.toRawDict() as NSDictionary)
         }
     }
 
@@ -157,8 +170,8 @@ extension TealiumPrismBridge {
         dataUpdateSubscription = tealium.dataLayer.onDataUpdated.subscribe {
             [weak self] dataObject in
             guard let bridge = self else { return }
-            let dict = dataObject.toRawDict()
-            DispatchQueue.main.async { bridge.onDataUpdated?(dict) }
+            let dict = dataObject.asDictionary()
+            bridge.onDataUpdated?(dict)
         }
     }
 
@@ -174,7 +187,7 @@ extension TealiumPrismBridge {
             return
         }
         dataRemoveSubscription = tealium.dataLayer.onDataRemoved.subscribe { [weak self] keys in
-            DispatchQueue.main.async { self?.onDataRemoved?(keys) }
+            self?.onDataRemoved?(keys)
         }
     }
 

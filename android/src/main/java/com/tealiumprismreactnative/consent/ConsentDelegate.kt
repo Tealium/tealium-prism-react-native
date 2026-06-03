@@ -7,6 +7,9 @@ import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.WritableMap
 import com.tealium.prism.core.api.consent.ConsentDecision
 import com.tealium.prism.core.api.pubsub.Disposable
+import com.tealiumprismreactnative.ERROR_CONSENT_NOT_ENABLED
+import com.tealiumprismreactnative.ERROR_INVALID_DECISION_TYPE
+import com.tealiumprismreactnative.MSG_CONSENT_NOT_ENABLED
 import com.tealiumprismreactnative.TAG
 import com.tealiumprismreactnative.TealiumPrismReactNativeModule
 import com.tealiumprismreactnative.bridge.toStringSet
@@ -19,13 +22,13 @@ internal class ConsentDelegate(
 
     fun setDecision(decisionType: String, purposes: ReadableArray, promise: Promise) {
         val adapter = getAdapter() ?: run {
-            promise.reject("CONSENT_NOT_ENABLED", "Consent integration not enabled")
+            promise.reject(ERROR_CONSENT_NOT_ENABLED, MSG_CONSENT_NOT_ENABLED)
             return
         }
         val type = ConsentDecision.DecisionType.entries
             .firstOrNull { it.name.equals(decisionType, ignoreCase = true) }
             ?: run {
-                promise.reject("INVALID_DECISION_TYPE", "Unknown decisionType: $decisionType")
+                promise.reject(ERROR_INVALID_DECISION_TYPE, "Unknown decisionType: $decisionType")
                 return
             }
         adapter.update(ConsentDecision(type, purposes.toStringSet()))
@@ -43,7 +46,7 @@ internal class ConsentDelegate(
 
     fun reset(promise: Promise) {
         val adapter = getAdapter() ?: run {
-            promise.reject("CONSENT_NOT_ENABLED", "Consent integration not enabled")
+            promise.reject(ERROR_CONSENT_NOT_ENABLED, MSG_CONSENT_NOT_ENABLED)
             return
         }
         adapter.reset()

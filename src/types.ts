@@ -120,11 +120,13 @@ export interface ConsentConfiguration {
  */
 export interface CmpAdapterConfig {
   /**
-   * Unique ID for the adapter. Must match the key used for ConsentConfiguration
-   * in local/remote settings JSON.
-   * @default 'react-native-bridge'
+   * Unique ID for the adapter. Must match the key used for the
+   * ConsentConfiguration in local/remote settings JSON — the native SDK looks
+   * up the configuration via `configurations[id]`, and a mismatch silently
+   * disables consent (events are queued, never sent). The ID also namespaces
+   * the persisted consent decision, so it must stay stable across launches.
    */
-  id?: string;
+  id: string;
 
   /**
    * All purposes the CMP can manage. Used by the SDK to determine whether
@@ -333,20 +335,19 @@ export interface TrackResult {
 }
 
 /**
- * A valid data layer value. Mirrors the JSON value set supported by the native SDK
- * (DataItem variants: string, number, boolean, null, list, object).
+ * A valid data layer value. Mirrors the native SDK's `DataItem` wrapper class
+ * (Swift: `DataItem`, Kotlin: `DataItem`) which supports JSON value types:
+ * string, number, boolean, null, list, and object.
  *
  * `undefined` is intentionally excluded — pass null to represent absence of a value.
- * If native DataItem variants are added in the future (e.g. Date), extend this type
- * in lockstep with the native bridge changes.
  */
-export type DataLayerValue =
+export type DataItem =
   | string
   | number
   | boolean
   | null
-  | DataLayerValue[]
-  | { [key: string]: DataLayerValue };
+  | DataItem[]
+  | { [key: string]: DataItem };
 
 /**
  * Options for setting data layer values.
@@ -360,7 +361,7 @@ export interface DataLayerOptions {
   /**
    * Value to store. Supports string, number, boolean, null, arrays, and objects.
    */
-  value: DataLayerValue;
+  value: DataItem;
 
   /**
    * Expiry option for the value.
@@ -369,30 +370,10 @@ export interface DataLayerOptions {
   expiry?: Expiry;
 }
 
-/**
- * A typed value from the Tealium data layer.
- * Mirrors native: DataItem (Swift/Kotlin)
- *
- * Discriminated union matching the native SDK type hierarchy.
- */
-export type DataItem =
-  | { type: 'string'; value: string }
-  | { type: 'number'; value: number }
-  | { type: 'boolean'; value: boolean }
-  | { type: 'null' }
-  | { type: 'list'; value: DataItem[] }
-  | { type: 'object'; value: Record<string, DataItem> };
-
-/**
- * A heterogeneous list of DataItems.
- * Mirrors native: DataList (Kotlin) / [DataItem] (Swift)
- */
+/** Alias matching native SDK's `DataList` type (list of `DataItem`s). */
 export type DataList = DataItem[];
 
-/**
- * A heterogeneous map of DataItems.
- * Mirrors native: DataObject (Kotlin) / [String: DataItem] (Swift)
- */
+/** Alias matching native SDK's `DataObject` type (map of string keys to `DataItem`s). */
 export type DataObject = Record<string, DataItem>;
 
 /**
@@ -400,9 +381,9 @@ export type DataObject = Record<string, DataItem>;
  * Mirrors native: Disposable (Swift/Kotlin)
  */
 export interface Disposable {
-  /** Whether this resource has been disposed. Idempotent — multiple dispose() calls are safe. */
+  /** Whether this resource has been disposed. */
   readonly isDisposed: boolean;
-  /** Releases the resource. */
+  /** Releases the resource. Idempotent — multiple calls are safe. */
   dispose(): void;
 }
 

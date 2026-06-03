@@ -1,0 +1,15 @@
+package com.tealiumprismreactnative
+
+internal const val TAG = "TealiumPrismReactNative"
+internal const val ERROR_NOT_INITIALIZED = "NOT_INITIALIZED"
+internal const val MSG_NOT_INITIALIZED = "Tealium is not initialized"
+internal const val ERROR_INIT = "INIT_ERROR"
+internal const val ERROR_TRACK = "TRACK_ERROR"
+internal const val ERROR_FLUSH = "FLUSH_ERROR"
+internal const val ERROR_DATA_LAYER = "DATA_LAYER_ERROR"
+internal const val ERROR_TRACE = "TRACE_ERROR"
+internal const val ERROR_RESET = "RESET_ERROR"
+internal const val ERROR_CLEAR = "CLEAR_ERROR"
+internal const val ERROR_CONSENT_NOT_ENABLED = "CONSENT_NOT_ENABLED"
+internal const val MSG_CONSENT_NOT_ENABLED = "Consent integration not enabled"
+internal const val ERROR_INVALID_DECISION_TYPE = "INVALID_DECISION_TYPE"

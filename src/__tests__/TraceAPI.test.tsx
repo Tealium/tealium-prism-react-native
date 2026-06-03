@@ -19,7 +19,7 @@ const mockNative = getMockNative();
 beforeEach(() => {
   jest.clearAllMocks();
   restoreDefaultResolves(mockNative);
-  resetTealiumState();
+  resetTealiumState(true);
 });
 
 describe('TraceAPI', () => {
@@ -29,10 +29,26 @@ describe('TraceAPI', () => {
     expect(mockNative.traceJoin).toHaveBeenCalledWith('abc123');
   });
 
+  it('join rejects when native rejects (TRACE_ERROR)', async () => {
+    mockNative.traceJoin.mockRejectedValue(new Error('Failed to join trace'));
+
+    await expect(Tealium.trace.join('abc123')).rejects.toThrow(
+      'Failed to join trace'
+    );
+  });
+
   it('leave calls native traceLeave and returns Promise', async () => {
     await Tealium.trace.leave();
 
     expect(mockNative.traceLeave).toHaveBeenCalled();
+  });
+
+  it('leave rejects when native rejects (TRACE_ERROR)', async () => {
+    mockNative.traceLeave.mockRejectedValue(new Error('Failed to leave trace'));
+
+    await expect(Tealium.trace.leave()).rejects.toThrow(
+      'Failed to leave trace'
+    );
   });
 
   it('forceEndOfVisit calls native and returns TrackResult', async () => {
@@ -68,5 +84,15 @@ describe('TraceAPI', () => {
     const result = await Tealium.trace.forceEndOfVisit();
 
     expect(result.status).toBe('dropped');
+  });
+
+  it('forceEndOfVisit rejects when native rejects (TRACE_ERROR)', async () => {
+    mockNative.traceForceEndOfVisit.mockRejectedValue(
+      new Error('Failed to force end of visit')
+    );
+
+    await expect(Tealium.trace.forceEndOfVisit()).rejects.toThrow(
+      'Failed to force end of visit'
+    );
   });
 });

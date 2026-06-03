@@ -1,5 +1,5 @@
 //
-//  TealiumPrismBridge+Serialization.swift
+//  DataItem+Serialization.swift
 //  TealiumPrismReactNative
 //
 //  Converts native Prism SDK types into NSDictionary/NSArray for JS.
@@ -10,25 +10,20 @@ import TealiumPrism
 
 extension DataItem {
 
-    // Converts a DataItem into {type, value} format for get(key).
-    // JS needs the "type" field to tell apart numbers, strings, lists, etc.
+    // Returns the raw unwrapped value. Nested DataList/DataObject are also unwrapped recursively.
     // Uses only public DataItem API because DataItem.value is internal to the SDK module.
-    func toJSDictionary() -> [String: Any] {
-        if let array = getDataArray() {
-            return ["type": "list", "value": array.map { $0.toJSDictionary() }]
-        }
-        if let dict = getDataDictionary() {
-            return ["type": "object", "value": dict.mapValues { $0.toJSDictionary() }]
-        }
-        if let str: String = get() {
-            return ["type": "string", "value": str]
-        }
-        if let b: Bool = get() {
-            return ["type": "boolean", "value": b]
-        }
-        if let n: Double = get() {
-            return ["type": "number", "value": n]
-        }
-        return ["type": "null"]
+    func toRawValue() -> Any {
+        if let array = getDataArray() { return array.map { $0.toRawValue() } }
+        if let dict = getDataDictionary() { return dict.mapValues { $0.toRawValue() } }
+        if let str: String = get() { return str }
+        if let b: Bool = get() { return b }
+        if let n: Double = get() { return n }
+        return NSNull()
+    }
+
+    // Wraps raw value in {value:} for getDataItem. Required because TurboModule
+    // spec declares Object return type — a raw scalar cannot be returned directly.
+    func toValueWrapper() -> [String: Any] {
+        return ["value": toRawValue()]
     }
 }

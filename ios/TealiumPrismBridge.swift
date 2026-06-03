@@ -35,13 +35,17 @@ public class TealiumPrismBridge: NSObject {
     /// This approach allows easy extension without changing method signatures.
     @objc public func create(
         config: NSDictionary,
-        completion: @escaping (Bool) -> Void
+        completion: @escaping (Bool, Error?) -> Void
     ) {
         // Required parameters
         guard let account = config["account"] as? String,
               let profile = config["profile"] as? String,
               let environment = config["environment"] as? String else {
-            completion(false)
+            completion(
+                false,
+                NSError(
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "account, profile, and environment are required"]))
             return
         }
 
@@ -92,10 +96,13 @@ public class TealiumPrismBridge: NSObject {
         // Configure consent if consentAdapterId is present
         if let adapterId = config["consentAdapterId"] as? String {
             var defaultDecision: ConsentDecision? = nil
-            if let typeStr = config["consentDefaultDecisionType"] as? String,
-               let type = ConsentDecision.DecisionType(rawValue: typeStr.lowercased()),
-               let purposes = config["consentDefaultPurposes"] as? [String] {
-                defaultDecision = ConsentDecision(decisionType: type, purposes: Set(purposes))
+            if let typeStr = config["consentDefaultDecisionType"] as? String {
+                if let type = ConsentDecision.DecisionType(rawValue: typeStr.lowercased()),
+                   let purposes = config["consentDefaultPurposes"] as? [String] {
+                    defaultDecision = ConsentDecision(decisionType: type, purposes: Set(purposes))
+                } else {
+                    NSLog("%@ Unknown consentDefaultDecisionType '%@' — skipping consent default", bridgeLogTag, typeStr)
+                }
             }
 
             let adapter = BridgeCMPAdapter(id: adapterId, defaultDecision: defaultDecision)
@@ -129,15 +136,13 @@ public class TealiumPrismBridge: NSObject {
         }
 
         _ = Tealium.create(config: tealiumConfig) { [weak self] result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let instance):
-                    self?.tealium = instance
-                    completion(true)
-                case .failure:
-                    self?.tealium = nil
-                    completion(false)
-                }
+            switch result {
+            case .success(let instance):
+                self?.tealium = instance
+                completion(true, nil)
+            case .failure(let err):
+                self?.tealium = nil
+                completion(false, err)
             }
         }
     }
@@ -162,44 +167,40 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public func track(name: String, type: String, data: NSDictionary?, completion: @escaping (NSDictionary?, Error?) -> Void) {
         guard let tealium = tealium else {
-            completion(nil, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            completion(nil, NSError(domain: bridgeErrorDomain, code: -1, userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         let dispatchType: DispatchType = type.lowercased() == "view" ? .view : .event
         let dataObj = data.map { dataObject(from: $0 as? [String: Any] ?? [:]) }
         tealium.track(name, type: dispatchType, data: dataObj).subscribe { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let trackResult):
-                    let dispatch = trackResult.dispatch
-                    let dict: NSDictionary = [
-                        "status": trackResult.status == .accepted ? "accepted" : "dropped",
-                        "info": trackResult.info,
-                        "dispatch": [
-                            "id": dispatch.id,
-                            "timestamp": dispatch.timestamp,
-                            "payload": dispatch.payload.toRawDict(),
-                        ] as [String: Any],
-                    ]
-                    completion(dict, nil)
-                case .failure(let err):
-                    completion(nil, err)
-                }
+            switch result {
+            case .success(let trackResult):
+                let dispatch = trackResult.dispatch
+                let dict: NSDictionary = [
+                    "status": trackResult.status == .accepted ? "accepted" : "dropped",
+                    "info": trackResult.info,
+                    "dispatch": [
+                        "id": dispatch.id,
+                        "timestamp": dispatch.timestamp,
+                        "payload": dispatch.payload.asDictionary(),
+                    ] as [String: Any],
+                ]
+                completion(dict, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
         }
     }
 
     @objc public func flushEventQueue(completion: @escaping (Bool, Error?) -> Void) {
         guard let tealium = tealium else {
-            completion(false, NSError(domain: "TealiumPrism", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not initialized"]))
+            completion(false, NSError(domain: bridgeErrorDomain, code: -1, userInfo: [NSLocalizedDescriptionKey: bridgeErrorNotInitialized]))
             return
         }
         tealium.flushEventQueue().subscribe { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success: completion(true, nil)
-                case .failure(let err): completion(false, err)
-                }
+            switch result {
+            case .success: completion(true, nil)
+            case .failure(let err): completion(false, err)
             }
         }
     }

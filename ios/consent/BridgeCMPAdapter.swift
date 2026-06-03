@@ -26,7 +26,7 @@ internal class BridgeCMPAdapter: CMPAdapter {
     private static let keyDecisionType = "decisionType"
     private static let keyPurposes = "purposes"
 
-    init(id: String = "react-native-bridge", defaultDecision: ConsentDecision? = nil) {
+    init(id: String, defaultDecision: ConsentDecision? = nil) {
         self.id = id
         self.defaultDecision = defaultDecision
         let initial = BridgeCMPAdapter.readPersistedDecision(adapterId: id) ?? defaultDecision

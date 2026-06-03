@@ -10,6 +10,9 @@ import com.tealium.prism.core.api.data.DataList
 import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.persistence.Expiry
 import com.tealium.prism.core.api.pubsub.Disposable
+import com.tealiumprismreactnative.ERROR_DATA_LAYER
+import com.tealiumprismreactnative.ERROR_NOT_INITIALIZED
+import com.tealiumprismreactnative.MSG_NOT_INITIALIZED
 import com.tealiumprismreactnative.TAG
 import com.tealiumprismreactnative.TealiumPrismReactNativeModule
 import com.tealiumprismreactnative.bridge.toStringList
@@ -21,66 +24,74 @@ internal class DataLayerDelegate(
     private var updateSubscription: Disposable? = null
     private var removeSubscription: Disposable? = null
 
-    fun put(record: ReadableMap, expiry: String, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
-        teal.dataLayer.put(DataObject.fromMap(record.toHashMap()), Expiry.fromRNString(expiry)).subscribe { result ->
+    fun put(record: ReadableMap, expiry: Double, promise: Promise) {
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
+        teal.dataLayer.put(DataObject.fromMap(record.toHashMap()), Expiry.fromLongValue(expiry.toLong())).subscribe { result ->
             if (result.isSuccess) promise.resolve(null)
             else {
                 val err = result.exceptionOrNull()
-                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to put data", err)
+                promise.reject(ERROR_DATA_LAYER, err?.message ?: "Failed to put data", err)
             }
         }
     }
 
     fun getDataItem(key: String, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.get(key).subscribe { result ->
+            result.exceptionOrNull()?.let { err ->
+                promise.reject(ERROR_DATA_LAYER, err.message ?: "Failed to get data item", err)
+                return@subscribe
+            }
             val item = result.getOrNull()
             promise.resolve(if (item != null) item.toWritableMap() else null)
         }
     }
 
     fun getDataList(key: String, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.getDataList(key).subscribe { result ->
+            result.exceptionOrNull()?.let { err ->
+                promise.reject(ERROR_DATA_LAYER, err.message ?: "Failed to get data list", err)
+                return@subscribe
+            }
             val list = result.getOrNull()
             if (list == null) {
                 promise.resolve(null)
                 return@subscribe
             }
-            val arr = Arguments.createArray()
-            for (item in list) arr.pushMap(item.toWritableMap())
-            promise.resolve(arr)
+            promise.resolve(list.toWritableArray())
         }
     }
 
     fun getDataObject(key: String, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.getDataObject(key).subscribe { result ->
+            result.exceptionOrNull()?.let { err ->
+                promise.reject(ERROR_DATA_LAYER, err.message ?: "Failed to get data object", err)
+                return@subscribe
+            }
             val obj = result.getOrNull()
             if (obj == null) {
                 promise.resolve(null)
                 return@subscribe
             }
-            val map = Arguments.createMap()
-            for ((k, item) in obj) map.putMap(k, item.toWritableMap())
-            promise.resolve(map)
+            promise.resolve(obj.toWritableMap())
         }
     }
 
     fun remove(key: String, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.remove(key).subscribe { result ->
             if (result.isSuccess) promise.resolve(null)
             else {
                 val err = result.exceptionOrNull()
-                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to remove key", err)
+                promise.reject(ERROR_DATA_LAYER, err?.message ?: "Failed to remove key", err)
             }
         }
     }
 
     fun removeKeys(keys: ReadableArray, promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         val keyList = keys.toStringList()
         if (keyList.isEmpty()) {
             promise.resolve(null)
@@ -90,28 +101,31 @@ internal class DataLayerDelegate(
             if (result.isSuccess) promise.resolve(null)
             else {
                 val err = result.exceptionOrNull()
-                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to remove keys", err)
+                promise.reject(ERROR_DATA_LAYER, err?.message ?: "Failed to remove keys", err)
             }
         }
     }
 
     fun clear(promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.clear().subscribe { result ->
             if (result.isSuccess) promise.resolve(null)
             else {
                 val err = result.exceptionOrNull()
-                promise.reject("DATA_LAYER_ERROR", err?.message ?: "Failed to clear data layer", err)
+                promise.reject(ERROR_DATA_LAYER, err?.message ?: "Failed to clear data layer", err)
             }
         }
     }
 
     fun getAll(promise: Promise) {
-        val teal = getTealium() ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = getTealium() ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.dataLayer.getAll().subscribe { result ->
-            result.exceptionOrNull()?.let { Log.w(TAG, "getAll failed: ${it.message}", it) }
+            result.exceptionOrNull()?.let { err ->
+                promise.reject(ERROR_DATA_LAYER, err.message ?: "Failed to get all data", err)
+                return@subscribe
+            }
             val obj = result.getOrNull()
-            promise.resolve(if (obj != null) obj.toRawWritableMap() else Arguments.createMap())
+            promise.resolve(if (obj != null) obj.toWritableMap() else Arguments.createMap())
         }
     }
 
@@ -122,7 +136,7 @@ internal class DataLayerDelegate(
             return
         }
         updateSubscription = teal.dataLayer.onDataUpdated.subscribe { dataObject ->
-            sendEvent(TealiumPrismReactNativeModule.EVENT_DATA_LAYER_UPDATED, dataObject.toRawWritableMap())
+            sendEvent(TealiumPrismReactNativeModule.EVENT_DATA_LAYER_UPDATED, dataObject.toWritableMap())
         }
     }
 

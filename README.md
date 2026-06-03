@@ -49,7 +49,7 @@ await Tealium.track('button_click', 'event', { button_id: 'submit' });
 
 ## API Reference
 
-### Initialization
+### Initialization & Shutdown
 
 ```typescript
 const success = await Tealium.create({
@@ -133,7 +133,7 @@ Consent management requires `cmpAdapter` in the config. All consent methods reje
 await Tealium.create({
   // ...
   cmpAdapter: {
-    id: 'my-cmp',                       // optional, default: 'react-native-bridge'
+    id: 'my-cmp',                       // required, must match the ConsentConfiguration key in settings JSON
     allPurposes: ['analytics', 'ads'],  // optional
     defaultDecision: {
       decisionType: 'implicit',

@@ -8,10 +8,17 @@ static NSString *const kEventDataLayerUpdated = @"TealiumDataLayerUpdated";
 static NSString *const kEventDataLayerRemoved = @"TealiumDataLayerRemoved";
 static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionChanged";
 
-@implementation TealiumPrismReactNative {
-    BOOL _hasListeners;
-    NSInteger _listenerCount;
-}
+static NSString *const kErrorNotInitialized    = @"NOT_INITIALIZED";
+static NSString *const kErrorInit              = @"INIT_ERROR";
+static NSString *const kErrorTrack             = @"TRACK_ERROR";
+static NSString *const kErrorFlush             = @"FLUSH_ERROR";
+static NSString *const kErrorDataLayer         = @"DATA_LAYER_ERROR";
+static NSString *const kErrorTrace             = @"TRACE_ERROR";
+static NSString *const kErrorReset             = @"RESET_ERROR";
+static NSString *const kErrorClear             = @"CLEAR_ERROR";
+static NSString *const kErrorConsentNotEnabled = @"CONSENT_NOT_ENABLED";
+
+@implementation TealiumPrismReactNative
 
 // MARK: - Module Setup
 
@@ -141,11 +148,15 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
             configDict[@"sessionTimeoutSeconds"] = @(config.sessionTimeoutSeconds().value());
         }
 
-        [bridge createWithConfig:configDict completion:^(BOOL success) {
-            resolve(success ? @YES : @NO);
+        [bridge createWithConfig:configDict completion:^(BOOL success, NSError *error) {
+            if (error) {
+                reject(kErrorInit, error.localizedDescription ?: @"Initialization failed", error);
+            } else {
+                resolve(@YES);
+            }
         }];
     } @catch (NSException *exception) {
-        reject(@"INIT_ERROR", exception.reason, nil);
+        reject(kErrorInit, exception.reason, nil);
     }
 }
 
@@ -167,7 +178,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
       resolve:(RCTPromiseResolveBlock)resolve
        reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     NSString *name = trackData.name();
@@ -175,7 +186,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     NSDictionary *dataDict = trackData.data() ? (NSDictionary *)trackData.data() : nil;
     [[TealiumPrismBridge shared] trackWithName:name type:type data:dataDict completion:^(NSDictionary *result, NSError *error) {
         if (error) {
-            reject(@"TRACK_ERROR", error.localizedDescription ?: @"Track dispatch failed", error);
+            reject(kErrorTrack, error.localizedDescription ?: @"Track dispatch failed", error);
         } else {
             resolve(result);
         }
@@ -185,12 +196,12 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)flushEventQueue:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] flushEventQueueWithCompletion:^(BOOL success, NSError *error) {
         if (!success || error) {
-            reject(@"FLUSH_ERROR", error.localizedDescription ?: @"Flush event queue failed", error);
+            reject(kErrorFlush, error.localizedDescription ?: @"Flush event queue failed", error);
         } else {
             resolve(nil);
         }
@@ -200,12 +211,16 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 // MARK: - Data Layer
 
 - (void)dataLayerPut:(NSDictionary *)record
-              expiry:(NSString *)expiry
+              expiry:(double)expiry
              resolve:(RCTPromiseResolveBlock)resolve
               reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] putWithRecord:record expiry:expiry completion:^(BOOL success, NSError *error) {
         if (error) {
-            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+            reject(kErrorDataLayer, error.localizedDescription, error);
         } else {
             resolve(nil);
         }
@@ -216,11 +231,15 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
                     resolve:(RCTPromiseResolveBlock)resolve
                      reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getDataItemWithKey:key completion:^(NSDictionary *result) {
-        resolve(result ?: [NSNull null]);
+    [[TealiumPrismBridge shared] getDataItemWithKey:key completion:^(NSDictionary *result, NSError *error) {
+        if (error) {
+            reject(kErrorDataLayer, error.localizedDescription, error);
+        } else {
+            resolve(result ?: [NSNull null]);
+        }
     }];
 }
 
@@ -228,11 +247,15 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
                      resolve:(RCTPromiseResolveBlock)resolve
                       reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getDataListWithKey:key completion:^(NSArray *result) {
-        resolve(result ?: [NSNull null]);
+    [[TealiumPrismBridge shared] getDataListWithKey:key completion:^(NSArray *result, NSError *error) {
+        if (error) {
+            reject(kErrorDataLayer, error.localizedDescription, error);
+        } else {
+            resolve(result ?: [NSNull null]);
+        }
     }];
 }
 
@@ -240,20 +263,28 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
                        resolve:(RCTPromiseResolveBlock)resolve
                         reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getDataObjectWithKey:key completion:^(NSDictionary *result) {
-        resolve(result ?: [NSNull null]);
+    [[TealiumPrismBridge shared] getDataObjectWithKey:key completion:^(NSDictionary *result, NSError *error) {
+        if (error) {
+            reject(kErrorDataLayer, error.localizedDescription, error);
+        } else {
+            resolve(result ?: [NSNull null]);
+        }
     }];
 }
 
 - (void)dataLayerRemove:(NSString *)key
                 resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] removeWithKey:key completion:^(BOOL success, NSError *error) {
         if (error) {
-            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+            reject(kErrorDataLayer, error.localizedDescription, error);
         } else {
             resolve(nil);
         }
@@ -263,9 +294,13 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)dataLayerRemoveKeys:(NSArray<NSString *> *)keys
                     resolve:(RCTPromiseResolveBlock)resolve
                      reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] removeKeysWithKeys:keys completion:^(BOOL success, NSError *error) {
         if (error) {
-            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+            reject(kErrorDataLayer, error.localizedDescription, error);
         } else {
             resolve(nil);
         }
@@ -275,12 +310,12 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)dataLayerClear:(RCTPromiseResolveBlock)resolve
                reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] clearWithCompletion:^(BOOL success, NSError *error) {
         if (error) {
-            reject(@"DATA_LAYER_ERROR", error.localizedDescription, error);
+            reject(kErrorDataLayer, error.localizedDescription, error);
         } else {
             resolve(nil);
         }
@@ -290,11 +325,15 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)dataLayerGetAll:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getAllWithCompletion:^(NSDictionary *data) {
-        resolve(data ?: @{});
+    [[TealiumPrismBridge shared] getAllWithCompletion:^(NSDictionary *data, NSError *error) {
+        if (error) {
+            reject(kErrorDataLayer, error.localizedDescription, error);
+        } else {
+            resolve(data ?: @{});
+        }
     }];
 }
 
@@ -305,7 +344,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] handleWithUrl:url referrer:referrer completion:^(BOOL success) {
@@ -318,16 +357,24 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)traceJoin:(NSString *)traceId
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] joinWithTraceId:traceId completion:^(NSError *error) {
-        if (error) { reject(@"TRACE_ERROR", error.localizedDescription, error); }
+        if (error) { reject(kErrorTrace, error.localizedDescription, error); }
         else { resolve(nil); }
     }];
 }
 
 - (void)traceLeave:(RCTPromiseResolveBlock)resolve
             reject:(RCTPromiseRejectBlock)reject {
+    if (![[TealiumPrismBridge shared] isInitialized]) {
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
+        return;
+    }
     [[TealiumPrismBridge shared] leaveWithCompletion:^(NSError *error) {
-        if (error) { reject(@"TRACE_ERROR", error.localizedDescription, error); }
+        if (error) { reject(kErrorTrace, error.localizedDescription, error); }
         else { resolve(nil); }
     }];
 }
@@ -335,12 +382,12 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)traceForceEndOfVisit:(RCTPromiseResolveBlock)resolve
                       reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] forceEndOfVisitWithCompletion:^(NSDictionary *result, NSError *error) {
         if (error) {
-            reject(@"TRACE_ERROR", error.localizedDescription ?: @"Force end of visit failed", error);
+            reject(kErrorTrace, error.localizedDescription ?: @"Force end of visit failed", error);
         } else {
             resolve(result);
         }
@@ -352,12 +399,12 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)resetVisitorId:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] resetVisitorIdWithCompletion:^(NSString *visitorId, NSError *error) {
         if (error) {
-            reject(@"RESET_ERROR", error.localizedDescription, error);
+            reject(kErrorReset, error.localizedDescription, error);
         } else {
             resolve(visitorId);
         }
@@ -367,12 +414,12 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
 - (void)clearStoredVisitorIds:(RCTPromiseResolveBlock)resolve
                        reject:(RCTPromiseRejectBlock)reject {
     if (![[TealiumPrismBridge shared] isInitialized]) {
-        reject(@"NOT_INITIALIZED", @"Tealium is not initialized", nil);
+        reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
     [[TealiumPrismBridge shared] clearStoredVisitorIdsWithCompletion:^(NSString *visitorId, NSError *error) {
         if (error) {
-            reject(@"CLEAR_ERROR", error.localizedDescription, error);
+            reject(kErrorClear, error.localizedDescription, error);
         } else {
             resolve(visitorId);
         }
@@ -387,9 +434,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
                     reject:(RCTPromiseRejectBlock)reject {
     [[TealiumPrismBridge shared] setDecisionWithDecisionType:decisionType purposes:purposes completion:^(BOOL success, NSError *error) {
         if (error) {
-            NSString *code = [error.localizedDescription containsString:@"Invalid decisionType"]
-                ? @"INVALID_DECISION_TYPE"
-                : @"CONSENT_NOT_ENABLED";
+            NSString *code = error.userInfo[@"TealiumBridgeErrorCode"] ?: kErrorConsentNotEnabled;
             reject(code, error.localizedDescription, error);
         } else {
             resolve(nil);
@@ -408,7 +453,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
               reject:(RCTPromiseRejectBlock)reject {
     [[TealiumPrismBridge shared] resetWithCompletion:^(BOOL success, NSError *error) {
         if (error) {
-            reject(@"CONSENT_NOT_ENABLED", error.localizedDescription, error);
+            reject(kErrorConsentNotEnabled, error.localizedDescription, error);
         } else {
             resolve(nil);
         }
@@ -427,7 +472,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
     bridge.onConsentDecisionChanged = ^(NSDictionary<NSString *, id> *decision) {
         TealiumPrismReactNative *strongSelf = weakSelf;
-        if (strongSelf && strongSelf->_hasListeners) {
+        if (strongSelf) {
             [strongSelf sendEventWithName:kEventConsentDecisionChanged
                                      body:@{@"decision": decision ?: [NSNull null]}];
         }
@@ -448,7 +493,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
     bridge.onDataUpdated = ^(NSDictionary<NSString *, id> *data) {
         TealiumPrismReactNative *strongSelf = weakSelf;
-        if (strongSelf && strongSelf->_hasListeners) {
+        if (strongSelf) {
             [strongSelf sendEventWithName:kEventDataLayerUpdated body:data];
         }
     };
@@ -466,7 +511,7 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     TealiumPrismBridge *bridge = [TealiumPrismBridge shared];
     bridge.onDataRemoved = ^(NSArray<NSString *> *keys) {
         TealiumPrismReactNative *strongSelf = weakSelf;
-        if (strongSelf && strongSelf->_hasListeners) {
+        if (strongSelf) {
             [strongSelf sendEventWithName:kEventDataLayerRemoved body:@{@"keys": keys}];
         }
     };
@@ -485,25 +530,17 @@ static NSString *const kEventConsentDecisionChanged = @"TealiumConsentDecisionCh
     return @[kEventDataLayerUpdated, kEventDataLayerRemoved, kEventConsentDecisionChanged];
 }
 
-- (void)addListener:(NSString *)eventType {
-    _listenerCount++;
-    _hasListeners = YES;
-}
+- (void)addListener:(NSString *)eventType {}
 
-- (void)removeListeners:(double)count {
-    _listenerCount = MAX(0, _listenerCount - (NSInteger)count);
-    if (_listenerCount == 0) {
-        _hasListeners = NO;
-    }
-}
+- (void)removeListeners:(double)count {}
 
 // In bridgeless New Architecture mode (RN 0.73+), RCTEventEmitter.receiveEvent() is not
 // registered as a callable JS module. Override to route through RCTDeviceEventEmitter.emit()
 // instead, which is always registered in both bridge and bridgeless modes.
+// No _hasListeners guard needed: the subscribe/dispose lifecycle in DataLayerAPI.ts stops
+// the native SDK from generating events when no JS listeners exist. Any in-flight event
+// from the race window is silently dropped by RCTDeviceEventEmitter when no subscribers are registered.
 - (void)sendEventWithName:(NSString *)eventName body:(id)body {
-    if (!_hasListeners) {
-        return;
-    }
     // callableJSModules is id — message send to nil is safe (no-op) in ObjC.
     [self.callableJSModules invokeModule:@"RCTDeviceEventEmitter"
                                    method:@"emit"

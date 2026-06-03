@@ -7,17 +7,41 @@ import com.tealium.prism.core.api.data.DataItem
 import com.tealium.prism.core.api.data.DataList
 import com.tealium.prism.core.api.data.DataObject
 
-// Converts a single DataItem into {type, value} format for get(key).
-// JS needs the "type" field to tell apart numbers, strings, lists, etc.
+// Wraps the value in {value:} for getDataItem. Required because TurboModule
+// spec declares Object return type — a raw scalar cannot be returned directly.
 internal fun DataItem.toWritableMap(): WritableMap {
     val map = Arguments.createMap()
     when (val v = value) {
-        is String    -> { map.putString("type", "string");  map.putString("value", v) }
-        is Boolean   -> { map.putString("type", "boolean"); map.putBoolean("value", v) }
-        is Number    -> { map.putString("type", "number");  map.putDouble("value", v.toDouble()) }
-        is DataList  -> { map.putString("type", "list");    map.putArray("value", v.toWritableArray()) }
-        is DataObject -> { map.putString("type", "object"); map.putMap("value", v.toDataItemWritableMap()) }
-        else         -> map.putString("type", "null")
+        is String     -> map.putString("value", v)
+        is Boolean    -> map.putBoolean("value", v)
+        is Number     -> map.putDouble("value", v.toDouble())
+        is DataList   -> map.putArray("value", v.toWritableArray())
+        is DataObject -> map.putMap("value", v.toWritableMap())
+        else          -> map.putNull("value")
     }
     return map
+}
+
+// Writes the value of a DataItem into a WritableMap at the given key.
+internal fun DataItem.putInto(map: WritableMap, key: String) {
+    when (val v = value) {
+        is String     -> map.putString(key, v)
+        is Boolean    -> map.putBoolean(key, v)
+        is Number     -> map.putDouble(key, v.toDouble())
+        is DataList   -> map.putArray(key, v.toWritableArray())
+        is DataObject -> map.putMap(key, v.toWritableMap())
+        else          -> map.putNull(key)
+    }
+}
+
+// Pushes the value of a DataItem onto a WritableArray.
+internal fun DataItem.pushInto(array: WritableArray) {
+    when (val v = value) {
+        is String     -> array.pushString(v)
+        is Boolean    -> array.pushBoolean(v)
+        is Number     -> array.pushDouble(v.toDouble())
+        is DataList   -> array.pushArray(v.toWritableArray())
+        is DataObject -> array.pushMap(v.toWritableMap())
+        else          -> array.pushNull()
+    }
 }

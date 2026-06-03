@@ -34,7 +34,8 @@ export class DeepLinkAPI {
    *
    * @param url - The deep link URL to handle
    * @param referrer - Optional referrer URL indicating the source of the deep link
-   * @returns Promise resolving to true if handled successfully
+   * @returns Promise resolving to true if handled successfully. Rejects with
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    *
    * @example
    * ```typescript

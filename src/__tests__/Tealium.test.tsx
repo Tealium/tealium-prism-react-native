@@ -26,10 +26,10 @@ beforeEach(() => {
 // ── Tealium.create ────────────────────────────────────────────────────────────
 
 describe('Tealium.create', () => {
-  it('calls native initialize and returns true on success', async () => {
+  it('calls native initialize and resolves on success', async () => {
     mockNative.initialize.mockResolvedValue(true);
 
-    const result = await Tealium.create(BASE_CONFIG);
+    await Tealium.create(BASE_CONFIG);
 
     expect(mockNative.initialize).toHaveBeenCalledTimes(1);
     expect(mockNative.initialize).toHaveBeenCalledWith(
@@ -39,7 +39,6 @@ describe('Tealium.create', () => {
         environment: 'dev',
       })
     );
-    expect(result).toBe(true);
     expect(Tealium.isReady).toBe(true);
   });
 
@@ -53,16 +52,14 @@ describe('Tealium.create', () => {
         plugin_name: 'Tealium-Prism-ReactNative',
         plugin_version: expect.any(String),
       },
-      'forever'
+      -1
     );
   });
 
-  it('returns false and leaves isReady=false when native init fails', async () => {
-    mockNative.initialize.mockResolvedValue(false);
+  it('rejects and leaves isReady=false when native init fails', async () => {
+    mockNative.initialize.mockRejectedValue(new Error('init failed'));
 
-    const result = await Tealium.create(BASE_CONFIG);
-
-    expect(result).toBe(false);
+    await expect(Tealium.create(BASE_CONFIG)).rejects.toThrow('init failed');
     expect(Tealium.isReady).toBe(false);
   });
 
@@ -90,17 +87,17 @@ describe('Tealium.create', () => {
     );
   });
 
-  it('uses react-native-bridge as default cmpAdapter id when id is absent', async () => {
+  it('passes the cmpAdapter id through verbatim (no default applied)', async () => {
     mockNative.initialize.mockResolvedValue(true);
 
     await Tealium.create({
       ...BASE_CONFIG,
-      cmpAdapter: { allPurposes: ['analytics'] },
+      cmpAdapter: { id: 'my-cmp', allPurposes: ['analytics'] },
     });
 
     expect(mockNative.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
-        cmpAdapter: expect.objectContaining({ id: 'react-native-bridge' }),
+        cmpAdapter: expect.objectContaining({ id: 'my-cmp' }),
       })
     );
   });
@@ -110,7 +107,7 @@ describe('Tealium.create', () => {
     mockNative.dataLayerPut.mockRejectedValue(new Error('metadata fail'));
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await expect(Tealium.create(BASE_CONFIG)).resolves.toBe(true);
+    await expect(Tealium.create(BASE_CONFIG)).resolves.toBeUndefined();
 
     // Wait one microtask tick so the inner .catch can settle and log.
     await Promise.resolve();
@@ -130,7 +127,7 @@ describe('Tealium.create consentConfiguration', () => {
 
     await Tealium.create({
       ...BASE_CONFIG,
-      cmpAdapter: { allPurposes: ['analytics', 'marketing'] },
+      cmpAdapter: { id: 'my-cmp', allPurposes: ['analytics', 'marketing'] },
       consentConfiguration: {
         tealiumPurposeId: 'analytics',
         purposes: [{ purposeId: 'marketing', dispatcherIds: ['collect'] }],
@@ -164,6 +161,37 @@ describe('Tealium.create consentConfiguration', () => {
   });
 });
 
+// ── Sub-API getter guard (pre-create access) ─────────────────────────────────
+
+describe('sub-API getter guard', () => {
+  it.each(['dataLayer', 'trace', 'deepLink', 'consent'] as const)(
+    'throws when %s is accessed before create()',
+    (api) => {
+      expect(() => (Tealium as any)[api]).toThrow(
+        new RegExp(`${api} accessed before create\\(\\)`)
+      );
+    }
+  );
+
+  it('returns the sub-API once create() has resolved', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+    await Tealium.create(BASE_CONFIG);
+
+    expect(() => Tealium.dataLayer).not.toThrow();
+    expect(() => Tealium.trace).not.toThrow();
+    expect(() => Tealium.deepLink).not.toThrow();
+    expect(() => Tealium.consent).not.toThrow();
+  });
+
+  it('throws again after shutdown()', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+    await Tealium.create(BASE_CONFIG);
+    await Tealium.shutdown();
+
+    expect(() => Tealium.dataLayer).toThrow(/before create\(\)/);
+  });
+});
+
 // ── Tealium.shutdown ──────────────────────────────────────────────────────────
 
 describe('Tealium.shutdown', () => {
@@ -180,12 +208,13 @@ describe('Tealium.shutdown', () => {
   it('nullifies sub-API instances after shutdown', async () => {
     mockNative.initialize.mockResolvedValue(true);
     await Tealium.create(BASE_CONFIG);
-    const dlBefore = Tealium.dataLayer;
 
     await Tealium.shutdown();
 
-    // After shutdown each getter creates a fresh instance.
-    expect(Tealium.dataLayer).not.toBe(dlBefore);
+    // Internal instances are cleared, and the guard is re-armed so the getter
+    // throws again until the next create().
+    expect((Tealium as any)._dataLayer).toBeNull();
+    expect(() => Tealium.dataLayer).toThrow(/before create\(\)/);
   });
 
   it('disposes JS sub-API streams before awaiting native shutdown', async () => {
@@ -251,6 +280,31 @@ describe('Tealium.isInitialized', () => {
     const result = await Tealium.isInitialized();
 
     expect(result).toBe(true);
+    expect(Tealium.isReady).toBe(true);
+  });
+
+  it('syncs isReady to false when native reports not initialized', async () => {
+    // Prime local state to true so the false sync is observable.
+    mockNative.initialize.mockResolvedValue(true);
+    await Tealium.create(BASE_CONFIG);
+    expect(Tealium.isReady).toBe(true);
+
+    mockNative.isInitialized.mockResolvedValue(false);
+
+    const result = await Tealium.isInitialized();
+
+    expect(result).toBe(false);
+    expect(Tealium.isReady).toBe(false);
+  });
+
+  it('propagates native rejection and leaves isReady unchanged', async () => {
+    mockNative.initialize.mockResolvedValue(true);
+    await Tealium.create(BASE_CONFIG);
+
+    mockNative.isInitialized.mockRejectedValue(new Error('probe fail'));
+
+    await expect(Tealium.isInitialized()).rejects.toThrow('probe fail');
+    // Rejection happens before assignment, so cached state is untouched.
     expect(Tealium.isReady).toBe(true);
   });
 });

@@ -19,7 +19,7 @@ const mockNative = getMockNative();
 beforeEach(() => {
   jest.clearAllMocks();
   restoreDefaultResolves(mockNative);
-  resetTealiumState();
+  resetTealiumState(true);
 });
 
 // Cross-cutting tests covering native→JS event payload delivery via the

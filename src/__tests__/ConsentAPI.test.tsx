@@ -1,4 +1,5 @@
 import Tealium from '../index';
+import { ErrorCodes } from '../errors';
 import {
   BASE_CONFIG,
   getMockNative,
@@ -20,7 +21,7 @@ const mockNative = getMockNative();
 beforeEach(() => {
   jest.clearAllMocks();
   restoreDefaultResolves(mockNative);
-  resetTealiumState();
+  resetTealiumState(true);
 });
 
 // ── ConsentAPI ────────────────────────────────────────────────────────────────
@@ -35,14 +36,18 @@ describe('ConsentAPI', () => {
     ]);
   });
 
-  it('setDecision rejects when native rejects (CONSENT_NOT_ENABLED)', async () => {
+  it('setDecision rejects with CONSENT_NOT_ENABLED code when native rejects', async () => {
+    // Native rejects with a coded error (code + message) when no cmpAdapter is
+    // configured; assert the code, not just the message, so the test name holds.
     mockNative.consentSetDecision.mockRejectedValue(
-      new Error('Consent integration not enabled')
+      Object.assign(new Error('Consent integration not enabled'), {
+        code: ErrorCodes.CONSENT_NOT_ENABLED,
+      })
     );
 
     await expect(
       Tealium.consent.setDecision('explicit', ['analytics'])
-    ).rejects.toThrow('Consent integration not enabled');
+    ).rejects.toMatchObject({ code: ErrorCodes.CONSENT_NOT_ENABLED });
   });
 
   it('getDecision returns native result', async () => {
@@ -60,14 +65,16 @@ describe('ConsentAPI', () => {
     expect(mockNative.consentReset).toHaveBeenCalled();
   });
 
-  it('reset rejects when native rejects (CONSENT_NOT_ENABLED)', async () => {
+  it('reset rejects with CONSENT_NOT_ENABLED code when native rejects', async () => {
     mockNative.consentReset.mockRejectedValue(
-      new Error('Consent integration not enabled')
+      Object.assign(new Error('Consent integration not enabled'), {
+        code: ErrorCodes.CONSENT_NOT_ENABLED,
+      })
     );
 
-    await expect(Tealium.consent.reset()).rejects.toThrow(
-      'Consent integration not enabled'
-    );
+    await expect(Tealium.consent.reset()).rejects.toMatchObject({
+      code: ErrorCodes.CONSENT_NOT_ENABLED,
+    });
   });
 
   it('getAllPurposes forwards to consentGetAllPurposes', async () => {

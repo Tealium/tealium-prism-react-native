@@ -20,21 +20,29 @@ export const BASE_CONFIG = {
 /**
  * Reset Tealium private static state and clear the module-level
  * NativeEventEmitter listener counts between tests.
+ *
+ * @param initialized - Final value for the private `_initialized` flag. Pass
+ *   `true` in sub-API suites that exercise getters directly (the getters now
+ *   throw before `create()`); leave it `false` (default) for lifecycle tests
+ *   that drive `create()`/`shutdown()` themselves.
  */
-export function resetTealiumState(): void {
-  (Tealium as any)._initialized = false;
+export function resetTealiumState(initialized = false): void {
   (Tealium as any)._dataLayer = null;
   (Tealium as any)._trace = null;
   (Tealium as any)._deepLink = null;
   (Tealium as any)._consent = null;
 
   // The module-level NativeEventEmitter instance is shared across tests; clear
-  // its per-event listener counts so each test starts at 0.
+  // its per-event listener counts so each test starts at 0. The getter is
+  // guarded, so flip the flag on just long enough to reach the emitter.
+  (Tealium as any)._initialized = true;
   const fresh = Tealium.dataLayer as any;
   fresh.eventEmitter.removeAllListeners('TealiumDataLayerUpdated');
   fresh.eventEmitter.removeAllListeners('TealiumDataLayerRemoved');
   fresh.eventEmitter.removeAllListeners('TealiumConsentDecisionChanged');
+
   (Tealium as any)._dataLayer = null;
+  (Tealium as any)._initialized = initialized;
 }
 
 /**

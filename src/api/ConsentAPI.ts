@@ -113,7 +113,9 @@ export class ConsentAPI {
    * Reset the consent decision (revoke consent).
    *
    * Clears the current consent decision on the native bridge adapter.
-   * After reset, the SDK will queue dispatches until a new decision is provided.
+   * If a `defaultDecision` was configured, `getDecision()` will return that default after reset
+   * rather than null. After reset with no default, the SDK will queue dispatches until a new
+   * decision is provided.
    *
    * @returns Promise rejecting with `CONSENT_NOT_ENABLED` if `cmpAdapter` was
    *   not provided in the config.

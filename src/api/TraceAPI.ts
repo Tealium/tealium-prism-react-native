@@ -17,6 +17,9 @@ export class TraceAPI {
    * `leave()` is called or the session expires.
    *
    * @param id - The trace ID to join (from Tealium's Event Stream Live)
+   * @returns Promise resolving when the trace is joined. Rejects with
+   *   `TRACE_ERROR` on native failure or `NOT_INITIALIZED` (Android) /
+   *   `TRACE_ERROR` (iOS) if Tealium is not yet initialized.
    *
    * @example
    * ```typescript
@@ -31,6 +34,10 @@ export class TraceAPI {
    * Leave the current trace session.
    *
    * Stops adding the trace ID to future events.
+   *
+   * @returns Promise resolving when trace is left. Rejects with `TRACE_ERROR`
+   *   on native failure or `NOT_INITIALIZED` (Android) / `TRACE_ERROR` (iOS)
+   *   if Tealium is not yet initialized.
    */
   leave(): Promise<void> {
     return NativeTealiumPrism.traceLeave();
@@ -44,7 +51,9 @@ export class TraceAPI {
    *
    * The trace will remain active until `leave()` is called.
    *
-   * @returns Promise resolving with the TrackResult for the end-of-visit dispatch.
+   * @returns Promise resolving with the TrackResult for the end-of-visit
+   *   dispatch. Rejects with `TRACE_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   async forceEndOfVisit(): Promise<TrackResult> {
     const spec: TrackResultSpec =

@@ -19,7 +19,7 @@ const mockNative = getMockNative();
 beforeEach(() => {
   jest.clearAllMocks();
   restoreDefaultResolves(mockNative);
-  resetTealiumState();
+  resetTealiumState(true);
 });
 
 // ── DataLayerAPI.put ──────────────────────────────────────────────────────────
@@ -31,25 +31,28 @@ describe('DataLayerAPI.put', () => {
     expect(mockNative.dataLayerPut).toHaveBeenCalledTimes(1);
     expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { user_type: 'premium', count: 42 },
-      'session'
+      -2
     );
   });
 
   it("defaults expiry to 'forever' when omitted", async () => {
     await Tealium.dataLayer.put({ flag: true });
 
-    expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
-      { flag: true },
-      'forever'
-    );
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith({ flag: true }, -1);
+  });
+
+  it("serializes 'untilRestart' expiry to -3", async () => {
+    await Tealium.dataLayer.put({ k: 'v' }, 'untilRestart');
+
+    expect(mockNative.dataLayerPut).toHaveBeenCalledWith({ k: 'v' }, -3);
   });
 
   it('forwards mixed-type arrays intact', async () => {
-    await Tealium.dataLayer.put({ mixed: [1, 'two', true] } as any);
+    await Tealium.dataLayer.put({ mixed: [1, 'two', true] });
 
     expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { mixed: [1, 'two', true] },
-      'forever'
+      -1
     );
   });
 
@@ -61,18 +64,18 @@ describe('DataLayerAPI.put', () => {
     expect(warn).not.toHaveBeenCalled();
     expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { nullable: null, ok: 'x' },
-      'forever'
+      -1
     );
     warn.mockRestore();
   });
 
-  it('serializes { after: Date } expiry to epoch wire string', async () => {
+  it('serializes { after: Date } expiry to epoch milliseconds', async () => {
     const date = new Date(1893456000 * 1000);
     await Tealium.dataLayer.put({ tok: 'abc' }, { after: date });
 
     expect(mockNative.dataLayerPut).toHaveBeenCalledWith(
       { tok: 'abc' },
-      'afterEpochSeconds:1893456000'
+      1893456000 * 1000
     );
   });
 
@@ -153,23 +156,25 @@ describe('DataLayerAPI.getAll', () => {
 // ── DataLayerAPI typed getters ────────────────────────────────────────────────
 
 describe('DataLayerAPI typed getters', () => {
-  it('getDataItem forwards to dataLayerGetDataItem', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'string',
-      value: 'hello',
-    });
+  it('getDataItem forwards to dataLayerGetDataItem and unwraps value', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 'hello' });
 
     const result = await Tealium.dataLayer.getDataItem('greeting');
 
     expect(mockNative.dataLayerGetDataItem).toHaveBeenCalledWith('greeting');
-    expect(result).toEqual({ type: 'string', value: 'hello' });
+    expect(result).toBe('hello');
+  });
+
+  it('getDataItem returns null when native returns null', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue(null);
+
+    const result = await Tealium.dataLayer.getDataItem('missing');
+
+    expect(result).toBeNull();
   });
 
   it('getDataList forwards to dataLayerGetDataList and returns the array', async () => {
-    const list = [
-      { type: 'number', value: 1 },
-      { type: 'number', value: 2 },
-    ];
+    const list = [1, 2];
     mockNative.dataLayerGetDataList.mockResolvedValue(list);
 
     const result = await Tealium.dataLayer.getDataList('nums');
@@ -179,7 +184,7 @@ describe('DataLayerAPI typed getters', () => {
   });
 
   it('getDataList returns null when native returns null', async () => {
-    mockNative.dataLayerGetDataList.mockResolvedValue(null as any);
+    mockNative.dataLayerGetDataList.mockResolvedValue(null);
 
     const result = await Tealium.dataLayer.getDataList('notAList');
 
@@ -187,10 +192,7 @@ describe('DataLayerAPI typed getters', () => {
   });
 
   it('getDataObject forwards to dataLayerGetDataObject and returns the map', async () => {
-    const obj = {
-      a: { type: 'string', value: 'x' },
-      b: { type: 'boolean', value: true },
-    };
+    const obj = { a: 'x', b: true };
     mockNative.dataLayerGetDataObject.mockResolvedValue(obj);
 
     const result = await Tealium.dataLayer.getDataObject('config');
@@ -200,7 +202,7 @@ describe('DataLayerAPI typed getters', () => {
   });
 
   it('getDataObject returns null when native returns null', async () => {
-    mockNative.dataLayerGetDataObject.mockResolvedValue(null as any);
+    mockNative.dataLayerGetDataObject.mockResolvedValue(null);
 
     const result = await Tealium.dataLayer.getDataObject('notAnObject');
 
@@ -212,19 +214,13 @@ describe('DataLayerAPI typed getters', () => {
 
 describe('DataLayerAPI typed scalar getters', () => {
   it('getString returns string value', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'string',
-      value: 'hello',
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 'hello' });
 
     expect(await Tealium.dataLayer.getString('k')).toBe('hello');
   });
 
   it('getString returns null for non-string item', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'number',
-      value: 42,
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 42 });
 
     expect(await Tealium.dataLayer.getString('k')).toBeNull();
   });
@@ -236,46 +232,61 @@ describe('DataLayerAPI typed scalar getters', () => {
   });
 
   it('getInt returns truncated integer', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'number',
-      value: 3.9,
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 3.9 });
 
     expect(await Tealium.dataLayer.getInt('k')).toBe(3);
   });
 
   it('getInt returns null for non-number item', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'string',
-      value: '5',
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: '5' });
 
     expect(await Tealium.dataLayer.getInt('k')).toBeNull();
   });
 
   it('getDouble returns number value as-is', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'number',
-      value: 3.14,
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 3.14 });
 
     expect(await Tealium.dataLayer.getDouble('k')).toBe(3.14);
   });
 
+  it('getDouble returns null for Infinity', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: Infinity });
+
+    expect(await Tealium.dataLayer.getDouble('k')).toBeNull();
+  });
+
+  it('getDouble returns null for -Infinity', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: -Infinity });
+
+    expect(await Tealium.dataLayer.getDouble('k')).toBeNull();
+  });
+
+  it('getDouble returns null for NaN', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: NaN });
+
+    expect(await Tealium.dataLayer.getDouble('k')).toBeNull();
+  });
+
+  it('getInt returns null for Infinity', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: Infinity });
+
+    expect(await Tealium.dataLayer.getInt('k')).toBeNull();
+  });
+
+  it('getInt returns null for NaN', async () => {
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: NaN });
+
+    expect(await Tealium.dataLayer.getInt('k')).toBeNull();
+  });
+
   it('getBoolean returns boolean value', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'boolean',
-      value: true,
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: true });
 
     expect(await Tealium.dataLayer.getBoolean('k')).toBe(true);
   });
 
   it('getBoolean returns null for non-boolean item', async () => {
-    mockNative.dataLayerGetDataItem.mockResolvedValue({
-      type: 'number',
-      value: 1,
-    });
+    mockNative.dataLayerGetDataItem.mockResolvedValue({ value: 1 });
 
     expect(await Tealium.dataLayer.getBoolean('k')).toBeNull();
   });

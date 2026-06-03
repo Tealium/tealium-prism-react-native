@@ -16,7 +16,7 @@ import com.tealium.prism.core.api.pubsub.Observables
  */
 internal class BridgeCmpAdapter(
     context: Context,
-    override val id: String = "react-native-bridge",
+    override val id: String,
     private val defaultDecision: ConsentDecision? = null
 ) : CmpAdapter {
 

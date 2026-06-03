@@ -19,7 +19,7 @@ const mockNative = getMockNative();
 beforeEach(() => {
   jest.clearAllMocks();
   restoreDefaultResolves(mockNative);
-  resetTealiumState();
+  resetTealiumState(true);
 });
 
 describe('DeepLinkAPI', () => {
@@ -44,5 +44,15 @@ describe('DeepLinkAPI', () => {
       'myapp://x',
       'https://referrer.com'
     );
+  });
+
+  it('rejects when native rejects (NOT_INITIALIZED)', async () => {
+    mockNative.deepLinkHandle.mockRejectedValue(
+      new Error('Tealium is not initialized')
+    );
+
+    await expect(
+      Tealium.deepLink.handle('myapp://product/123')
+    ).rejects.toThrow('Tealium is not initialized');
   });
 });

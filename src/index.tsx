@@ -22,8 +22,29 @@ import type {
 // Sub-API imports
 import { DataLayerAPI, TraceAPI, DeepLinkAPI, ConsentAPI } from './api';
 
-// Re-export types
-export * from './types';
+export type {
+  Environment,
+  ConsentDecisionType,
+  ConsentDecision,
+  LogLevel,
+  Expiry,
+  DispatchType,
+  ConsentPurpose,
+  ConsentConfiguration,
+  CmpAdapterConfig,
+  TealiumConfig,
+  TrackData,
+  TrackOptions,
+  Dispatch,
+  TrackResult,
+  DataItem,
+  DataList,
+  DataObject,
+  DataLayerOptions,
+  Disposable,
+  TealiumEventName,
+} from './types';
+export { TealiumView, TealiumEvent, TealiumEvents } from './types';
 
 // Re-export API types
 export type {
@@ -31,6 +52,10 @@ export type {
   DataLayerRemoveCallback,
   ConsentDecisionChangedCallback,
 } from './api';
+
+// Re-export error codes
+export { ErrorCodes } from './errors';
+export type { ErrorCode } from './errors';
 
 import type {
   TealiumConfig,
@@ -50,8 +75,12 @@ const eventEmitter = new NativeEventEmitter(NativeTealiumPrism as any);
  * - Sub-modules accessible via lazy getters (dataLayer, trace, deepLink, etc.)
  * - Core methods directly on the class (track, create, shutdown, etc.)
  *
- * Note: Sub-API getters (dataLayer, trace, etc.) do not guard against use before `create()`.
- * Calls made before initialization will silently no-op on the native side.
+ * Note: Sub-API getters (dataLayer, trace, deepLink, consent) throw if accessed
+ * before `create()` has completed. This mirrors the native Swift/Kotlin SDKs,
+ * where modules are instance properties that cannot be retrieved without a
+ * created Tealium instance. (The static API here can't model the native
+ * "instance exists, initialization still in progress" state, so the guard keys
+ * off whether `create()` has resolved.)
  *
  * @example
  * ```typescript
@@ -87,6 +116,22 @@ export default class Tealium {
   private static _deepLink: DeepLinkAPI | null = null;
   private static _consent: ConsentAPI | null = null;
 
+  /**
+   * Guards sub-API getters against access before `create()`.
+   *
+   * The native SDKs expose modules as instance properties, so they're
+   * unreachable until a Tealium instance exists. The static API mirrors that
+   * invariant by throwing here instead of returning a wrapper whose every call
+   * would reject with `NOT_INITIALIZED` on the native side.
+   */
+  private static _assertInitialized(api: string): void {
+    if (!this._initialized) {
+      throw new Error(
+        `[Tealium] ${api} accessed before create(). Call (and await) Tealium.create(config) first.`
+      );
+    }
+  }
+
   // ============================================
   // Sub-API Getters (mirrors native SDK)
   // ============================================
@@ -104,6 +149,7 @@ export default class Tealium {
    * ```
    */
   static get dataLayer(): DataLayerAPI {
+    this._assertInitialized('dataLayer');
     if (!this._dataLayer) {
       this._dataLayer = new DataLayerAPI(eventEmitter);
     }
@@ -123,6 +169,7 @@ export default class Tealium {
    * ```
    */
   static get trace(): TraceAPI {
+    this._assertInitialized('trace');
     if (!this._trace) {
       this._trace = new TraceAPI();
     }
@@ -140,6 +187,7 @@ export default class Tealium {
    * ```
    */
   static get deepLink(): DeepLinkAPI {
+    this._assertInitialized('deepLink');
     if (!this._deepLink) {
       this._deepLink = new DeepLinkAPI();
     }
@@ -161,6 +209,7 @@ export default class Tealium {
    * ```
    */
   static get consent(): ConsentAPI {
+    this._assertInitialized('consent');
     if (!this._consent) {
       this._consent = new ConsentAPI(eventEmitter);
     }
@@ -198,12 +247,12 @@ export default class Tealium {
    * Mirrors native: `Tealium.create(config:)`
    *
    * @param config - Configuration object with account, profile, environment, and optional settings
-   * @returns Promise resolving to true when creation is complete, false if native init returned failure
-   * @throws Rejects with native error (code: INIT_ERROR) on exception. Safe to retry after failure.
+   * @returns Promise resolving when initialization completes.
+   * @throws Rejects with native error (code: INIT_ERROR) on failure. Safe to retry after rejection.
    *
    * @example
    * ```typescript
-   * const success = await Tealium.create({
+   * await Tealium.create({
    *   account: 'tealiummobile',
    *   profile: 'demo',
    *   environment: 'dev',
@@ -211,13 +260,13 @@ export default class Tealium {
    * });
    * ```
    */
-  static async create(config: TealiumConfig): Promise<boolean> {
+  static async create(config: TealiumConfig): Promise<void> {
     const { cmpAdapter, consentConfiguration, ...rest } = config;
     const spec: TealiumConfigSpec = {
       ...rest,
       cmpAdapter: cmpAdapter
         ? {
-            id: cmpAdapter.id ?? 'react-native-bridge',
+            id: cmpAdapter.id,
             allPurposes: cmpAdapter.allPurposes,
             defaultDecisionType: cmpAdapter.defaultDecision?.decisionType,
             defaultPurposes: cmpAdapter.defaultDecision?.purposes,
@@ -226,25 +275,20 @@ export default class Tealium {
       consentConfiguration:
         cmpAdapter && consentConfiguration ? consentConfiguration : undefined,
     };
-    const result = await NativeTealiumPrism.initialize(spec);
-    Tealium._initialized = result;
+    await NativeTealiumPrism.initialize(spec);
+    Tealium._initialized = true;
 
-    // Add plugin metadata to data layer
-    if (result) {
-      this.dataLayer
-        .put(
-          {
-            plugin_name: 'Tealium-Prism-ReactNative',
-            plugin_version: PLUGIN_VERSION,
-          },
-          'forever'
-        )
-        .catch((err) =>
-          console.warn('[Tealium] plugin metadata put failed:', err)
-        );
-    }
-
-    return result;
+    this.dataLayer
+      .put(
+        {
+          plugin_name: 'Tealium-Prism-ReactNative',
+          plugin_version: PLUGIN_VERSION,
+        },
+        'forever'
+      )
+      .catch((err) =>
+        console.warn('[Tealium] plugin metadata put failed:', err)
+      );
   }
 
   /**
@@ -287,7 +331,9 @@ export default class Tealium {
    * @param name - Name of the event or view
    * @param type - Type of dispatch: 'event' or 'view' (default: 'event')
    * @param data - Optional additional data payload
-   * @returns Promise resolving when tracking is complete
+   * @returns Promise resolving when tracking is complete. Rejects with
+   *   `TRACK_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is
+   *   not yet initialized.
    *
    * @example
    * ```typescript
@@ -328,7 +374,9 @@ export default class Tealium {
    *
    * Mirrors native: `tealium.flushEventQueue()`
    *
-   * @returns Promise resolving when flush is initiated
+   * @returns Promise resolving when flush is initiated. Rejects with
+   *   `FLUSH_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is
+   *   not yet initialized.
    */
   static flushEventQueue(): Promise<void> {
     return NativeTealiumPrism.flushEventQueue();
@@ -345,7 +393,9 @@ export default class Tealium {
    *
    * The new ID will still be associated with any current identity.
    *
-   * @returns Promise resolving to the new visitor ID
+   * @returns Promise resolving to the new visitor ID. Rejects with
+   *   `RESET_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is
+   *   not yet initialized.
    */
   static resetVisitorId(): Promise<string> {
     return NativeTealiumPrism.resetVisitorId();
@@ -358,7 +408,9 @@ export default class Tealium {
    *
    * This effectively creates a new anonymous visitor.
    *
-   * @returns Promise resolving to the new visitor ID
+   * @returns Promise resolving to the new visitor ID. Rejects with
+   *   `CLEAR_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is
+   *   not yet initialized.
    */
   static clearStoredVisitorIds(): Promise<string> {
     return NativeTealiumPrism.clearStoredVisitorIds();

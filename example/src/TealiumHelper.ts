@@ -11,7 +11,6 @@ import Tealium, {
   type TrackResult,
   type Expiry,
   type DataItem,
-  type DataLayerValue,
   type ConsentDecision,
   type ConsentDecisionType,
   type Disposable as TealiumDisposable,
@@ -25,24 +24,6 @@ const DISPOSED_NOOP: TealiumDisposable = {
   },
   dispose() {},
 };
-
-function unwrapDataItem(item: DataItem | null): unknown {
-  if (item === null) return null;
-  switch (item.type) {
-    case 'null':
-      return null;
-    case 'string':
-    case 'number':
-    case 'boolean':
-      return item.value;
-    case 'list':
-      return item.value.map(unwrapDataItem);
-    case 'object':
-      return Object.fromEntries(
-        Object.entries(item.value).map(([k, v]) => [k, unwrapDataItem(v)])
-      );
-  }
-}
 
 /**
  * Default config: remote settings URL, trace logging, visitor identity key "email".
@@ -58,6 +39,8 @@ const DEFAULT_CONFIG: TealiumConfig = {
   logLevel: 'debug',
   visitorIdentityKey: 'email',
   cmpAdapter: {
+    // Must match the ConsentConfiguration key in the settings JSON.
+    id: 'react-native-bridge',
     allPurposes: ['analytics', 'marketing', 'personalization'],
   },
   // Programmatic purpose mapping. Mirrors the native example apps:
@@ -132,32 +115,25 @@ class TealiumHelper {
     });
 
     try {
-      // Use new API: Tealium.create() instead of Tealium.initialize()
-      const success = await Tealium.create(mergedConfig);
+      await Tealium.create(mergedConfig);
 
-      if (success) {
-        this._isEnabled = true;
-        this._config = mergedConfig;
-        console.log('[TealiumHelper] Instance created successfully');
+      this._isEnabled = true;
+      this._config = mergedConfig;
+      console.log('[TealiumHelper] Instance created successfully');
 
-        // Add some initial data layer values using new API: Tealium.dataLayer.put()
-        Tealium.dataLayer
-          .put(
-            {
-              app_name: 'TealiumPrismReactNativeExample',
-              sdk_version: '0.1.0',
-            },
-            'forever'
-          )
-          .catch((err) =>
-            console.warn('[TealiumHelper] initial put failed:', err)
-          );
+      Tealium.dataLayer
+        .put(
+          {
+            app_name: 'TealiumPrismReactNativeExample',
+            sdk_version: '0.1.0',
+          },
+          'forever'
+        )
+        .catch((err) =>
+          console.warn('[TealiumHelper] initial put failed:', err)
+        );
 
-        return true;
-      } else {
-        console.error('[TealiumHelper] Instance creation failed');
-        return false;
-      }
+      return true;
     } catch (error) {
       console.error('[TealiumHelper] Creation error:', error);
       return false;
@@ -175,7 +151,7 @@ class TealiumHelper {
     // RMW on key4 — bridge cannot offer atomic transaction across IPC, so the
     // read and write are explicitly two operations.
     const item = await Tealium.dataLayer.getDataItem('key4');
-    const count = item?.type === 'number' ? item.value : 0;
+    const count = typeof item === 'number' ? item : 0;
 
     Tealium.dataLayer
       .put({ key: 'value', key2: 'value2', key4: count + 1 }, 'forever')
@@ -265,7 +241,7 @@ class TealiumHelper {
    * @param expiry - 'session' | 'forever' | 'untilRestart'
    */
   addData(
-    data: Record<string, DataLayerValue>,
+    data: Record<string, DataItem>,
     expiry: Expiry = 'session'
   ): void {
     if (!this._isEnabled) {
@@ -286,7 +262,7 @@ class TealiumHelper {
       return null;
     }
 
-    return unwrapDataItem(await Tealium.dataLayer.getDataItem(key));
+    return Tealium.dataLayer.getDataItem(key);
   }
 
   /**
@@ -310,8 +286,7 @@ class TealiumHelper {
       return null;
     }
 
-    const list = await Tealium.dataLayer.getDataList(key);
-    return list?.map(unwrapDataItem) ?? null;
+    return Tealium.dataLayer.getDataList(key);
   }
 
   /**

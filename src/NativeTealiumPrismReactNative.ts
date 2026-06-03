@@ -73,11 +73,13 @@ export interface TealiumConfigSpec {
 /**
  * Expiry type for data layer values (TurboModule spec).
  *
- * String values map to named constants. Time-based variants are serialized
- * by DataLayerAPI as `"afterSeconds:<n>"` or `"afterEpochSeconds:<n>"` before
- * reaching native — the bridge parses and reconstructs native Expiry objects.
+ * Serialized by DataLayerAPI as a number using the native SDK's own encoding:
+ *   -1 → forever, -2 → session, -3 → untilRestart
+ *   any other value → epoch milliseconds (absolute expiry time)
+ * Native bridges reconstruct Expiry via `Expiry(timestamp:)` (Swift) /
+ * `Expiry.fromLongValue()` (Kotlin).
  */
-export type ExpirySpec = string;
+export type ExpirySpec = number;
 
 /**
  * Data to be tracked with an event or view.
@@ -92,13 +94,12 @@ export interface TrackDataSpec {
 }
 
 /**
- * Return type for dataLayerGetDataItem (TurboModule spec).
- * Mirrors the DataItem discriminated union from the native SDK.
- * The `value` field is absent for null variants.
+ * Wire format for dataLayerGetDataItem (TurboModule spec).
+ * Native wraps the raw value in {value:} because TurboModule cannot return
+ * a scalar from an Object-typed method. DataLayerAPI unwraps this internally.
  */
 export interface DataLayerValueSpec {
-  type: string;
-  value?: Object;
+  value: Object;
 }
 
 /**
@@ -137,7 +138,8 @@ export interface Spec extends TurboModule {
   /**
    * Initialize the Tealium Prism SDK with the provided configuration.
    * @param config - Configuration object
-   * @returns Promise resolving to true when initialization is complete
+   * @returns Promise resolving to true when initialization is complete. Rejects with
+   *   `INIT_ERROR` on native failure or invalid configuration.
    */
   initialize(config: TealiumConfigSpec): Promise<boolean>;
 
@@ -160,13 +162,15 @@ export interface Spec extends TurboModule {
   /**
    * Track an event or view.
    * @param trackData - Track data containing name, type, and optional data payload
-   * @returns Promise resolving when tracking is complete
+   * @returns Promise resolving with TrackResult when tracking is complete. Rejects with
+   *   `TRACK_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   track(trackData: TrackDataSpec): Promise<TrackResultSpec>;
 
   /**
    * Flush any queued events immediately.
-   * @returns Promise resolving when flush is initiated
+   * @returns Promise resolving when flush is initiated. Rejects with
+   *   `FLUSH_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   flushEventQueue(): Promise<void>;
 
@@ -188,7 +192,9 @@ export interface Spec extends TurboModule {
   /**
    * Get any value from the data layer with type information.
    * @param key - Key to retrieve
-   * @returns Promise resolving with object containing type and value, or null
+   * @returns Promise resolving with object containing type and value, or null.
+   *   Rejects with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   dataLayerGetDataItem(key: string): Promise<DataLayerValueSpec | null>;
 
@@ -197,7 +203,9 @@ export interface Spec extends TurboModule {
    * Mirrors native: getDataArray (Swift) / getDataList (Kotlin).
    * @param key - Key to retrieve
    * @returns Promise resolving with an array of DataItems, or null if the
-   *   key is missing or the value is not a list
+   *   key is missing or the value is not a list. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   dataLayerGetDataList(key: string): Promise<Object | null>;
 
@@ -206,7 +214,9 @@ export interface Spec extends TurboModule {
    * Mirrors native: getDataDictionary (Swift) / getDataObject (Kotlin).
    * @param key - Key to retrieve
    * @returns Promise resolving with a {key: DataItem} map, or null if the
-   *   key is missing or the value is not an object
+   *   key is missing or the value is not an object. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   dataLayerGetDataObject(key: string): Promise<Object | null>;
 
@@ -228,13 +238,17 @@ export interface Spec extends TurboModule {
 
   /**
    * Clear all data from the data layer.
-   * @returns Promise resolving when clear is complete
+   * @returns Promise resolving when clear is complete. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   dataLayerClear(): Promise<void>;
 
   /**
    * Get all data from the data layer.
-   * @returns Promise resolving with all data layer values as an object
+   * @returns Promise resolving with all data layer values as an object.
+   *   Rejects with `DATA_LAYER_ERROR` on native failure or
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   dataLayerGetAll(): Promise<Object>;
 
@@ -246,7 +260,8 @@ export interface Spec extends TurboModule {
    * Handle a deep link URL for attribution and trace management.
    * @param url - The deep link URL to handle
    * @param referrer - Optional referrer URL
-   * @returns Promise resolving to true if handled successfully
+   * @returns Promise resolving to true if handled successfully. Rejects with
+   *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   deepLinkHandle(url: string, referrer: string | null): Promise<boolean>;
 
@@ -257,16 +272,22 @@ export interface Spec extends TurboModule {
   /**
    * Join a trace session for debugging.
    * @param traceId - The trace ID to join
+   * @returns Promise resolving when trace is joined. Rejects with
+   *   `TRACE_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   traceJoin(traceId: string): Promise<void>;
 
   /**
    * Leave the current trace session.
+   * @returns Promise resolving when trace is left. Rejects with
+   *   `TRACE_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   traceLeave(): Promise<void>;
 
   /**
    * Force end of visitor session for trace purposes.
+   * @returns Promise resolving with TrackResult for the end-of-visit dispatch. Rejects with
+   *   `TRACE_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   traceForceEndOfVisit(): Promise<TrackResultSpec>;
 
@@ -276,13 +297,15 @@ export interface Spec extends TurboModule {
 
   /**
    * Reset the visitor ID to a new anonymous ID.
-   * @returns Promise resolving to the new visitor ID
+   * @returns Promise resolving to the new visitor ID. Rejects with
+   *   `RESET_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   resetVisitorId(): Promise<string>;
 
   /**
    * Clear all stored visitor IDs.
-   * @returns Promise resolving to the new visitor ID
+   * @returns Promise resolving to the new visitor ID. Rejects with
+   *   `CLEAR_ERROR` on native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
   clearStoredVisitorIds(): Promise<string>;
 
@@ -293,8 +316,9 @@ export interface Spec extends TurboModule {
   /**
    * Subscribe to the native onDataUpdated stream. The native side starts
    * emitting TealiumDataLayerUpdated events through NativeEventEmitter.
-   * Idempotent on the native side — only the first JS subscriber should
-   * call this.
+   * Calling this again replaces the existing native subscription.
+   * DataLayerAPI ref-counts JS listeners and ensures this is called only
+   * once (on the first subscriber).
    */
   dataLayerOnDataUpdatedSubscribe(): void;
 
@@ -365,8 +389,9 @@ export interface Spec extends TurboModule {
   /**
    * Subscribe to the native consentDecision observable. The native side
    * starts emitting TealiumConsentDecisionChanged events through
-   * NativeEventEmitter. Idempotent on the native side — only the first JS
-   * subscriber should call this.
+   * NativeEventEmitter. Calling this again replaces the existing native
+   * subscription. ConsentAPI ref-counts JS listeners and ensures this is
+   * called only once (on the first subscriber).
    */
   consentOnDecisionChangedSubscribe(): void;
 

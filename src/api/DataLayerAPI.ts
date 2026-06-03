@@ -7,14 +7,7 @@
 
 import { NativeEventEmitter } from 'react-native';
 import NativeTealiumPrism from '../NativeTealiumPrismReactNative';
-import type {
-  DataItem,
-  DataLayerValue,
-  DataList,
-  DataObject,
-  Disposable,
-  Expiry,
-} from '../types';
+import type { DataItem, Disposable, Expiry } from '../types';
 import { TealiumEvents } from '../types';
 
 /**
@@ -22,12 +15,14 @@ import { TealiumEvents } from '../types';
  */
 export type DataLayerUpdateCallback = (data: Record<string, unknown>) => void;
 
-// Serializes the public Expiry union to the wire string the native bridge
-// expects. Named variants pass through; { after: Date } encodes as
-// "afterEpochSeconds:<n>" and is parsed by native ExpiryExtensions.
-function serializeExpiry(expiry: Expiry): string {
-  if (typeof expiry === 'string') return expiry;
-  return `afterEpochSeconds:${Math.floor(expiry.after.getTime() / 1000)}`;
+// Serializes the public Expiry union to the numeric wire format the native
+// bridge expects, matching the SDK's own Expiry encoding:
+//   -1 = forever, -2 = session, -3 = untilRestart, otherwise ms epoch.
+function serializeExpiry(expiry: Expiry): number {
+  if (expiry === 'session') return -2;
+  if (expiry === 'untilRestart') return -3;
+  if (expiry === 'forever') return -1;
+  return expiry.after.getTime();
 }
 
 /**
@@ -96,29 +91,30 @@ export class DataLayerAPI {
    * ```
    */
   put(
-    data: Record<string, DataLayerValue>,
+    data: Record<string, DataItem>,
     expiry: Expiry = 'forever'
   ): Promise<void> {
     return NativeTealiumPrism.dataLayerPut(data, serializeExpiry(expiry));
   }
 
   /**
-   * Get a typed DataItem from the data layer.
+   * Get a value from the data layer.
    * Mirrors native: `tealium.dataLayer.getDataItem(key:)`.
    *
    * @param key - Key to retrieve
-   * @returns Promise resolving to the DataItem or null if not found
+   * @returns Promise resolving to the raw value, or null if not found.
+   *   Rejects with `DATA_LAYER_ERROR` on native failure or `NOT_INITIALIZED`
+   *   if Tealium is not yet initialized.
    *
    * @example
    * ```typescript
-   * const item = await Tealium.dataLayer.getDataItem('user_id');
-   * if (item?.type === 'string') console.log(item.value);
+   * const value = await Tealium.dataLayer.getDataItem('user_id');
+   * if (typeof value === 'string') console.log(value);
    * ```
    */
-  async getDataItem(key: string): Promise<DataItem | null> {
-    return (await NativeTealiumPrism.dataLayerGetDataItem(
-      key
-    )) as DataItem | null;
+  async getDataItem(key: string): Promise<DataItem> {
+    const raw = await NativeTealiumPrism.dataLayerGetDataItem(key);
+    return raw != null ? (raw as unknown as { value: DataItem }).value : null;
   }
 
   /**
@@ -126,13 +122,14 @@ export class DataLayerAPI {
    * Mirrors native: `getDataArray` (Swift) / `getDataList` (Kotlin).
    *
    * @param key - Key to retrieve
-   * @returns Promise resolving to the DataList or null if the key is missing
-   *   or the stored value is not a list
+   * @returns Promise resolving to the array, or null if the key is missing
+   *   or the stored value is not a list. Rejects with `DATA_LAYER_ERROR` on
+   *   native failure or `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  async getDataList(key: string): Promise<DataList | null> {
+  async getDataList(key: string): Promise<DataItem[] | null> {
     return (await NativeTealiumPrism.dataLayerGetDataList(
       key
-    )) as DataList | null;
+    )) as DataItem[] | null;
   }
 
   /**
@@ -140,63 +137,71 @@ export class DataLayerAPI {
    * Mirrors native: `getDataDictionary` (Swift) / `getDataObject` (Kotlin).
    *
    * @param key - Key to retrieve
-   * @returns Promise resolving to the DataObject or null if the key is
-   *   missing or the stored value is not an object
+   * @returns Promise resolving to the object, or null if the key is
+   *   missing or the stored value is not an object. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or `NOT_INITIALIZED` if Tealium
+   *   is not yet initialized.
    */
-  async getDataObject(key: string): Promise<DataObject | null> {
+  async getDataObject(key: string): Promise<Record<string, DataItem> | null> {
     return (await NativeTealiumPrism.dataLayerGetDataObject(
       key
-    )) as DataObject | null;
+    )) as Record<string, DataItem> | null;
   }
 
   /**
    * Get a string value from the data layer.
    * Mirrors native: `get<String>(key:as:)` (Swift) / `getString(key)` (Kotlin).
    *
-   * @returns Promise resolving to the string value, or null if not found or wrong type
+   * @returns Promise resolving to the string value, or null if not found or
+   *   wrong type. Rejects with `DATA_LAYER_ERROR` or `NOT_INITIALIZED` — see {@link getDataItem}.
    */
   async getString(key: string): Promise<string | null> {
-    const item = await this.getDataItem(key);
-    return item?.type === 'string' ? item.value : null;
+    const value = await this.getDataItem(key);
+    return typeof value === 'string' ? value : null;
   }
 
   /**
    * Get an integer value from the data layer.
    * Mirrors native: `get<Int>(key:as:)` (Swift) / `getInt(key)` (Kotlin).
    *
-   * @returns Promise resolving to the number value, or null if not found or wrong type
+   * @returns Promise resolving to the number value, or null if not found or
+   *   wrong type. Rejects with `DATA_LAYER_ERROR` or `NOT_INITIALIZED` — see {@link getDataItem}.
    */
   async getInt(key: string): Promise<number | null> {
-    const item = await this.getDataItem(key);
-    return item?.type === 'number' ? Math.trunc(item.value) : null;
+    const value = await this.getDataItem(key);
+    return typeof value === 'number' && isFinite(value) ? Math.trunc(value) : null;
   }
 
   /**
    * Get a double value from the data layer.
    * Mirrors native: `get<Double>(key:as:)` (Swift) / `getDouble(key)` (Kotlin).
    *
-   * @returns Promise resolving to the number value, or null if not found or wrong type
+   * @returns Promise resolving to the number value, or null if not found or
+   *   wrong type. Rejects with `DATA_LAYER_ERROR` or `NOT_INITIALIZED` — see {@link getDataItem}.
    */
   async getDouble(key: string): Promise<number | null> {
-    const item = await this.getDataItem(key);
-    return item?.type === 'number' ? item.value : null;
+    const value = await this.getDataItem(key);
+    return typeof value === 'number' && isFinite(value) ? value : null;
   }
 
   /**
    * Get a boolean value from the data layer.
    * Mirrors native: `get<Bool>(key:as:)` (Swift) / `getBoolean(key)` (Kotlin).
    *
-   * @returns Promise resolving to the boolean value, or null if not found or wrong type
+   * @returns Promise resolving to the boolean value, or null if not found or
+   *   wrong type. Rejects with `DATA_LAYER_ERROR` or `NOT_INITIALIZED` — see {@link getDataItem}.
    */
   async getBoolean(key: string): Promise<boolean | null> {
-    const item = await this.getDataItem(key);
-    return item?.type === 'boolean' ? item.value : null;
+    const value = await this.getDataItem(key);
+    return typeof value === 'boolean' ? value : null;
   }
 
   /**
    * Get all data from the data layer.
    *
-   * @returns Promise resolving with all data layer values
+   * @returns Promise resolving with all data layer values. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or `NOT_INITIALIZED` if Tealium
+   *   is not yet initialized.
    *
    * @example
    * ```typescript
@@ -235,7 +240,9 @@ export class DataLayerAPI {
   /**
    * Clear all data from the data layer.
    *
-   * @returns Promise resolving when clear is complete
+   * @returns Promise resolving when clear is complete. Rejects with
+   *   `DATA_LAYER_ERROR` on native failure or `NOT_INITIALIZED` if Tealium
+   *   is not yet initialized.
    */
   clear(): Promise<void> {
     return NativeTealiumPrism.dataLayerClear();

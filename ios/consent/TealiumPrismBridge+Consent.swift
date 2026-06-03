@@ -31,16 +31,19 @@ extension TealiumPrismBridge {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Consent integration not enabled"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorConsentNotEnabled]))
             return
         }
         guard let type = ConsentDecision.DecisionType(rawValue: decisionType.lowercased()) else {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid decisionType: \(decisionType)"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "Invalid decisionType: \(decisionType)",
+                        bridgeErrorCodeKey: "INVALID_DECISION_TYPE",
+                    ]))
             return
         }
         adapter.update(decision: ConsentDecision(decisionType: type, purposes: Set(purposes)))
@@ -60,8 +63,8 @@ extension TealiumPrismBridge {
             completion(
                 false,
                 NSError(
-                    domain: "TealiumPrism", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Consent integration not enabled"]))
+                    domain: bridgeErrorDomain, code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: bridgeErrorConsentNotEnabled]))
             return
         }
         adapter.reset()
@@ -87,7 +90,7 @@ extension TealiumPrismBridge {
         consentDecisionSubscription = adapter.consentDecision.subscribe { [weak self] decision in
             guard let bridge = self else { return }
             let dict = decision?.toDictionary()
-            DispatchQueue.main.async { bridge.onConsentDecisionChanged?(dict) }
+            bridge.onConsentDecisionChanged?(dict)
         }
     }
 

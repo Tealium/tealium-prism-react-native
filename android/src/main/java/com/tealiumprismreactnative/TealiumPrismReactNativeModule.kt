@@ -16,7 +16,7 @@ import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.modules.ModuleFactory
 import com.tealiumprismreactnative.bridge.toStringSet
 import com.tealiumprismreactnative.consent.BridgeCmpAdapter
-import com.tealiumprismreactnative.datalayer.toRawWritableMap
+import com.tealiumprismreactnative.datalayer.toWritableMap
 import com.tealiumprismreactnative.consent.ConsentDelegate
 import com.tealiumprismreactnative.datalayer.DataLayerDelegate
 import com.tealiumprismreactnative.trace.TraceDelegate
@@ -54,16 +54,19 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     override fun initialize(config: ReadableMap, promise: Promise) {
         try {
-            val application = getApplication() ?: run { promise.resolve(false); return }
+            val application = getApplication() ?: run {
+                promise.reject(ERROR_INIT, "Application context unavailable")
+                return
+            }
 
             val account = config.getString("account") ?: run {
-                promise.reject("INIT_ERROR", "Account is required"); return
+                promise.reject(ERROR_INIT, "Account is required"); return
             }
             val profile = config.getString("profile") ?: run {
-                promise.reject("INIT_ERROR", "Profile is required"); return
+                promise.reject(ERROR_INIT, "Profile is required"); return
             }
             val environmentStr = config.getString("environment") ?: run {
-                promise.reject("INIT_ERROR", "Environment is required"); return
+                promise.reject(ERROR_INIT, "Environment is required"); return
             }
 
             val environment = when (environmentStr) {
@@ -116,7 +119,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             if (config.hasKey("cmpAdapter")) {
                 val cmpAdapterMap = config.getMap("cmpAdapter")
                 if (cmpAdapterMap != null) {
-                    val adapterId = cmpAdapterMap.getString("id") ?: "react-native-bridge"
+                    // The adapter ID must match the ConsentConfiguration key in
+                    // settings JSON; there is no safe default, so require it.
+                    val adapterId = cmpAdapterMap.getString("id")
+                    if (adapterId.isNullOrEmpty()) {
+                        promise.reject(ERROR_INIT, "cmpAdapter.id is required"); return
+                    }
 
                     var defaultDecision: ConsentDecision? = null
                     if (cmpAdapterMap.hasKey("defaultDecisionType") && cmpAdapterMap.hasKey("defaultPurposes")) {
@@ -125,8 +133,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                         if (typeStr != null && purposesArray != null) {
                             val type = ConsentDecision.DecisionType.entries
                                 .firstOrNull { it.name.equals(typeStr, ignoreCase = true) }
-                                ?: ConsentDecision.DecisionType.Implicit
-                            defaultDecision = ConsentDecision(type, purposesArray.toStringSet())
+                            if (type != null) {
+                                defaultDecision = ConsentDecision(type, purposesArray.toStringSet())
+                            } else {
+                                Log.w(TAG, "Unknown defaultDecisionType '$typeStr' — skipping consent default")
+                            }
                         }
                     }
 
@@ -164,11 +175,16 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
             Tealium.create(configBuilder.build()) { result ->
                 tealium = result.getOrNull()
-                promise.resolve(tealium != null)
+                if (result.isSuccess) {
+                    promise.resolve(true)
+                } else {
+                    val err = result.exceptionOrNull()
+                    promise.reject(ERROR_INIT, err?.message ?: "Initialization failed", err)
+                }
             }
 
         } catch (e: Exception) {
-            promise.reject("INIT_ERROR", e.message, e)
+            promise.reject(ERROR_INIT, e.message, e)
         }
     }
 
@@ -191,10 +207,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // ============================================
 
     override fun track(trackData: ReadableMap, promise: Promise) {
-        val teal = tealium ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = tealium ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         try {
             val name = trackData.getString("name") ?: run {
-                promise.reject("TRACK_ERROR", "Event name is required"); return
+                promise.reject(ERROR_TRACK, "Event name is required"); return
             }
             val typeStr = trackData.getString("type") ?: "event"
             val type = if (typeStr == "view") DispatchType.View else DispatchType.Event
@@ -213,27 +229,27 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                         putMap("dispatch", Arguments.createMap().apply {
                             putString("id", dispatch.id)
                             putDouble("timestamp", dispatch.timestamp.toDouble())
-                            putMap("payload", dispatch.payload().toRawWritableMap())
+                            putMap("payload", dispatch.payload().toWritableMap())
                         })
                     }
                     promise.resolve(map)
                 } else {
                     val err = result.exceptionOrNull()
-                    promise.reject("TRACK_ERROR", err?.message ?: "Track dispatch failed", err)
+                    promise.reject(ERROR_TRACK, err?.message ?: "Track dispatch failed", err)
                 }
             }
         } catch (e: Exception) {
-            promise.reject("TRACK_ERROR", e.message, e)
+            promise.reject(ERROR_TRACK, e.message, e)
         }
     }
 
     override fun flushEventQueue(promise: Promise) {
-        val teal = tealium ?: run { promise.reject("NOT_INITIALIZED", "Tealium is not initialized"); return }
+        val teal = tealium ?: run { promise.reject(ERROR_NOT_INITIALIZED, MSG_NOT_INITIALIZED); return }
         teal.flushEventQueue().subscribe { result ->
             if (result.isSuccess) promise.resolve(null)
             else {
                 val err = result.exceptionOrNull()
-                promise.reject("FLUSH_ERROR", err?.message ?: "Flush event queue failed", err)
+                promise.reject(ERROR_FLUSH, err?.message ?: "Flush event queue failed", err)
             }
         }
     }
@@ -242,7 +258,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // Data Layer — delegated
     // ============================================
 
-    override fun dataLayerPut(record: ReadableMap, expiry: String, promise: Promise) = dataLayer.put(record, expiry, promise)
+    override fun dataLayerPut(record: ReadableMap, expiry: Double, promise: Promise) = dataLayer.put(record, expiry, promise)
     override fun dataLayerGetDataItem(key: String, promise: Promise) = dataLayer.getDataItem(key, promise)
     override fun dataLayerGetDataList(key: String, promise: Promise) = dataLayer.getDataList(key, promise)
     override fun dataLayerGetDataObject(key: String, promise: Promise) = dataLayer.getDataObject(key, promise)
@@ -303,7 +319,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(eventName, params)
         } catch (e: Exception) {
-            android.util.Log.w("TealiumPrismRN", "Failed to emit event '$eventName': ${e.message}")
+            android.util.Log.w(TAG, "Failed to emit event '$eventName': ${e.message}")
         }
     }
 }
