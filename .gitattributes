@@ -1,3 +1,11 @@
 *.pbxproj -text
 # specific for windows script files
 *.bat text eol=crlf
+
+# Large generated/vendored files: suppress textual diff so CI tooling that
+# embeds full diffs into step outputs (risk-analysis) does not exceed GitHub
+# Actions' template object-size limit ("Maximum object size exceeded").
+.yarn/releases/** binary
+.yarn/plugins/** binary
+yarn.lock -diff
+*.lock -diff
