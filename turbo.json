@@ -6,11 +6,11 @@
     "build:android": {
       "env": ["ANDROID_HOME", "ORG_GRADLE_PROJECT_newArchEnabled"],
       "inputs": [
-        "package.json",
-        "android",
-        "!android/build",
-        "src/**/*.ts",
-        "src/**/*.tsx",
+        "packages/core/package.json",
+        "packages/core/android",
+        "!packages/core/android/build",
+        "packages/core/src/**/*.ts",
+        "packages/core/src/**/*.tsx",
         "example/package.json",
         "example/android",
         "!example/android/.gradle",
@@ -27,11 +27,11 @@
         "RCT_USE_PREBUILT_RNCORE"
       ],
       "inputs": [
-        "package.json",
-        "*.podspec",
-        "ios",
-        "src/**/*.ts",
-        "src/**/*.tsx",
+        "packages/core/package.json",
+        "packages/core/*.podspec",
+        "packages/core/ios",
+        "packages/core/src/**/*.ts",
+        "packages/core/src/**/*.tsx",
         "example/package.json",
         "example/ios",
         "!example/ios/build",

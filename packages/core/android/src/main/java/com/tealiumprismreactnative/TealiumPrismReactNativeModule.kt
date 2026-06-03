@@ -25,13 +25,6 @@ import com.tealium.prism.core.api.misc.Environment
 import com.tealium.prism.core.api.misc.TimeFrameUtils.seconds
 import com.tealium.prism.core.api.tracking.DispatchType
 
-// TODO: addBarrier() — requires native BarrierFactory objects, cannot be serialized as JS config
-// TODO: addLoadRule() — requires native Rule<Condition> objects, cannot be serialized as JS config
-// TODO: Extensions module (prism-extensions) — SetDataValues/PersistDataValue/Lowercase transformations via addTransformation(). A module, not one method; needs its own dep + transformations/ delegate folder. See MODULES.md (B2).
-// TODO: JS Transformer module (prism-js-transformer + jstransformer-rhino) — JavaScriptTransformationSettingsBuilder via addTransformation(). Android must register RhinoJavaScriptTransformerFactory (not auto). See MODULES.md (B2b).
-// TODO: setLogHandler() — custom native log handler callback, difficult to bridge from JS
-// TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package. See MODULES.md (B1).
-// TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package. See MODULES.md (B1).
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     NativeTealiumPrismReactNativeSpec(reactContext) {
 
