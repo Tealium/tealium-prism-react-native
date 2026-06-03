@@ -24,7 +24,7 @@ Pod::Spec.new do |s|
 
   # Tealium Prism Swift SDK
   # https://github.com/Tealium/tealium-prism-swift
-  s.dependency "tealium-prism/Core", "~> 0.4.0"
+  s.dependency "tealium-prism/Core", "~> 0.5.0"
 
   install_modules_dependencies(s)
 end

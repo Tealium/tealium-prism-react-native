@@ -10,9 +10,10 @@ import TealiumPrism
 
 // TODO: addBarrier() — requires native BarrierFactory objects, cannot be serialized as JS config
 // TODO: addLoadRule() — requires native Rule<Condition> objects, cannot be serialized as JS config
-// TODO: addTransformation() — requires native TransformationSettings objects, cannot be serialized as JS config
-// TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package
-// TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package
+// TODO: Extensions module (tealium-prism/Extensions subspec) — SetDataValues/PersistDataValue/Lowercase transformations via addTransformation(). A module, not one method; needs its own subspec + TealiumPrismBridge+Transformations.swift. See MODULES.md (B2).
+// TODO: JS Transformer module (tealium-prism/JavaScriptTransformer subspec) — JavaScriptTransformationSettingsBuilder via addTransformation(). Uses JavaScriptCore; must call JavaScriptTransformerAutomaticLoader.setup() at app start. See MODULES.md (B2b).
+// TODO: Lifecycle module — will be a separate tealium-prism-lifecycle-react-native package. See MODULES.md (B1).
+// TODO: MomentsAPI module — will be a separate tealium-prism-moments-api-react-native package. See MODULES.md (B1).
 
 @objc(TealiumPrismBridge)
 public class TealiumPrismBridge: NSObject {

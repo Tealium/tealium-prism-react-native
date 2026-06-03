@@ -90,6 +90,8 @@ This is a **Yarn workspaces monorepo**: root = library, `example/` = separate wo
 
 ### Platform Requirements
 
-- iOS 15.1+ (set by RN's `min_ios_version_supported`), Xcode with Swift support, CocoaPods (`TealiumPrismReactNative.podspec`)
-- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK module: `prism-core:0.4.0`
+- iOS 15.1+ (set by RN's `min_ios_version_supported`), Xcode with Swift support, CocoaPods (`TealiumPrismReactNative.podspec`). Native SDK: pod `tealium-prism` 0.5.0, `Core` subspec.
+- Android API 24+, Kotlin 2.1+, Gradle 8+ — native SDK via the `prism-bom:0.5.0` platform; module artifacts (`prism-core`, …) are declared without versions and pinned by the BOM.
 - React Native 0.85+, Node 20+
+
+> **Native SDK is now a 5-module suite** (core, extensions, js-transformer, lifecycle, moments-api), each versioned independently. Only `prism-core` is consumed today. See `MODULES.md` for the module→RN-package roadmap (transformations, expiry, Lifecycle, MomentsAPI).

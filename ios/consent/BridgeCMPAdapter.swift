@@ -36,12 +36,12 @@ internal class BridgeCMPAdapter: CMPAdapter {
     func update(decision: ConsentDecision) {
         guard _consentDecision.value != decision else { return }
         BridgeCMPAdapter.saveDecision(decision, adapterId: id)
-        _consentDecision.publish(decision)
+        _consentDecision.onNext(decision)
     }
 
     func reset() {
         BridgeCMPAdapter.clearDecision(adapterId: id)
-        _consentDecision.publish(defaultDecision)
+        _consentDecision.onNext(defaultDecision)
     }
 
     var currentDecision: ConsentDecision? {

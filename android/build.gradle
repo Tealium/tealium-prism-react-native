@@ -71,8 +71,5 @@ repositories {
 
 dependencies {
   implementation "com.facebook.react:react-android"
-
-  // Tealium Prism Kotlin SDK
-  // https://github.com/Tealium/tealium-prism-kotlin
-  implementation "com.tealium.prism:prism-core:0.4.0"
+  implementation "com.tealium.prism:prism-core:0.5.0"
 }

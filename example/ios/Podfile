@@ -21,7 +21,7 @@ target 'TealiumPrismReactNativeExample' do
 
   # Tealium Prism Swift SDK - mirrors version declared in TealiumPrismReactNative.podspec
   # https://github.com/Tealium/tealium-prism-swift
-  pod 'tealium-prism', :git => 'https://github.com/Tealium/tealium-prism-swift', :tag => '0.4.0'
+  pod 'tealium-prism', :git => 'https://github.com/Tealium/tealium-prism-swift', :tag => '0.5.0'
 
   use_react_native!(
     :path => config[:reactNativePath],
