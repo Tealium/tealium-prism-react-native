@@ -1,4 +1,5 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
+import type { DataItem } from './types';
 
 /**
  * Consent adapter configuration (TurboModule spec).
@@ -196,7 +197,7 @@ export interface Spec extends TurboModule {
    *   Rejects with `DATA_LAYER_ERROR` on native failure or
    *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerGetDataItem(key: string): Promise<DataLayerValueSpec | null>;
+  dataLayerGetDataItem(key: string): Promise<DataItem>;
 
   /**
    * Get a list value from the data layer.
@@ -207,7 +208,7 @@ export interface Spec extends TurboModule {
    *   `DATA_LAYER_ERROR` on native failure or
    *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerGetDataList(key: string): Promise<Object | null>;
+  dataLayerGetDataList(key: string): Promise<DataItem[] | null>;
 
   /**
    * Get an object (dictionary) value from the data layer.
@@ -218,7 +219,7 @@ export interface Spec extends TurboModule {
    *   `DATA_LAYER_ERROR` on native failure or
    *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerGetDataObject(key: string): Promise<Object | null>;
+  dataLayerGetDataObject(key: string): Promise<[String: DataItem] | null>;
 
   /**
    * Remove a value from the data layer.

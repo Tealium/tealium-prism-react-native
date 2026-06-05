@@ -28,7 +28,7 @@ extension TealiumPrismBridge {
         }
     }
 
-    @objc public func getDataItem(key: String, completion: @escaping (NSDictionary?, Error?) -> Void) {
+    @objc public func getDataItem(key: String, completion: @escaping (Any?, Error?) -> Void) {
         guard let tealium = tealium else {
             completion(
                 nil,
@@ -40,7 +40,7 @@ extension TealiumPrismBridge {
         tealium.dataLayer.getDataItem(key: key).subscribe { result in
             switch result {
             case .success(let dataItem):
-                completion(dataItem.map { $0.toValueWrapper() as NSDictionary }, nil)
+                completion(dataItem?.toDataInput(), nil)
             case .failure(let err):
                 completion(nil, err)
             }
@@ -59,7 +59,7 @@ extension TealiumPrismBridge {
         tealium.dataLayer.getDataArray(key: key).subscribe { result in
             switch result {
             case .success(let array):
-                completion(array.map { $0.map { $0.toRawValue() } as NSArray }, nil)
+                completion(array.map { $0.map { $0.toDataInput() } as NSArray }, nil)
             case .failure(let err):
                 completion(nil, err)
             }
@@ -78,7 +78,7 @@ extension TealiumPrismBridge {
         tealium.dataLayer.getDataDictionary(key: key).subscribe { result in
             switch result {
             case .success(let dict):
-                completion(dict.map { $0.mapValues { $0.toRawValue() } as NSDictionary }, nil)
+                completion(dict.map { $0.mapValues { $0.toDataInput() } as NSDictionary }, nil)
             case .failure(let err):
                 completion(nil, err)
             }

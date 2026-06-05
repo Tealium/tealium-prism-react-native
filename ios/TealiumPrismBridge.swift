@@ -127,7 +127,7 @@ public class TealiumPrismBridge: NSObject {
                         }
                     }
                     if let refire = consentCfg["refireDispatcherIds"] as? [String] {
-                        b = b.setRefireDispatchersIds(refire)
+                        b = b.setRefireDispatcherIds(refire)
                     }
                     return b
                 }
