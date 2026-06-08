@@ -23,6 +23,14 @@ public class TealiumPrismBridge: NSObject {
 
     @objc public static let shared = TealiumPrismBridge()
 
+    // Registry for optional RN packages (lifecycle, momentsapi, etc.).
+    // Each package calls registerBridgeModule() from its override init()
+    // so that configure() is invoked before Tealium.create() in create().
+    public static var bridgeModules: [any BridgeModule] = []
+    public static func registerBridgeModule(_ module: any BridgeModule) {
+        bridgeModules.append(module)
+    }
+
     // MARK: - Lifecycle
 
     /// Creates a Tealium instance from a configuration dictionary.
@@ -128,6 +136,8 @@ public class TealiumPrismBridge: NSObject {
                 tealiumConfig.cmpAdapter = adapter
             }
         }
+
+        TealiumPrismBridge.bridgeModules.forEach { $0.configure(&tealiumConfig, jsConfig: config) }
 
         _ = Tealium.create(config: tealiumConfig) { [weak self] result in
             switch result {

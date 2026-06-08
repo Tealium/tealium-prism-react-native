@@ -9,7 +9,7 @@ import Foundation
 import TealiumPrism
 
 /// Recursively converts an NSDictionary (from JS) into a native DataObject.
-func dataObject(from dict: [String: Any]) -> DataObject {
+public func dataObject(from dict: [String: Any]) -> DataObject {
     var result = DataObject()
     for (key, value) in dict {
         // Explicit String cast first: values bridged from JS arrive as NSString

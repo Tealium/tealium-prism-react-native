@@ -1,0 +1,80 @@
+buildscript {
+  ext.TealiumPrismLifecycle = [
+    kotlinVersion: "2.1.20",
+    minSdkVersion: 24,
+    compileSdkVersion: 35,
+    targetSdkVersion: 35
+  ]
+
+  ext.getExtOrDefault = { prop ->
+    if (rootProject.ext.has(prop)) {
+      return rootProject.ext.get(prop)
+    }
+
+    return TealiumPrismLifecycle[prop]
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.12.0"
+    // noinspection DifferentKotlinGradleVersion
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
+  }
+}
+
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+apply plugin: "com.facebook.react"
+
+android {
+  namespace "com.tealiumprismlifecyclereactnative"
+
+  compileSdkVersion getExtOrDefault("compileSdkVersion")
+
+  defaultConfig {
+    minSdkVersion getExtOrDefault("minSdkVersion")
+    targetSdkVersion getExtOrDefault("targetSdkVersion")
+  }
+
+  buildFeatures {
+    buildConfig true
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+
+  lint {
+    disable "GradleCompatible"
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+}
+
+repositories {
+  mavenLocal()
+  google()
+  mavenCentral()
+  maven { url = uri("https://maven.tealiumiq.com/android/releases/") }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  // Tealium Prism native SDK — core and lifecycle
+  implementation "com.tealium.prism:prism-core:0.5.0"
+  implementation "com.tealium.prism:prism-lifecycle:0.3.0"
+  // Core RN bridge — provides BridgeModule interface and TealiumPrismReactNativeModule.registerBridgeModule()
+  // compileOnly: the core library is already linked by the host app; we only need it at compile time
+  compileOnly project(':tealium-prism-react-native')
+}

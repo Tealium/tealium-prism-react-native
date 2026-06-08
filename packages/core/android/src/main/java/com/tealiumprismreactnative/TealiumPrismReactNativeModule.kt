@@ -33,6 +33,14 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         const val EVENT_DATA_LAYER_UPDATED = "TealiumDataLayerUpdated"
         const val EVENT_DATA_LAYER_REMOVED = "TealiumDataLayerRemoved"
         const val EVENT_CONSENT_DECISION_CHANGED = "TealiumConsentDecisionChanged"
+
+        // Registry for optional RN packages (lifecycle, momentsapi, etc.).
+        // Each package calls registerBridgeModule() from its override fun initialize()
+        // so that configure() is invoked before Tealium.create() in initialize().
+        internal val bridgeModules = mutableListOf<BridgeModule>()
+        fun registerBridgeModule(module: BridgeModule) {
+            bridgeModules.add(module)
+        }
     }
 
     private var tealium: Tealium? = null
@@ -166,6 +174,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                     }
                 }
             }
+
+            bridgeModules.forEach { it.configure(configBuilder, config) }
 
             Tealium.create(configBuilder.build()) { result ->
                 tealium = result.getOrNull()

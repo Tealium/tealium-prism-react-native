@@ -16,6 +16,7 @@ import { DataLayerSection } from './sections/DataLayerSection';
 import { TraceSection } from './sections/TraceSection';
 import { VisitorSection } from './sections/VisitorSection';
 import { ConsentSection } from './sections/ConsentSection';
+import { LifecycleSection } from './sections/LifecycleSection';
 
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -198,6 +199,7 @@ export default function App() {
         <TraceSection showToast={showToast} />
         <VisitorSection initialEmail={initialEmail} showToast={showToast} />
         <ConsentSection showToast={showToast} />
+        <LifecycleSection showToast={showToast} />
 
         <Section title=" ">
           <Text style={styles.footerText}>

@@ -110,6 +110,10 @@ export default class Tealium {
 
   private static _initialized = false;
 
+  // Exposed to sub-packages (lifecycle, momentsapi, etc.) to obtain the instance key
+  // for Tealium.get(instanceKey) native calls. Set in create(), cleared in shutdown().
+  static _instanceKey: string | null = null;
+
   // Lazy-initialized sub-API instances (mirrors native SDK pattern)
   private static _dataLayer: DataLayerAPI | null = null;
   private static _trace: TraceAPI | null = null;
@@ -277,6 +281,7 @@ export default class Tealium {
     };
     await NativeTealiumPrism.initialize(spec);
     Tealium._initialized = true;
+    Tealium._instanceKey = `${config.account}-${config.profile}`;
 
     this.dataLayer
       .put(
@@ -311,6 +316,7 @@ export default class Tealium {
 
     await NativeTealiumPrism.shutdown();
     Tealium._initialized = false;
+    Tealium._instanceKey = null;
 
     // Reset lazy instances after native teardown completes.
     this._dataLayer = null;

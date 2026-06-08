@@ -5,6 +5,9 @@
  * stopTealium() to shut down; flush() to send the event queue.
  */
 
+// Side-effect import to activate module augmentation (adds lifecycle to TealiumConfig).
+// eslint-disable-next-line import/no-unassigned-import
+import 'tealium-prism-lifecycle-react-native';
 import Tealium, {
   type TealiumConfig,
   type TrackData,
@@ -33,6 +36,11 @@ const DEFAULT_CONFIG: TealiumConfig = {
   account: 'tealiummobile',
   profile: 'demo',
   environment: 'dev',
+  // Lifecycle module: disable auto-tracking to demonstrate manual launch/wake/sleep calls.
+  lifecycle: {
+    autoTracking: false,
+    dataTarget: 'allEvents',
+  },
   settingsFile: 'TealiumSettings',
   settingsUrl:
     'https://tags.tiqcdn.com/dle/tealiummobile/lib/example_settings.json',
