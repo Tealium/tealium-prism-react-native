@@ -95,15 +95,6 @@ export interface TrackDataSpec {
 }
 
 /**
- * Wire format for dataLayerGetDataItem (TurboModule spec).
- * Native wraps the raw value in {value:} because TurboModule cannot return
- * a scalar from an Object-typed method. DataLayerAPI unwraps this internally.
- */
-export interface DataLayerValueSpec {
-  value: Object;
-}
-
-/**
  * Wire-format enriched dispatch payload (TurboModule spec).
  * Mirrors native: Dispatch (Swift/Kotlin)
  */
@@ -219,7 +210,7 @@ export interface Spec extends TurboModule {
    *   `DATA_LAYER_ERROR` on native failure or
    *   `NOT_INITIALIZED` if Tealium is not yet initialized.
    */
-  dataLayerGetDataObject(key: string): Promise<[String: DataItem] | null>;
+  dataLayerGetDataObject(key: string): Promise<Record<string, DataItem> | null>;
 
   /**
    * Remove a value from the data layer.
