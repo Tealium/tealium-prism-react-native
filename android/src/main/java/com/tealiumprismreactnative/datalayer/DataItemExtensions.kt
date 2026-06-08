@@ -7,6 +7,18 @@ import com.tealium.prism.core.api.data.DataItem
 import com.tealium.prism.core.api.data.DataList
 import com.tealium.prism.core.api.data.DataObject
 
+// Converts a DataItem to a value that is serializable
+internal fun DataItem.toSerializable(): Any? {
+    return when (val v = value) {
+        is String     -> v
+        is Boolean    -> v
+        is Number     -> v.toDouble()
+        is DataList   -> v.toWritableArray()
+        is DataObject -> v.toWritableMap()
+        else          -> null
+    }
+}
+
 // Writes the value of a DataItem into a WritableMap at the given key.
 internal fun DataItem.putInto(map: WritableMap, key: String) {
     when (val v = value) {

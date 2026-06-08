@@ -43,7 +43,7 @@ internal class DataLayerDelegate(
                 return@subscribe
             }
             val item = result.getOrNull()
-            promise.resolve(item?.value)
+            promise.resolve(item?.toSerializable())
         }
     }
 
