@@ -7,19 +7,16 @@ import com.tealium.prism.core.api.data.DataItem
 import com.tealium.prism.core.api.data.DataList
 import com.tealium.prism.core.api.data.DataObject
 
-// Wraps the value in {value:} for getDataItem. Required because TurboModule
-// spec declares Object return type — a raw scalar cannot be returned directly.
-internal fun DataItem.toWritableMap(): WritableMap {
-    val map = Arguments.createMap()
-    when (val v = value) {
-        is String     -> map.putString("value", v)
-        is Boolean    -> map.putBoolean("value", v)
-        is Number     -> map.putDouble("value", v.toDouble())
-        is DataList   -> map.putArray("value", v.toWritableArray())
-        is DataObject -> map.putMap("value", v.toWritableMap())
-        else          -> map.putNull("value")
+// Converts a DataItem to a value that is serializable
+internal fun DataItem.toSerializable(): Any? {
+    return when (val v = value) {
+        is String     -> v
+        is Boolean    -> v
+        is Number     -> v.toDouble()
+        is DataList   -> v.toWritableArray()
+        is DataObject -> v.toWritableMap()
+        else          -> null
     }
-    return map
 }
 
 // Writes the value of a DataItem into a WritableMap at the given key.

@@ -43,7 +43,7 @@ internal class DataLayerDelegate(
                 return@subscribe
             }
             val item = result.getOrNull()
-            promise.resolve(if (item != null) item.toWritableMap() else null)
+            promise.resolve(item?.toSerializable())
         }
     }
 

@@ -114,7 +114,7 @@ export class DataLayerAPI {
    */
   async getDataItem(key: string): Promise<DataItem> {
     const raw = await NativeTealiumPrism.dataLayerGetDataItem(key);
-    return raw != null ? (raw as unknown as { value: DataItem }).value : null;
+    return raw;
   }
 
   /**
