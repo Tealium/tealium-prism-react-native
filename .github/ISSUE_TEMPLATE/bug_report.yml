@@ -1,5 +1,6 @@
 name: 🐛 Bug report
 description: Report a reproducible bug or regression in this library.
+title: "[Bug]: "
 labels: [bug]
 body:
   - type: markdown
@@ -39,6 +40,17 @@ body:
       placeholder: "x.x.x"
     validations:
       required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms
+      description: On which platform(s) does the bug occur?
+      multiple: true
+      options:
+        - iOS
+        - Android
+    validations:
+      required: true
   - type: textarea
     id: react-native-info
     attributes:
@@ -56,12 +68,5 @@ body:
       value: |
         1. …
         2. …
-    validations:
-      required: true
-  - type: input
-    id: reproducible-example
-    attributes:
-      label: Reproducible example repository 
-      description: Please provide a link to a repository on GitHub with a reproducible example.
     validations:
       required: true
