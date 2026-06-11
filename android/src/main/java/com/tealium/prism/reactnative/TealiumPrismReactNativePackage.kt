@@ -20,7 +20,7 @@ class TealiumPrismReactNativePackage : BaseReactPackage() {
     mapOf(
       TealiumPrismReactNativeModule.NAME to ReactModuleInfo(
         name = TealiumPrismReactNativeModule.NAME,
-        className = TealiumPrismReactNativeModule.NAME,
+        className = TealiumPrismReactNativeModule::class.java.name,
         canOverrideExistingModule = false,
         needsEagerInit = false,
         isCxxModule = false,
