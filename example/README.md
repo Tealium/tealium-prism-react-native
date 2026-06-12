@@ -1,5 +1,24 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+# Monorepo structure
+
+This example app lives inside the `tealium-prism-react-native` monorepo:
+
+```
+tealium-prism-react-native/
+├── packages/
+│   └── core/          # @tealium/prism-react-native SDK package
+└── example/           # this app
+```
+
+The root workspace is managed with Yarn 4. The example app depends on `@tealium/prism-react-native` via `workspace:*`, so it always runs against the local source in `packages/core` — no publishing or `yarn link` needed.
+
+To install all dependencies (run from the **repo root**, not `example/`):
+
+```sh
+yarn install
+```
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
@@ -8,27 +27,19 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+To start the Metro dev server, run the following command from the `example/` directory:
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
 yarn start
 ```
 
 ## Step 2: Build and run your app
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+With Metro running, open a new terminal window/pane from the `example/` directory, and use one of the following commands to build and run your Android or iOS app:
 
 ### Android
 
 ```sh
-# Using npm
-npm run android
-
-# OR using Yarn
 yarn android
 ```
 
@@ -51,10 +62,6 @@ bundle exec pod install
 For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
 
 ```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
 yarn ios
 ```
 

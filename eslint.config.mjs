@@ -135,7 +135,6 @@ export default tseslint.config(
       yoda: 'warn',
 
       // Variables
-      'no-catch-shadow': 'warn',
       'no-delete-var': 'warn',
       'no-global-assign': 'error',
       'no-label-var': 'warn',
@@ -143,14 +142,7 @@ export default tseslint.config(
       'no-shadow-restricted-names': 'warn',
       'no-undef': 'error',
       'no-undef-init': 'warn',
-      'no-unused-vars': ['warn', { vars: 'all', args: 'none', ignoreRestSiblings: true }],
-
-      // Node
-      'handle-callback-err': 'warn',
-      'no-mixed-requires': 'warn',
-      'no-new-require': 'warn',
-      'no-path-concat': 'warn',
-      'no-restricted-imports': 'warn',
+      'no-unused-vars': ['error', { vars: 'all', args: 'none', ignoreRestSiblings: true }],
 
       // eslint-comments
       'eslint-comments/no-aggregating-enable': 'warn',
@@ -169,7 +161,6 @@ export default tseslint.config(
       'react/jsx-no-comment-textnodes': 'error',
       'react/jsx-no-duplicate-props': 'error',
       'react/jsx-no-undef': 'error',
-      'react/jsx-uses-react': 'warn',
       'react/jsx-uses-vars': 'warn',
       'react/no-did-mount-set-state': 'warn',
       'react/no-did-update-set-state': 'warn',

@@ -1,4 +1,4 @@
-import { TurboModuleRegistry, type TurboModule } from 'react-native';
+import { TurboModuleRegistry, type TurboModule } from "react-native";
 
 // PR0: empty TurboModule. No Prism methods are bridged yet — this only proves
 // the wrapper's native module is linked and resolvable end-to-end. Prism APIs
@@ -8,4 +8,4 @@ export interface Spec extends TurboModule {}
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)
 // can import this module without a registered native binding.
-export default TurboModuleRegistry.get<Spec>('TealiumPrismReactNative');
+export default TurboModuleRegistry.get<Spec>("TealiumPrismReactNative");

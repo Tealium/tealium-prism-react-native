@@ -16,15 +16,8 @@ npm install @tealium/prism-react-native
 
 ## Usage
 
-
-```js
-import { isWrapperLoaded } from '@tealium/prism-react-native';
-
-// Confirm the native wrapper module is linked on the current platform.
-const loaded = isWrapperLoaded();
-```
+> **Status:** TBD
 
 ## License
 
 Commercial
-

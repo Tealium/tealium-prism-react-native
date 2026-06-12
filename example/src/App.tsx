@@ -3,6 +3,7 @@ import { isWrapperLoaded } from "@tealium/prism-react-native";
 
 // PR0 demo: confirm the native wrapper module is linked and resolvable on the
 // running platform. No Prism functionality is exercised yet.
+// TODO: remove this later, once PR1+ exposes actual functionality that can be tested against
 const loaded = isWrapperLoaded();
 
 export default function App() {

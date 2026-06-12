@@ -1,4 +1,4 @@
-import NativeTealiumPrismReactNative from './NativeTealiumPrismReactNative';
+import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 
 /**
  * Whether the native Prism wrapper module is linked and resolvable.

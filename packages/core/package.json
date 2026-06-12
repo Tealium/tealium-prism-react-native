@@ -39,6 +39,9 @@
     "lint": "yarn run -T eslint \"src/**/*.{js,ts,tsx}\""
   },
   "keywords": [
+    "tealium-prism",
+    "tealium",
+    "prism",
     "react-native",
     "ios",
     "android"
@@ -102,7 +105,6 @@
   },
   "prettier": {
     "quoteProps": "consistent",
-    "singleQuote": true,
     "tabWidth": 2,
     "trailingComma": "es5",
     "useTabs": false

@@ -4,7 +4,7 @@ const pkg = require("../packages/core/package.json");
 module.exports = {
   project: {
     ios: {
-      automaticPodsInstallation: true,
+      automaticPodsInstallation: false, // not reliable anyway
     },
   },
   dependencies: {
