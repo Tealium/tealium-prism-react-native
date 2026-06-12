@@ -97,7 +97,7 @@ export default tseslint.config(
       'no-extra-boolean-cast': 'warn',
       'no-func-assign': 'warn',
       'no-invalid-regexp': 'warn',
-      'no-negated-in-lhs': 'warn',
+      'no-unsafe-negation': 'warn',
       'no-obj-calls': 'warn',
       'no-regex-spaces': 'warn',
       'no-sparse-arrays': 'warn',
@@ -150,7 +150,7 @@ export default tseslint.config(
       'no-mixed-requires': 'warn',
       'no-new-require': 'warn',
       'no-path-concat': 'warn',
-      'no-restricted-modules': 'warn',
+      'no-restricted-imports': 'warn',
 
       // eslint-comments
       'eslint-comments/no-aggregating-enable': 'warn',
