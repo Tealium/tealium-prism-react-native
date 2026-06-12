@@ -80,6 +80,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Keep both platform implementations testable and aligned with the native SDKs. The Swift repo treats tests as first-class with dedicated schemes, module-organized test directories, and test helpers, and the Kotlin core module is configured with both unit-test and Android-test dependencies.
 
+## Code style rules
+
+Generated JS/TS code must pass `yarn lint` without errors. Key rules enforced by [eslint.config.mjs](eslint.config.mjs):
+
+* Use double quotes for strings (`prettier/prettier`).
+* No `eval` or `new Function` (`no-eval`, `no-new-func`).
+* No unused variables — prefix intentionally unused params/destructured vars with `_` in TypeScript files (`@typescript-eslint/no-unused-vars`).
+* React hooks must follow the rules of hooks and declare exhaustive deps (`react-hooks/rules-of-hooks`, `react-hooks/exhaustive-deps`).
+* No inline styles in React Native components (`react-native/no-inline-styles`).
+* Use `===` instead of `==` except null checks (`eqeqeq: allow-null`).
+* No `eslint-disable` comments that disable more rules than needed or are never used (`eslint-comments/*`).
+* TypeScript files: no `no-shadow` (use `@typescript-eslint/no-shadow`), no `no-undef` (TypeScript handles this), no `no-unused-vars` (use `@typescript-eslint/no-unused-vars`).
+
+After generating any JS/TS code, mentally verify it against these rules before presenting it.
+
 ## Practical default stance
 
 * Default to TurboModule-first design.
