@@ -11,7 +11,8 @@
     "clean": "yarn workspaces foreach --all run clean",
     "test": "yarn workspace @tealium/prism-react-native test",
     "typecheck": "yarn workspace @tealium/prism-react-native typecheck",
-    "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\""
+    "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\"",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.0",
@@ -25,6 +26,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-native": "^5.0.0",
+    "husky": "^9.1.7",
     "prettier": "^3.8.3",
     "turbo": "^2.9.16",
     "typescript": "^6.0.3",

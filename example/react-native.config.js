@@ -1,5 +1,5 @@
-const path = require('path');
-const pkg = require('../packages/core/package.json');
+const path = require("path");
+const pkg = require("../packages/core/package.json");
 
 module.exports = {
   project: {
@@ -9,7 +9,7 @@ module.exports = {
   },
   dependencies: {
     [pkg.name]: {
-      root: path.join(__dirname, '../packages/core'),
+      root: path.join(__dirname, "../packages/core"),
       platforms: {
         // Codegen script incorrectly fails without this
         // So we explicitly specify the platforms with empty object
