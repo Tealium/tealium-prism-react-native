@@ -1,14 +1,13 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 
 /**
- * Whether the native Prism wrapper module is linked and resolvable.
+ * Returns the linked Prism SDK version for the current platform.
  *
- * PR0 exposes no Prism functionality yet; this flag only lets the example app
- * (and consumers) confirm the TurboModule was bundled and registered on the
- * current platform. Returns `false` in JS-only environments (e.g. Jest, web).
- *
- * TODO: remove this method once PR1+ exposes actual functionality that can be tested against
+ * iOS reads from `TealiumConstants.libraryVersion` at runtime.
+ * Android reads from the SDK's `BuildConfig.TEALIUM_LIBRARY_VERSION` at runtime.
+ * The resolved field (`ios` or `android`) will be non-empty when the SDK is
+ * correctly linked; the other field is absent.
  */
-export function isWrapperLoaded(): boolean {
-  return NativeTealiumPrismReactNative != null;
+export function getSdkVersion(): Promise<{ ios?: string; android?: string }> {
+  return NativeTealiumPrismReactNative!.getSdkVersion();
 }
