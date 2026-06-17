@@ -13,8 +13,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
   }
 
   override fun getSdkVersion(promise: Promise) {
-    val result = Arguments.createMap()
-    result.putString("android", PrismBuildConfig.TEALIUM_LIBRARY_VERSION)
-    promise.resolve(result)
+    promise.resolve(PrismBuildConfig.TEALIUM_LIBRARY_VERSION)
   }
 }

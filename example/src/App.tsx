@@ -8,7 +8,7 @@ export default function App() {
   useEffect(() => {
     getSdkVersion()
       .then((v) => {
-        setVersion(v.ios ?? v.android ?? "unknown");
+        setVersion(v);
       })
       .catch(() => {
         setVersion("Not available");

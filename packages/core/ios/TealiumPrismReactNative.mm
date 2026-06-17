@@ -16,7 +16,7 @@
 
 - (void)getSdkVersion:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-    resolve(@{@"ios": TealiumPrismVersion.sdkVersion});
+    resolve(TealiumPrismVersion.sdkVersion);
 }
 
 @end

@@ -5,10 +5,8 @@ import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
  *
  * iOS reads from `TealiumConstants.libraryVersion` at runtime.
  * Android reads from the SDK's `BuildConfig.TEALIUM_LIBRARY_VERSION` at runtime.
- * The resolved field (`ios` or `android`) will be non-empty when the SDK is
- * correctly linked; the other field is absent.
  */
-export function getSdkVersion(): Promise<{ ios?: string; android?: string }> {
+export function getSdkVersion(): Promise<string> {
   if (!NativeTealiumPrismReactNative) {
     return Promise.reject(
       new Error("TealiumPrismReactNative native module is not registered.")
