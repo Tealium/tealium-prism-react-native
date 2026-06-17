@@ -1,0 +1,9 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "paths": {
+      "@tealium/prism-react-native": ["../packages/core/src/index"]
+    }
+  }
+}
