@@ -9,7 +9,7 @@ describe("getSdkVersion", () => {
     expect(typeof getSdkVersion).toBe("function");
   });
 
-  it("throws when no native binding is registered", () => {
-    expect(() => getSdkVersion()).toThrow();
+  it("rejects when no native binding is registered", async () => {
+    await expect(getSdkVersion()).rejects.toThrow();
   });
 });

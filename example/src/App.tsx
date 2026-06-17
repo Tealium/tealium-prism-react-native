@@ -6,9 +6,13 @@ export default function App() {
   const [version, setVersion] = useState<string | null>(null);
 
   useEffect(() => {
-    getSdkVersion().then((v) => {
-      setVersion(v.ios ?? v.android ?? "unknown");
-    });
+    getSdkVersion()
+      .then((v) => {
+        setVersion(v.ios ?? v.android ?? "unknown");
+      })
+      .catch(() => {
+        setVersion("Not available");
+      });
   }, []);
 
   return (

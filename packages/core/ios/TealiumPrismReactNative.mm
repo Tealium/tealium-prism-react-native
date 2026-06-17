@@ -1,4 +1,5 @@
 #import "TealiumPrismReactNative.h"
+#import "TealiumPrismReactNative-Swift.h"
 
 @implementation TealiumPrismReactNative
 
@@ -15,11 +16,7 @@
 
 - (void)getSdkVersion:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-    // TealiumConstants.libraryVersion is a Swift-only public constant; it cannot
-    // be called from ObjC++. The value is read in TealiumPrismVersion.swift (which
-    // imports TealiumPrism and fails to compile if the SDK dep is absent), and
-    // kept in sync here as a compile-time constant.
-    resolve(@{@"ios": @"0.5.0"});
+    resolve(@{@"ios": TealiumPrismVersion.sdkVersion});
 }
 
 @end

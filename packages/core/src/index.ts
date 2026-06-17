@@ -9,5 +9,10 @@ import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
  * correctly linked; the other field is absent.
  */
 export function getSdkVersion(): Promise<{ ios?: string; android?: string }> {
-  return NativeTealiumPrismReactNative!.getSdkVersion();
+  if (!NativeTealiumPrismReactNative) {
+    return Promise.reject(
+      new Error("TealiumPrismReactNative native module is not registered.")
+    );
+  }
+  return NativeTealiumPrismReactNative.getSdkVersion();
 }

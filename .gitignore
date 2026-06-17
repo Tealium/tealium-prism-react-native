@@ -2,12 +2,10 @@
 #
 .DS_Store
 
-# XDE
-.expo/
-
 # VSCode
 .vscode/
 jsconfig.json
+*.code-workspace
 
 # Xcode
 #
