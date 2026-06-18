@@ -2,12 +2,10 @@
 #
 .DS_Store
 
-# XDE
-.expo/
-
 # VSCode
 .vscode/
 jsconfig.json
+*.code-workspace
 
 # Xcode
 #
@@ -27,7 +25,7 @@ DerivedData
 *.hmap
 *.ipa
 *.xcuserstate
-project.xcworkspace
+*.xcworkspace
 **/.xcode.env.local
 
 # Android/IJ
@@ -40,6 +38,7 @@ project.xcworkspace
 .settings
 local.properties
 android.iml
+gradle-daemon-jvm.properties
 
 # Cocoapods
 #
@@ -59,7 +58,6 @@ yarn-error.log
 buck-out/
 \.buckd/
 android/app/libs
-android/keystores/debug.keystore
 
 # Yarn
 .yarn/*

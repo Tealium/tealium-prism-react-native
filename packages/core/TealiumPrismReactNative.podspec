@@ -17,4 +17,5 @@ Pod::Spec.new do |s|
   s.private_header_files = "ios/**/*.h"
 
   install_modules_dependencies(s)
+  s.dependency "tealium-prism", "~> 0.5"
 end

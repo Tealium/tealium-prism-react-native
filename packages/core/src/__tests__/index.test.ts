@@ -1,15 +1,15 @@
-import { isWrapperLoaded } from "../index";
+import { getSdkVersion } from "../index";
 
-// In the Jest (JS-only) environment no native TurboModule is registered, so the
-// wrapper reports as not loaded. This guards the contract that the probe is a
-// boolean and degrades gracefully off-device. End-to-end "loaded" verification
-// happens in the example app on a real iOS/Android build.
-describe("isWrapperLoaded", () => {
-  it("returns a boolean", () => {
-    expect(typeof isWrapperLoaded()).toBe("boolean");
+// In the Jest (JS-only) environment no native TurboModule is registered, so
+// calling getSdkVersion() throws (NativeModule is null). This guards the
+// contract that the function is exported and callable. End-to-end version
+// string verification happens in the example app on a real iOS/Android build.
+describe("getSdkVersion", () => {
+  it("is exported as a function", () => {
+    expect(typeof getSdkVersion).toBe("function");
   });
 
-  it("reports not loaded without a native binding", () => {
-    expect(isWrapperLoaded()).toBe(false);
+  it("rejects when no native binding is registered", async () => {
+    await expect(getSdkVersion()).rejects.toThrow();
   });
 });

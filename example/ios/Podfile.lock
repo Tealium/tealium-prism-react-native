@@ -1747,6 +1747,30 @@ PODS:
     - React-utils (= 0.85.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.85.0)
+  - SQLite.swift (0.15.5):
+    - SQLite.swift/standard (= 0.15.5)
+  - SQLite.swift/standard (0.15.5)
+  - tealium-prism (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core (= 0.5.0)
+    - tealium-prism/Extensions (= 0.5.0)
+    - tealium-prism/JavaScriptTransformer (= 0.5.0)
+    - tealium-prism/Lifecycle (= 0.5.0)
+    - tealium-prism/MomentsAPI (= 0.5.0)
+  - tealium-prism/Core (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+  - tealium-prism/Extensions (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
+  - tealium-prism/JavaScriptTransformer (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
+  - tealium-prism/Lifecycle (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
+  - tealium-prism/MomentsAPI (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
   - TealiumPrismReactNative (0.1.0):
     - hermes-engine
     - RCTRequired
@@ -1768,6 +1792,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
+    - tealium-prism (~> 0.5)
     - Yoga
   - Yoga (0.0.0)
 
@@ -1847,6 +1872,11 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - TealiumPrismReactNative (from `../../packages/core`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
+
+SPEC REPOS:
+  trunk:
+    - SQLite.swift
+    - tealium-prism
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -2072,7 +2102,9 @@ SPEC CHECKSUMS:
   ReactCodegen: b3184a229afd01e7f8058dd81b805b843caa2bf9
   ReactCommon: fe2a3af8975e63efa60f95fca8c34dc85deee360
   ReactNativeDependencies: 3908675643817652b594de9ccf0e77d434e65ce9
-  TealiumPrismReactNative: c7a9ac914baf026a66278474855e37c42f9782a9
+  SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
+  tealium-prism: 26b047d4350524eb9776ce54d577e9e2a3872fd7
+  TealiumPrismReactNative: 0430fbed62b02fc2e23c77322a0d0583e45d3fcc
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 
 PODFILE CHECKSUM: be089cbfd9acbd73679d8b65799a2a722fbb7617

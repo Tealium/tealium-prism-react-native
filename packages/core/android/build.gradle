@@ -1,6 +1,6 @@
 buildscript {
   ext.TealiumPrismReactNative = [
-    kotlinVersion: "2.0.21",
+    kotlinVersion: "2.1.20",
     minSdkVersion: 24,
     compileSdkVersion: 36,
     targetSdkVersion: 36
@@ -20,7 +20,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.7.2"
+    classpath "com.android.tools.build:gradle:8.12.0"
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
@@ -29,6 +29,10 @@ buildscript {
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 apply plugin: "com.facebook.react"
+
+repositories {
+  maven { url "https://maven.tealiumiq.com/android/releases/" }
+}
 
 android {
   namespace "com.tealium.prism.reactnative"
@@ -49,13 +53,9 @@ android {
       minifyEnabled false
     }
   }
-
-  compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
-  }
 }
 
 dependencies {
   implementation "com.facebook.react:react-android"
+  implementation "com.tealium.prism:prism-core:0.5.0"
 }
