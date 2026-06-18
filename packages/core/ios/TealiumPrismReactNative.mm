@@ -1,8 +1,6 @@
 #import "TealiumPrismReactNative.h"
+#import "TealiumPrismReactNative-Swift.h"
 
-// PR0: empty TurboModule. No Prism methods are bridged yet — this only proves
-// the wrapper's native module is linked and registered. Prism APIs arrive in
-// later PRs.
 @implementation TealiumPrismReactNative
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
@@ -14,6 +12,11 @@
 + (NSString *)moduleName
 {
   return @"TealiumPrismReactNative";
+}
+
+- (void)getSdkVersion:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+    resolve(TealiumPrismVersion.sdkVersion);
 }
 
 @end

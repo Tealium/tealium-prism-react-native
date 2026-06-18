@@ -30,7 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Keep one typed TS spec as the contract. When the contract changes, update JavaScript and both native implementations together.
 
-* Default to TurboModules and the New Architecture when designing the wrapper from scratch. Only add legacy Native Module support when backward compatibility is an explicit requirement for consumers running with the legacy architecture.
+* Target TurboModules and the New Architecture only. Do not add legacy Native Module support.
 
 ## Bridge data rules
 
@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Do not expose native-only types directly through the bridge. If a native SDK concept is not directly bridge-safe, convert it inside the native implementation before returning it to JavaScript.
 
-* Preserve Prism’s typed data model instead of flattening everything into untyped blobs. Swift documents `DataObject` and `DataItem` as core SDK data types, and Kotlin uses `DataObject` to build enforced SDK settings and configuration state.
+* Preserve Prism’s typed data model instead of flattening everything into untyped blobs. On the JS side, `DataObject` and `DataItem` are TypeScript type aliases — `type DataItem = string | number | boolean | null | DataItem[] | Record<string, DataItem>` and `type DataObject = Record<string, DataItem>` — not classes consumers instantiate. Consumers pass plain objects and primitives; the native layer converts them to the SDK’s `DataObject`/`DataItem` types at the bridge boundary.
 
 * Prefer explicit conversion at the bridge boundary over implicit coercion in JavaScript.
 
@@ -52,7 +52,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Avoid synchronous bridge methods unless there is a strong reason. React Native explicitly warns that synchronous methods can hurt performance, introduce threading bugs, and disable the Chrome debugger.
 
-* If the wrapper exposes native-to-JS subscriptions, design listener lifecycle explicitly. Use the event model required by the chosen React Native architecture, and do not assume legacy event-emitter hooks are needed unless legacy support is an explicit requirement.
+* If the wrapper exposes native-to-JS subscriptions, design listener lifecycle explicitly. Use the TurboModule `EventEmitter` spec — do not use `RCTEventEmitter` or legacy event-emitter hooks.
 
 * Do not rely on React Native’s current calling thread as if it were stable API. React Native says native modules should not assume what thread they run on and should dispatch heavy work to their own queues, while the Swift Prism SDK documents that SDK operations run on `TealiumQueue.worker` and are exposed through `AsyncProxy` for thread-safe public access.
 
@@ -62,7 +62,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Preserve settings precedence exactly. Swift and Kotlin both document local settings as lowest priority, remote settings above local, and programmatic or enforced settings above both.
 
-* Keep module registration aligned with native patterns. Swift uses `ModuleFactory` values added to `TealiumConfig`, and Kotlin’s `TealiumConfig.Builder` likewise starts from a list of `ModuleFactory` instances.
+* Keep module registration aligned with native patterns. Swift uses `ModuleFactory` values added to `TealiumConfig`, and Kotlin’s `TealiumConfig.Builder` likewise starts from a list of `ModuleFactory` instances. All core module factories are registered by default; a module is only instantiated when settings exist for it (enforced, local, or remote). Mandatory modules (DataLayer, TealiumData, core transformers) carry enforced settings and are always initialized. Optional modules (Collect, Lifecycle, etc.) require settings from local/remote JSON to run.
 
 * Respect Prism’s native queue and pipeline model instead of moving Prism logic into JavaScript. The Swift repo documents a queue-backed tracking pipeline made of collectors, transformations, consent checks, barriers, dispatcher queues, and completion handling.
 
@@ -70,7 +70,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Start with the typed TS contract, then implement Android and iOS against that contract, then expose the final JS wrapper API.
 
-* Keep the JS wrapper thin and typed. React Native’s native-module docs recommend wrapping `NativeModules` in a JS module and placing type annotations there, while TurboModules go further and make the typed spec itself the contract.
+* Keep the JS wrapper thin and typed. Use the typed TS spec as the contract — the spec file is the single source of truth, Codegen enforces it on both platforms, and native implementations must conform to the generated interfaces. Do not hand-write type annotations over `NativeModules`.
 
 * When a wrapper feature needs special conversion, queueing, or native coordination, do that work on the native side rather than expecting JavaScript to orchestrate native execution details.
 

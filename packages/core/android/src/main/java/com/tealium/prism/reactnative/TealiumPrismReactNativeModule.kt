@@ -1,14 +1,17 @@
 package com.tealium.prism.reactnative
 
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.tealium.prism.core.BuildConfig as PrismBuildConfig
 
-// PR0: empty TurboModule. No Prism methods are bridged yet — this only proves
-// the wrapper's native module is linked and registered. Prism APIs arrive in
-// later PRs.
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
   NativeTealiumPrismReactNativeSpec(reactContext) {
 
   companion object {
     const val NAME = NativeTealiumPrismReactNativeSpec.NAME
+  }
+
+  override fun getSdkVersion(promise: Promise) {
+    promise.resolve(PrismBuildConfig.TEALIUM_LIBRARY_VERSION)
   }
 }
