@@ -234,7 +234,7 @@ static NSString *const kErrorConsentNotEnabled = @"CONSENT_NOT_ENABLED";
         reject(kErrorNotInitialized, @"Tealium is not initialized", nil);
         return;
     }
-    [[TealiumPrismBridge shared] getDataItemWithKey:key completion:^(NSDictionary *result, NSError *error) {
+    [[TealiumPrismBridge shared] getDataItemWithKey:key completion:^(id result, NSError *error) {
         if (error) {
             reject(kErrorDataLayer, error.localizedDescription, error);
         } else {
