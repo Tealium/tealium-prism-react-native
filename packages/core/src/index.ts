@@ -1,5 +1,7 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 
+export type { JsonValue, DataObject } from "./types";
+
 /**
  * Returns the linked Prism SDK version for the current platform.
  *

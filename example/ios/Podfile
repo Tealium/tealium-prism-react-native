@@ -17,6 +17,13 @@ end
 target 'TealiumPrismReactNativeExample' do
   config = use_native_modules!
 
+  # Opt into the wrapper pod's `test_spec` so CocoaPods generates a runnable
+  # `TealiumPrismReactNative-Unit-Tests` target/scheme. Autolinking adds the pod
+  # without its test specs, so it is declared explicitly here.
+  pod 'TealiumPrismReactNative',
+    :path => '../../packages/core',
+    :testspecs => ['Tests']
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

@@ -53,9 +53,18 @@ android {
       minifyEnabled false
     }
   }
+
+  testOptions {
+    // Guard against any stray Android-framework call in JVM unit tests.
+    // The converters and JavaOnlyMap/JavaOnlyArray are pure-JVM, so no
+    // Robolectric is needed.
+    unitTests.returnDefaultValues = true
+  }
 }
 
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "com.tealium.prism:prism-core:0.5.0"
+
+  testImplementation "junit:junit:4.13.2"
 }
