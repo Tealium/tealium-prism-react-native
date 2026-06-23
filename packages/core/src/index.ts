@@ -1,4 +1,7 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
+import type { JsonValueObject } from "./types";
+
+export type { JsonValue, JsonValueObject } from "./types";
 
 /**
  * Returns the linked Prism SDK version for the current platform.
@@ -13,4 +16,29 @@ export function getSdkVersion(): Promise<string> {
     );
   }
   return NativeTealiumPrismReactNative.getSdkVersion();
+}
+
+/**
+ * Passes `input` through the native DataObject conversion layer and returns
+ * the result. The input is converted to a Prism `DataObject` on the native
+ * side and immediately converted back, so the returned value is the JS-visible
+ * representation of whatever the native SDK would store.
+ *
+ * The value is serialized to a JSON string before crossing the bridge so that
+ * `null` values are preserved. The TurboModule bridge drops `null`-valued keys
+ * from plain objects on iOS before the native method body runs.
+ *
+ * Intended for bridge round-trip verification in the example app only.
+ */
+export function echoDataObject(
+  input: JsonValueObject
+): Promise<JsonValueObject> {
+  if (!NativeTealiumPrismReactNative) {
+    return Promise.reject(
+      new Error("TealiumPrismReactNative native module is not registered.")
+    );
+  }
+  return NativeTealiumPrismReactNative.echoDataObject(
+    JSON.stringify(input)
+  ).then((result) => JSON.parse(result) as JsonValueObject);
 }
