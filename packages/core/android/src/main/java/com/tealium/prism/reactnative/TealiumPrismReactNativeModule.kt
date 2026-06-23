@@ -3,8 +3,6 @@ package com.tealium.prism.reactnative
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.tealium.prism.core.BuildConfig as PrismBuildConfig
-import com.tealium.prism.core.api.data.DataObject
-import org.json.JSONObject
 
 class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
   NativeTealiumPrismReactNativeSpec(reactContext) {
@@ -19,7 +17,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
   override fun echoDataObject(input: String, promise: Promise) {
     try {
-      promise.resolve(DataObject.fromJSONObject(JSONObject(input)).toString())
+      promise.resolve(dataObjectFromJsonString(input).toJsonString())
     } catch (e: Exception) {
       promise.reject("ECHO_ERROR", e.message, e)
     }

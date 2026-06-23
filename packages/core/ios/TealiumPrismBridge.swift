@@ -17,20 +17,8 @@ public final class TealiumPrismBridge: NSObject {
         error: NSErrorPointer
     ) -> String? {
         do {
-            guard let data = jsonString.data(using: .utf8),
-                  let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else {
-                error?.pointee = NSError(
-                    domain: "TealiumPrismBridge",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Input is not a valid JSON object"]
-                )
-                return nil
-            }
-            let dataObject = try DataObject(jsonObject: jsonObject)
-            let result = dataObject.asDictionary()
-            let outputData = try JSONSerialization.data(withJSONObject: result)
-            return String(data: outputData, encoding: .utf8)
+            let dataObject = try DataObjectConversions.dataObject(fromJSONString: jsonString)
+            return try DataObjectConversions.jsonString(from: dataObject)
         } catch let e as NSError {
             error?.pointee = e
             return nil
