@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { echoDataObject } from "@tealium/prism-react-native";
-import type { JsonValueObject } from "@tealium/prism-react-native";
+import { echoJsonValue } from "@tealium/prism-react-native";
+import type { JsonValue } from "@tealium/prism-react-native";
 
 interface TestCase {
   name: string;
-  input: JsonValueObject;
+  input: JsonValue;
 }
 
 interface TestResult {
@@ -89,6 +89,24 @@ const TEST_CASES: TestCase[] = [
     name: "String NaN",
     input: { val: "NaN" },
   },
+  // Primitive cases
+  { name: "Bare string", input: "hello world" },
+  { name: "Bare integer", input: 42 },
+  { name: "Bare fractional", input: 3.14159 },
+  { name: "Bare boolean true", input: true },
+  { name: "Bare boolean false", input: false },
+  { name: "Bare null", input: null },
+  // Array cases
+  { name: "Empty array", input: [] },
+  { name: "Flat array", input: [1, "two", true, null] },
+  {
+    name: "Nested arrays",
+    input: [
+      [1, 2],
+      [3, 4],
+    ],
+  },
+  { name: "Array with objects", input: [{ a: 1 }, { b: [2, 3] }] },
 ];
 
 function sortedStringify(value: unknown): string {
@@ -117,7 +135,7 @@ export default function BridgeTestScreen() {
 
     for (const tc of TEST_CASES) {
       try {
-        const echoed = await echoDataObject(tc.input);
+        const echoed = await echoJsonValue(tc.input);
         const inputStr = sortedStringify(tc.input);
         const outputStr = sortedStringify(echoed);
         const passed = inputStr === outputStr;

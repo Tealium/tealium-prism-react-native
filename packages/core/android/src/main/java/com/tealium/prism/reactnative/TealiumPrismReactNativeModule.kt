@@ -15,9 +15,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     promise.resolve(PrismBuildConfig.TEALIUM_LIBRARY_VERSION)
   }
 
-  override fun echoDataObject(input: String, promise: Promise) {
+  override fun echoJsonValue(input: String, promise: Promise) {
     try {
-      promise.resolve(dataObjectFromJsonString(input).toJsonString())
+      promise.resolve(jsonValueRoundTrip(input))
     } catch (e: Exception) {
       promise.reject("ECHO_ERROR", e.message, e)
     }
