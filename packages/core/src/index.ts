@@ -32,7 +32,7 @@ export function getSdkVersion(): Promise<string> {
  *
  * Intended for bridge round-trip verification in the example app only.
  */
-export function echoJsonValue(input: JsonValue): Promise<JsonValue> {
+export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
   if (!NativeTealiumPrismReactNative) {
     return Promise.reject(
       new Error("TealiumPrismReactNative native module is not registered.")
@@ -40,5 +40,13 @@ export function echoJsonValue(input: JsonValue): Promise<JsonValue> {
   }
   return NativeTealiumPrismReactNative.echoJsonValue(
     JSON.stringify(input)
-  ).then((result) => JSON.parse(result) as JsonValue);
+  ).then((result) => {
+    try {
+      return JSON.parse(result) as JsonValue;
+    } catch {
+      throw new Error(
+        `_echoJsonValue: native returned non-JSON string: ${result}`
+      );
+    }
+  });
 }

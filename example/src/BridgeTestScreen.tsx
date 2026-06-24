@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { echoJsonValue } from "@tealium/prism-react-native";
+import { _echoJsonValue } from "@tealium/prism-react-native";
 import type { JsonValue } from "@tealium/prism-react-native";
 
 interface TestCase {
@@ -135,7 +135,7 @@ export default function BridgeTestScreen() {
 
     for (const tc of TEST_CASES) {
       try {
-        const echoed = await echoJsonValue(tc.input);
+        const echoed = await _echoJsonValue(tc.input);
         const inputStr = sortedStringify(tc.input);
         const outputStr = sortedStringify(echoed);
         const passed = inputStr === outputStr;
