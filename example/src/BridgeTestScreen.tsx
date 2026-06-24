@@ -43,7 +43,19 @@ const TEST_CASES: TestCase[] = [
   },
   {
     name: "Deep nesting",
-    input: { l1: { l2: { l3: { l4: { leaf: "value" } } } } },
+    input: {
+      l1: {
+        l2: {
+          l3: {
+            l4: { leaf: "value" },
+            r4: { leaf: 42.55 },
+            d4: { leaf: true },
+            s4: { leaf: [1, 2, 3] },
+            a4: { leaf: null },
+          },
+        },
+      },
+    },
   },
   {
     name: "Unicode",
@@ -64,6 +76,18 @@ const TEST_CASES: TestCase[] = [
   {
     name: "Mixed array with objects",
     input: { mix: [{ a: 1 }, [2, 3], "x"] },
+  },
+  {
+    name: "String Infinity",
+    input: { val: "Infinity" },
+  },
+  {
+    name: "String -Infinity",
+    input: { val: "-Infinity" },
+  },
+  {
+    name: "String NaN",
+    input: { val: "NaN" },
   },
 ];
 
