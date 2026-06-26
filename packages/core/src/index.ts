@@ -18,6 +18,7 @@ export function getSdkVersion(): Promise<string> {
   return NativeTealiumPrismReactNative.getSdkVersion();
 }
 
+// TODO: we should probably remove this as an export once the DataLayer arrives
 /**
  * Passes `input` through the native DataItem conversion layer and returns
  * the result. The input is converted to a Prism `DataItem` on the native
