@@ -12,6 +12,8 @@ import type { JsonValue } from "@tealium/prism-react-native";
 interface TestCase {
   name: string;
   input: JsonValue;
+  /** Custom validator — returns failure message or undefined on success. */
+  check?: (echoed: JsonValue) => string | undefined;
 }
 
 interface TestResult {
@@ -107,6 +109,40 @@ const TEST_CASES: TestCase[] = [
     ],
   },
   { name: "Array with objects", input: [{ a: 1 }, { b: [2, 3] }] },
+  // Date strings — must pass through unmodified (native treats them as plain strings)
+  {
+    name: "ISO date with millis (.000Z)",
+    input: { ts: "2024-01-15T09:30:00.000Z" },
+  },
+  {
+    name: "ISO date without millis (Z)",
+    input: { ts: "2024-01-15T09:30:00Z" },
+  },
+  // Non-finite numbers — must be coerced to null by JSON.stringify before the bridge
+  {
+    name: "Infinity becomes null",
+    input: { val: 1 / 0 },
+    check: (echoed) => {
+      const val = (echoed as Record<string, unknown>).val;
+      return val === null ? undefined : `expected null, got ${String(val)}`;
+    },
+  },
+  {
+    name: "-Infinity becomes null",
+    input: { val: -1 / 0 },
+    check: (echoed) => {
+      const val = (echoed as Record<string, unknown>).val;
+      return val === null ? undefined : `expected null, got ${String(val)}`;
+    },
+  },
+  {
+    name: "NaN becomes null",
+    input: { val: 0 / 0 },
+    check: (echoed) => {
+      const val = (echoed as Record<string, unknown>).val;
+      return val === null ? undefined : `expected null, got ${String(val)}`;
+    },
+  },
 ];
 
 function sortedStringify(value: unknown): string {
@@ -136,16 +172,25 @@ export default function BridgeTestScreen() {
     for (const tc of TEST_CASES) {
       try {
         const echoed = await _echoJsonValue(tc.input);
-        const inputStr = sortedStringify(tc.input);
-        const outputStr = sortedStringify(echoed);
-        const passed = inputStr === outputStr;
-        out.push({
-          name: tc.name,
-          passed,
-          mismatch: passed
-            ? undefined
-            : `expected ${inputStr}\ngot      ${outputStr}`,
-        });
+        if (tc.check) {
+          const failure = tc.check(echoed);
+          out.push({
+            name: tc.name,
+            passed: failure === undefined,
+            mismatch: failure,
+          });
+        } else {
+          const inputStr = sortedStringify(tc.input);
+          const outputStr = sortedStringify(echoed);
+          const passed = inputStr === outputStr;
+          out.push({
+            name: tc.name,
+            passed,
+            mismatch: passed
+              ? undefined
+              : `expected ${inputStr}\ngot      ${outputStr}`,
+          });
+        }
       } catch (e) {
         out.push({
           name: tc.name,
