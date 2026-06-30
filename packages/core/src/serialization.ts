@@ -13,5 +13,11 @@ function jsonReplacer(_key: string, value: unknown): unknown {
  * native Prism SDK behavior.
  */
 export function serialize(value: unknown): string {
-  return JSON.stringify(value, jsonReplacer);
+  const result = JSON.stringify(value, jsonReplacer);
+  if (result === undefined) {
+    throw new Error(
+      `serialize: value is not JSON-serializable (type: ${typeof value})`
+    );
+  }
+  return result;
 }

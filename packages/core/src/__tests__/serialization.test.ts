@@ -61,4 +61,22 @@ describe("serialize", () => {
       '{"x":1,"y":"NaN","z":-2.5}'
     );
   });
+
+  it("throws for undefined", () => {
+    expect(() => serialize(undefined)).toThrow(
+      "serialize: value is not JSON-serializable (type: undefined)"
+    );
+  });
+
+  it("throws for a function", () => {
+    expect(() => serialize(() => {})).toThrow(
+      "serialize: value is not JSON-serializable (type: function)"
+    );
+  });
+
+  it("throws for a symbol", () => {
+    expect(() => serialize(Symbol("s"))).toThrow(
+      "serialize: value is not JSON-serializable (type: symbol)"
+    );
+  });
 });
