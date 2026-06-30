@@ -118,29 +118,33 @@ const TEST_CASES: TestCase[] = [
     name: "ISO date without millis (Z)",
     input: { ts: "2024-01-15T09:30:00Z" },
   },
-  // Non-finite numbers — must be coerced to null by JSON.stringify before the bridge
+  // Non-finite numbers — converted to strings matching the native Prism SDK behavior
   {
-    name: "Infinity becomes null",
+    name: 'Infinity becomes "Infinity"',
     input: { val: 1 / 0 },
     check: (echoed) => {
       const val = (echoed as Record<string, unknown>).val;
-      return val === null ? undefined : `expected null, got ${String(val)}`;
+      return val === "Infinity"
+        ? undefined
+        : `expected "Infinity", got ${String(val)}`;
     },
   },
   {
-    name: "-Infinity becomes null",
+    name: '-Infinity becomes "-Infinity"',
     input: { val: -1 / 0 },
     check: (echoed) => {
       const val = (echoed as Record<string, unknown>).val;
-      return val === null ? undefined : `expected null, got ${String(val)}`;
+      return val === "-Infinity"
+        ? undefined
+        : `expected "-Infinity", got ${String(val)}`;
     },
   },
   {
-    name: "NaN becomes null",
+    name: 'NaN becomes "NaN"',
     input: { val: 0 / 0 },
     check: (echoed) => {
       const val = (echoed as Record<string, unknown>).val;
-      return val === null ? undefined : `expected null, got ${String(val)}`;
+      return val === "NaN" ? undefined : `expected "NaN", got ${String(val)}`;
     },
   },
 ];

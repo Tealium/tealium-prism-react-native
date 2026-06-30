@@ -17,8 +17,9 @@
  * string, so the round-trip changes the type from `Date` to `string`; pass
  * `date.toISOString()` explicitly instead.
  *
- * Non-finite numbers (`Infinity`, `-Infinity`, `NaN`) are coerced to `null`
- * by `JSON.stringify` before crossing the bridge.
+ * Non-finite numbers (`Infinity`, `-Infinity`, `NaN`) are converted to the
+ * strings `"Infinity"`, `"-Infinity"`, and `"NaN"` before crossing the bridge,
+ * matching the native Prism SDK behavior.
  */
 export type JsonValue =
   | string

@@ -1,4 +1,5 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
+import { serialize } from "./serialization";
 import type { JsonValue } from "./types";
 
 export type { JsonValue, JsonValueObject } from "./types";
@@ -39,15 +40,15 @@ export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
       new Error("TealiumPrismReactNative native module is not registered.")
     );
   }
-  return NativeTealiumPrismReactNative.echoJsonValue(
-    JSON.stringify(input)
-  ).then((result) => {
-    try {
-      return JSON.parse(result) as JsonValue;
-    } catch {
-      throw new Error(
-        `_echoJsonValue: native returned non-JSON string: ${result}`
-      );
+  return NativeTealiumPrismReactNative.echoJsonValue(serialize(input)).then(
+    (result) => {
+      try {
+        return JSON.parse(result) as JsonValue;
+      } catch {
+        throw new Error(
+          `_echoJsonValue: native returned non-JSON string: ${result}`
+        );
+      }
     }
-  });
+  );
 }
