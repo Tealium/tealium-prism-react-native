@@ -1,6 +1,7 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 import { serialize } from "./serialization";
 import type { DispatchType, JsonValueObject, TrackResult } from "./types";
+import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
 
 const instances = new Map<string, Tealium>();
 
@@ -19,15 +20,16 @@ export class Tealium {
     logLevel?: string
   ): Tealium {
     if (!NativeTealiumPrismReactNative) {
-      throw new Error(
-        "TealiumPrismReactNative native module is not registered."
-      );
+      throw new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR);
     }
 
     const key = `${account}-${profile}`;
 
     const cached = instances.get(key);
     if (cached && !cached._isShutdown) {
+      console.warn(
+        `[Tealium] Duplicate Tealium instance requested for ${key}. Returning existing instance. Note: environment and logLevel from this call are ignored.`
+      );
       return cached;
     }
 
@@ -54,9 +56,7 @@ export class Tealium {
       );
     }
     if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        new Error("TealiumPrismReactNative native module is not registered.")
-      );
+      return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
     }
 
     const dataJson = data !== undefined ? serialize(data) : null;
@@ -66,7 +66,15 @@ export class Tealium {
       name,
       type,
       dataJson
-    ).then((resultJson) => JSON.parse(resultJson) as TrackResult);
+    ).then((resultJson) => {
+      try {
+        return JSON.parse(resultJson) as TrackResult;
+      } catch {
+        throw new Error(
+          `Tealium.track: native returned non-JSON string: ${resultJson}`
+        );
+      }
+    });
   }
 
   shutdown(): Promise<void> {
@@ -74,9 +82,7 @@ export class Tealium {
       return Promise.resolve();
     }
     if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        new Error("TealiumPrismReactNative native module is not registered.")
-      );
+      return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
     }
 
     this._isShutdown = true;

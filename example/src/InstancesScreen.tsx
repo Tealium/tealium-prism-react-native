@@ -88,10 +88,13 @@ export default function InstancesScreen() {
       );
       const key = instance.instanceId;
 
-      const existing = instances.find((i) => i.key === key);
-      if (!existing) {
-        setInstances([...instances, { key, instance }]);
-      }
+      setInstances((prevInstances) => {
+        const existing = prevInstances.find((i) => i.key === key);
+        if (!existing) {
+          return [...prevInstances, { key, instance }];
+        }
+        return prevInstances;
+      });
       setSelectedKey(key);
     } catch (e) {
       setError(String(e));
@@ -104,7 +107,9 @@ export default function InstancesScreen() {
       info.instance
         .shutdown()
         .then(() => {
-          setInstances(instances.filter((i) => i.key !== key));
+          setInstances((prevInstances) =>
+            prevInstances.filter((i) => i.key !== key),
+          );
           if (selectedKey === key) {
             setSelectedKey(null);
             setLastResult(null);

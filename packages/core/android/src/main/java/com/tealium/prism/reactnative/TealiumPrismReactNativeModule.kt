@@ -70,17 +70,21 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     val disposable = instance.track(name, dispatchType, data).subscribe { result ->
       result
         .onSuccess { trackResult ->
-          val status = when (trackResult.status) {
-            TrackResult.Status.Accepted -> "accepted"
-            TrackResult.Status.Dropped -> "dropped"
+          try {
+            val status = when (trackResult.status) {
+              TrackResult.Status.Accepted -> "accepted"
+              TrackResult.Status.Dropped -> "dropped"
+            }
+            val payloadJson = JSONObject(trackResult.dispatch.payload().toString())
+            val json = JSONObject().apply {
+              put("status", status)
+              put("info", trackResult.info)
+              put("payload", payloadJson)
+            }.toString()
+            promise.resolve(json)
+          } catch (e: Exception) {
+            promise.reject("SERIALIZATION_ERROR", "Failed to serialize TrackResult: ${e.message}", e)
           }
-          val payloadJson = JSONObject(trackResult.dispatch.payload().toString())
-          val json = JSONObject().apply {
-            put("status", status)
-            put("info", trackResult.info)
-            put("payload", payloadJson)
-          }.toString()
-          promise.resolve(json)
         }
         .onFailure { error ->
           promise.reject("TRACK_ERROR", error.message, error as? Exception)

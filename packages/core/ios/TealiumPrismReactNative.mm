@@ -56,7 +56,7 @@
                                    dataJson:dataJson
                                  completion:^(NSString * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            reject(@"TRACK_ERROR", error.localizedDescription, error);
+            reject(error.domain, error.localizedDescription, error);
         } else {
             resolve(result);
         }
