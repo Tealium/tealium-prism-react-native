@@ -10,8 +10,8 @@
     "example": "yarn workspace @tealium/prism-react-native-example",
     "clean": "yarn workspaces foreach --all run clean",
     "test": "yarn workspace @tealium/prism-react-native test",
-    "typecheck": "yarn workspace @tealium/prism-react-native typecheck",
-    "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\"",
+    "typecheck": "yarn workspaces foreach --all run typecheck",
+    "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" && yarn typecheck",
     "prepare": "husky"
   },
   "devDependencies": {

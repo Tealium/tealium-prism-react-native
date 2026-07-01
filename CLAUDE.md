@@ -38,7 +38,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * Do not expose native-only types directly through the bridge. If a native SDK concept is not directly bridge-safe, convert it inside the native implementation before returning it to JavaScript.
 
-* Preserve Prism’s typed data model instead of flattening everything into untyped blobs. On the JS side, `DataObject` and `DataItem` are TypeScript type aliases — `type DataItem = string | number | boolean | null | DataItem[] | Record<string, DataItem>` and `type DataObject = Record<string, DataItem>` — not classes consumers instantiate. Consumers pass plain objects and primitives; the native layer converts them to the SDK’s `DataObject`/`DataItem` types at the bridge boundary.
+* Preserve Prism’s typed data model instead of flattening everything into untyped blobs. On the JS side, `JsonValueObject` and `JsonValue` are TypeScript type aliases, not classes consumers instantiate. Consumers pass plain objects and primitives; the native layer converts them to the SDK’s `DataObject`/`DataItem` types at the bridge boundary.
+* Whole numbers are a platform-internal asymmetry, not a JS-visible one: a whole JS number (e.g. `42.0`) round-trips through an `Int`-like `NSNumber` on iOS but stays `Double` on Android. JS `number` is always IEEE-754 double, so the JS-visible value is identical on both. Do not add a manual whole-number → integer heuristic at the bridge — delegate to the SDK converters.
 
 * Prefer explicit conversion at the bridge boundary over implicit coercion in JavaScript.
 

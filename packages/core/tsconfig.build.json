@@ -1,4 +1,7 @@
 {
   "extends": "./tsconfig",
-  "exclude": ["lib"]
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "exclude": ["node_modules", "lib", "src/__tests__"]
 }

@@ -1,9 +1,13 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json",
+  "extends": "@react-native/typescript-config",
   "compilerOptions": {
+    "noEmit": true,
     "jsx": "react-native",
+    "types": [],
     "paths": {
       "@tealium/prism-react-native": ["../packages/core/src/index"]
     }
-  }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "**/Pods/**"]
 }

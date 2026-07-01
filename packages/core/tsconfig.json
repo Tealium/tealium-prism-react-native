@@ -1,12 +1,10 @@
 {
   "compilerOptions": {
-    "rootDir": ".",
     "paths": {
       "@tealium/prism-react-native": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "customConditions": ["react-native-strict-api"],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
@@ -23,7 +21,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "ESNext",
-    "verbatimModuleSyntax": true
-  }
+    "target": "ESNext"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "lib"]
 }

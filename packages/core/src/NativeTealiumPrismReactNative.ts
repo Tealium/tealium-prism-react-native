@@ -2,6 +2,7 @@ import { TurboModuleRegistry, type TurboModule } from "react-native";
 
 export interface Spec extends TurboModule {
   getSdkVersion(): Promise<string>;
+  echoJsonValue(input: string): Promise<string>;
 }
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)
