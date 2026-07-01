@@ -24,4 +24,116 @@ public final class TealiumPrismBridge: NSObject {
             return nil
         }
     }
+
+    @objc public static func createInstance(
+        account: String,
+        profile: String,
+        environment: String,
+        logLevel: String?
+    ) -> String {
+        TealiumPrismInstanceRegistry.shared.create(
+            account: account,
+            profile: profile,
+            environment: environment,
+            logLevel: logLevel
+        )
+    }
+
+    @objc public static func track(
+        instanceId: String,
+        name: String,
+        type: String,
+        dataJson: String?,
+        completion: @escaping (String?, NSError?) -> Void
+    ) {
+        guard let instance = TealiumPrismInstanceRegistry.shared.get(instanceId),
+              let disposables = TealiumPrismInstanceRegistry.shared.getDisposables(instanceId) else {
+            let error = NSError(
+                domain: "INSTANCE_NOT_FOUND",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(instanceId)'"]
+            )
+            completion(nil, error)
+            return
+        }
+
+        let dispatchType: DispatchType = (type == "view") ? .view : .event
+
+        let data: DataObject?
+        if let jsonString = dataJson {
+            do {
+                guard let jsonData = jsonString.data(using: .utf8) else {
+                    let error = NSError(
+                        domain: "DATA_PARSE_ERROR",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Data JSON string is not valid UTF-8"]
+                    )
+                    completion(nil, error)
+                    return
+                }
+                let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .fragmentsAllowed)
+                guard let dictionary = jsonObject as? [String: Any] else {
+                    let error = NSError(
+                        domain: "DATA_PARSE_ERROR",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Data JSON is not a dictionary"]
+                    )
+                    completion(nil, error)
+                    return
+                }
+                data = try DataObject(jsonObject: dictionary)
+            } catch {
+                let nsError = NSError(
+                    domain: "DATA_PARSE_ERROR",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
+                )
+                completion(nil, nsError)
+                return
+            }
+        } else {
+            data = nil
+        }
+
+        instance.track(name, type: dispatchType, data: data)
+            .subscribe { result in
+                switch result {
+                case .success(let trackResult):
+                    let status: String = (trackResult.status == .accepted) ? "accepted" : "dropped"
+                    let resultDict: [String: Any] = [
+                        "status": status,
+                        "info": trackResult.info,
+                        "payload": trackResult.dispatch.payload.asDictionary()
+                    ]
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
+                        let jsonString = String(decoding: jsonData, as: UTF8.self)
+                        completion(jsonString, nil)
+                    } catch {
+                        let nsError = NSError(
+                            domain: "SERIALIZATION_ERROR",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult"]
+                        )
+                        completion(nil, nsError)
+                    }
+                case .failure(let error):
+                    let nsError = error as? NSError ?? NSError(
+                        domain: "TRACK_ERROR",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: error.localizedDescription]
+                    )
+                    completion(nil, nsError)
+                }
+            }
+            .addTo(disposables)
+    }
+
+    @objc public static func shutdown(
+        instanceId: String,
+        completion: @escaping () -> Void
+    ) {
+        TealiumPrismInstanceRegistry.shared.remove(instanceId)
+        completion()
+    }
 }

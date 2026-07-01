@@ -33,3 +33,17 @@ export type JsonValue =
  * A JSON object: the JS-side shape that maps to the native SDK `DataObject`.
  */
 export type JsonValueObject = Record<string, JsonValue>;
+
+/**
+ * Dispatch type for tracking events and views.
+ */
+export type DispatchType = "event" | "view";
+
+/**
+ * Result of a track operation.
+ */
+export interface TrackResult {
+  status: "accepted" | "dropped";
+  info: string;
+  payload: JsonValueObject;
+}

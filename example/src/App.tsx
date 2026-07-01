@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./BridgeTestScreen";
+import InstancesScreen from "./InstancesScreen";
 
-type Screen = "home" | "bridgeTests";
+type Screen = "home" | "bridgeTests" | "instances";
 
 export default function App() {
   const [version, setVersion] = useState<string | null>(null);
@@ -33,12 +34,32 @@ export default function App() {
     );
   }
 
+  if (screen === "instances") {
+    return (
+      <View style={styles.flex}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => setScreen("home")}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <InstancesScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tealium Prism</Text>
       <Text style={styles.status}>
         {version !== null ? `SDK version: ${version}` : "Loading…"}
       </Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setScreen("instances")}
+      >
+        <Text style={styles.buttonText}>Instances</Text>
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
         onPress={() => setScreen("bridgeTests")}

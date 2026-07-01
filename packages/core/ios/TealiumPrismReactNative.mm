@@ -32,4 +32,45 @@
     }
 }
 
+- (NSString *)create:(NSString *)account
+             profile:(NSString *)profile
+         environment:(NSString *)environment
+            logLevel:(NSString * _Nullable)logLevel
+{
+    return [TealiumPrismBridge createInstanceWithAccount:account
+                                                profile:profile
+                                            environment:environment
+                                               logLevel:logLevel];
+}
+
+- (void)track:(NSString *)instanceId
+         name:(NSString *)name
+         type:(NSString *)type
+     dataJson:(NSString * _Nullable)dataJson
+      resolve:(RCTPromiseResolveBlock)resolve
+       reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge trackWithInstanceId:instanceId
+                                       name:name
+                                       type:type
+                                   dataJson:dataJson
+                                 completion:^(NSString * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            reject(@"TRACK_ERROR", error.localizedDescription, error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)shutdown:(NSString *)instanceId
+         resolve:(RCTPromiseResolveBlock)resolve
+          reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge shutdownWithInstanceId:instanceId
+                                    completion:^{
+        resolve(nil);
+    }];
+}
+
 @end
