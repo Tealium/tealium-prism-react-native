@@ -71,11 +71,19 @@ export default function InstancesScreen() {
   }, [lastResult, hideToast, toastOpacity]);
 
   useEffect(() => {
-    if (showPayloadModal && toastTimer.current) {
-      clearTimeout(toastTimer.current);
-      toastTimer.current = null;
+    if (showPayloadModal) {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+      if (lastResult) {
+        console.log(
+          "[InstancesScreen] Dispatch Payload:",
+          JSON.stringify(lastResult.payload, null, 2),
+        );
+      }
     }
-  }, [showPayloadModal]);
+  }, [showPayloadModal, lastResult]);
 
   const handleCreate = () => {
     setError(null);
@@ -344,6 +352,11 @@ export default function InstancesScreen() {
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
+            <View style={styles.modalNotice}>
+              <Text style={styles.modalNoticeText}>
+                💡 Payload logged to dev console
+              </Text>
+            </View>
             <ScrollView style={styles.modalBody}>
               <Text style={styles.payloadText}>
                 {lastResult ? JSON.stringify(lastResult.payload, null, 2) : ""}
@@ -536,6 +549,17 @@ const styles = StyleSheet.create({
   modalClose: {
     fontSize: 24,
     color: "#666",
+  },
+  modalNotice: {
+    backgroundColor: "#e3f2fd",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  modalNoticeText: {
+    fontSize: 13,
+    color: "#1976d2",
   },
   modalBody: {
     padding: 16,
