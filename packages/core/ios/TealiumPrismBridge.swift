@@ -105,22 +105,34 @@ public final class TealiumPrismBridge: NSObject {
                         "info": trackResult.info,
                         "payload": trackResult.dispatch.payload.asDictionary()
                     ]
-                    guard let jsonData = try? JSONSerialization.data(withJSONObject: resultDict),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else {
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict)
+                        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                            completion(nil, NSError(
+                                domain: "SERIALIZATION_ERROR", code: 1,
+                                userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult: UTF-8 encoding failed"]
+                            ))
+                            return
+                        }
+                        completion(jsonString, nil)
+                    } catch {
                         completion(nil, NSError(
                             domain: "SERIALIZATION_ERROR", code: 1,
-                            userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult"]
+                            userInfo: [
+                                NSLocalizedDescriptionKey: "Failed to serialize TrackResult: \(error.localizedDescription)",
+                                NSUnderlyingErrorKey: error
+                            ]
                         ))
-                        return
                     }
-                    completion(jsonString, nil)
                 case .failure(let error):
-                    let nsError = error as? NSError ?? NSError(
+                    completion(nil, NSError(
                         domain: "TRACK_ERROR",
                         code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: error.localizedDescription]
-                    )
-                    completion(nil, nsError)
+                        userInfo: [
+                            NSLocalizedDescriptionKey: error.localizedDescription,
+                            NSUnderlyingErrorKey: error
+                        ]
+                    ))
                 }
             }
             .addTo(disposables)
