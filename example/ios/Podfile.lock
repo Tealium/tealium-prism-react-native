@@ -1750,27 +1750,8 @@ PODS:
   - SQLite.swift (0.15.5):
     - SQLite.swift/standard (= 0.15.5)
   - SQLite.swift/standard (0.15.5)
-  - tealium-prism (0.5.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core (= 0.5.0)
-    - tealium-prism/Extensions (= 0.5.0)
-    - tealium-prism/JavaScriptTransformer (= 0.5.0)
-    - tealium-prism/Lifecycle (= 0.5.0)
-    - tealium-prism/MomentsAPI (= 0.5.0)
   - tealium-prism/Core (0.5.0):
     - SQLite.swift (~> 0.15.0)
-  - tealium-prism/Extensions (0.5.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core
-  - tealium-prism/JavaScriptTransformer (0.5.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core
-  - tealium-prism/Lifecycle (0.5.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core
-  - tealium-prism/MomentsAPI (0.5.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core
   - TealiumPrismReactNative (0.1.0):
     - hermes-engine
     - RCTRequired
@@ -1792,7 +1773,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - tealium-prism (~> 0.5)
+    - tealium-prism/Core (~> 0.5)
     - Yoga
   - Yoga (0.0.0)
 
@@ -2104,7 +2085,7 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 869d8c0511fb3918d1be668c2d0117bfe8e6067b
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
   tealium-prism: 26b047d4350524eb9776ce54d577e9e2a3872fd7
-  TealiumPrismReactNative: 0430fbed62b02fc2e23c77322a0d0583e45d3fcc
+  TealiumPrismReactNative: 0633e5f47274e25406ff4c9ec1a7a8bdabe5b11e
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 
 PODFILE CHECKSUM: be089cbfd9acbd73679d8b65799a2a722fbb7617
