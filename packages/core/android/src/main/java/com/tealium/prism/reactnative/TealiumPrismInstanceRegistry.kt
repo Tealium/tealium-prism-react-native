@@ -49,7 +49,7 @@ internal object TealiumPrismInstanceRegistry {
         return key
     }
 
-    fun get(key: String): Tealium? = instances[key]?.tealium
+    fun getTealiumInstance(key: String): Tealium? = instances[key]?.tealium
 
     fun getDisposables(key: String): CompositeDisposable? = instances[key]?.disposables
 

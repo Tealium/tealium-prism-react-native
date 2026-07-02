@@ -47,7 +47,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     dataJson: String?,
     promise: Promise
   ) {
-    val instance = TealiumPrismInstanceRegistry.get(instanceId)
+    val instance = TealiumPrismInstanceRegistry.getTealiumInstance(instanceId)
     val disposables = TealiumPrismInstanceRegistry.getDisposables(instanceId)
     if (instance == null || disposables == null) {
       promise.reject("INSTANCE_NOT_FOUND", "No Tealium instance with key '$instanceId'")
@@ -56,30 +56,21 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     val dispatchType = if (type == "view") DispatchType.View else DispatchType.Event
 
-    val data: DataObject = if (dataJson != null) {
-      val parsed = DataObject.fromString(dataJson)
-      if (parsed == null) {
+    val data: DataObject = dataJson?.let {
+      DataObject.fromString(it) ?: run {
         promise.reject("DATA_PARSE_ERROR", "Failed to parse data JSON")
         return
       }
-      parsed
-    } else {
-      DataObject.EMPTY_OBJECT
-    }
+    } ?: DataObject.EMPTY_OBJECT
 
     val disposable = instance.track(name, dispatchType, data).subscribe { result ->
       result
         .onSuccess { trackResult ->
           try {
-            val status = when (trackResult.status) {
-              TrackResult.Status.Accepted -> "accepted"
-              TrackResult.Status.Dropped -> "dropped"
-            }
-            val payloadJson = JSONObject(trackResult.dispatch.payload().toString())
             val json = JSONObject().apply {
-              put("status", status)
+              put("status", trackResult.status.name.lowercase())
               put("info", trackResult.info)
-              put("payload", payloadJson)
+              put("payload", JSONObject(trackResult.dispatch.payload().toString()))
             }.toString()
             promise.resolve(json)
           } catch (e: Exception) {

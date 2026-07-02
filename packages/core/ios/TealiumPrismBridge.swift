@@ -46,7 +46,7 @@ public final class TealiumPrismBridge: NSObject {
         dataJson: String?,
         completion: @escaping (String?, NSError?) -> Void
     ) {
-        guard let instance = TealiumPrismInstanceRegistry.shared.get(instanceId),
+        guard let instance = TealiumPrismInstanceRegistry.shared.getTealiumInstance(instanceId),
               let disposables = TealiumPrismInstanceRegistry.shared.getDisposables(instanceId) else {
             let error = NSError(
                 domain: "INSTANCE_NOT_FOUND",
@@ -105,18 +105,15 @@ public final class TealiumPrismBridge: NSObject {
                         "info": trackResult.info,
                         "payload": trackResult.dispatch.payload.asDictionary()
                     ]
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
-                        let jsonString = String(decoding: jsonData, as: UTF8.self)
-                        completion(jsonString, nil)
-                    } catch {
-                        let nsError = NSError(
-                            domain: "SERIALIZATION_ERROR",
-                            code: 1,
+                    guard let jsonData = try? JSONSerialization.data(withJSONObject: resultDict),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else {
+                        completion(nil, NSError(
+                            domain: "SERIALIZATION_ERROR", code: 1,
                             userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult"]
-                        )
-                        completion(nil, nsError)
+                        ))
+                        return
                     }
+                    completion(jsonString, nil)
                 case .failure(let error):
                     let nsError = error as? NSError ?? NSError(
                         domain: "TRACK_ERROR",

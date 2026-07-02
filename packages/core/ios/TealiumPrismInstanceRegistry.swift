@@ -45,7 +45,7 @@ final class TealiumPrismInstanceRegistry {
         return key
     }
 
-    func get(_ key: String) -> Tealium? {
+    func getTealiumInstance(_ key: String) -> Tealium? {
         instances[key]?.tealium
     }
 
