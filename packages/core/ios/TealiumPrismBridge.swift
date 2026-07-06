@@ -31,12 +31,23 @@ public final class TealiumPrismBridge: NSObject {
         environment: String,
         logLevel: String?
     ) -> String {
-        TealiumPrismInstanceRegistry.shared.create(
+        let forcingSettingsBlock: ((CoreSettingsBuilder) -> CoreSettingsBuilder)? = logLevel.flatMap { level in
+            LogLevel.Minimum(from: level).map { minLevel in
+                { builder in builder.setMinLogLevel(minLevel) }
+            }
+        }
+
+        let config = TealiumConfig(
             account: account,
             profile: profile,
             environment: environment,
-            logLevel: logLevel
+            forcingSettings: forcingSettingsBlock
         )
+
+        // The SDK reuses the existing instance (and logs a warning) for a duplicate key.
+        let instance = Tealium.create(config: config)
+        instance.strongCapture = instance
+        return config.key
     }
 
     @objc public static func track(
@@ -46,103 +57,108 @@ public final class TealiumPrismBridge: NSObject {
         dataJson: String?,
         completion: @escaping (String?, NSError?) -> Void
     ) {
-        guard let instance = TealiumPrismInstanceRegistry.shared.getTealiumInstance(instanceId),
-              let disposables = TealiumPrismInstanceRegistry.shared.getDisposables(instanceId) else {
-            let error = NSError(
-                domain: "INSTANCE_NOT_FOUND",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(instanceId)'"]
-            )
-            completion(nil, error)
-            return
-        }
-
-        let dispatchType: DispatchType = (type == "view") ? .view : .event
-
-        let data: DataObject?
-        if let jsonString = dataJson {
-            do {
-                guard let jsonData = jsonString.data(using: .utf8) else {
-                    let error = NSError(
-                        domain: "DATA_PARSE_ERROR",
-                        code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "Data JSON string is not valid UTF-8"]
-                    )
-                    completion(nil, error)
-                    return
-                }
-                let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .fragmentsAllowed)
-                guard let dictionary = jsonObject as? [String: Any] else {
-                    let error = NSError(
-                        domain: "DATA_PARSE_ERROR",
-                        code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "Data JSON is not a dictionary"]
-                    )
-                    completion(nil, error)
-                    return
-                }
-                data = try DataObject(jsonObject: dictionary)
-            } catch {
-                let nsError = NSError(
-                    domain: "DATA_PARSE_ERROR",
+        TealiumInstanceManager.shared.get(instanceId) { instance in
+            guard let instance else {
+                let error = NSError(
+                    domain: "INSTANCE_NOT_FOUND",
                     code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
+                    userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(instanceId)'"]
                 )
-                completion(nil, nsError)
+                completion(nil, error)
                 return
             }
-        } else {
-            data = nil
-        }
 
-        instance.track(name, type: dispatchType, data: data)
-            .subscribe { result in
-                switch result {
-                case .success(let trackResult):
-                    let status: String = (trackResult.status == .accepted) ? "accepted" : "dropped"
-                    let resultDict: [String: Any] = [
-                        "status": status,
-                        "info": trackResult.info,
-                        "payload": trackResult.dispatch.payload.asDictionary()
-                    ]
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict)
-                        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            let dispatchType: DispatchType = (type == "view") ? .view : .event
+
+            let data: DataObject?
+            if let jsonString = dataJson {
+                do {
+                    guard let jsonData = jsonString.data(using: .utf8) else {
+                        let error = NSError(
+                            domain: "DATA_PARSE_ERROR",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Data JSON string is not valid UTF-8"]
+                        )
+                        completion(nil, error)
+                        return
+                    }
+                    let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .fragmentsAllowed)
+                    guard let dictionary = jsonObject as? [String: Any] else {
+                        let error = NSError(
+                            domain: "DATA_PARSE_ERROR",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Data JSON is not a dictionary"]
+                        )
+                        completion(nil, error)
+                        return
+                    }
+                    data = try DataObject(jsonObject: dictionary)
+                } catch {
+                    let nsError = NSError(
+                        domain: "DATA_PARSE_ERROR",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
+                    )
+                    completion(nil, nsError)
+                    return
+                }
+            } else {
+                data = nil
+            }
+
+            // The subscription is a one-shot: it completes on first emission and the SDK retains
+            // it internally until then, so we don't retain the returned Disposable.
+            instance.track(name, type: dispatchType, data: data)
+                .subscribe { result in
+                    switch result {
+                    case .success(let trackResult):
+                        let status: String = (trackResult.status == .accepted) ? "accepted" : "dropped"
+                        let resultDict: [String: Any] = [
+                            "status": status,
+                            "info": trackResult.info,
+                            "payload": trackResult.dispatch.payload.asDictionary()
+                        ]
+                        do {
+                            let jsonData = try JSONSerialization.data(withJSONObject: resultDict)
+                            guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                                completion(nil, NSError(
+                                    domain: "SERIALIZATION_ERROR", code: 1,
+                                    userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult: UTF-8 encoding failed"]
+                                ))
+                                return
+                            }
+                            completion(jsonString, nil)
+                        } catch {
                             completion(nil, NSError(
                                 domain: "SERIALIZATION_ERROR", code: 1,
-                                userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult: UTF-8 encoding failed"]
+                                userInfo: [
+                                    NSLocalizedDescriptionKey: "Failed to serialize TrackResult: \(error.localizedDescription)",
+                                    NSUnderlyingErrorKey: error
+                                ]
                             ))
-                            return
                         }
-                        completion(jsonString, nil)
-                    } catch {
+                    case .failure(let error):
                         completion(nil, NSError(
-                            domain: "SERIALIZATION_ERROR", code: 1,
+                            domain: "TRACK_ERROR",
+                            code: 1,
                             userInfo: [
-                                NSLocalizedDescriptionKey: "Failed to serialize TrackResult: \(error.localizedDescription)",
+                                NSLocalizedDescriptionKey: error.localizedDescription,
                                 NSUnderlyingErrorKey: error
                             ]
                         ))
                     }
-                case .failure(let error):
-                    completion(nil, NSError(
-                        domain: "TRACK_ERROR",
-                        code: 1,
-                        userInfo: [
-                            NSLocalizedDescriptionKey: error.localizedDescription,
-                            NSUnderlyingErrorKey: error
-                        ]
-                    ))
                 }
-            }
-            .addTo(disposables)
+        }
     }
 
     @objc public static func shutdown(
         instanceId: String,
         completion: @escaping () -> Void
     ) {
-        TealiumPrismInstanceRegistry.shared.remove(instanceId)
-        completion()
+        TealiumInstanceManager.shared.get(instanceId) { instance in
+            // Dropping the last strong reference triggers deinit, which shuts the instance down.
+            instance?.strongCapture = nil
+            completion()
+        }
     }
 }
