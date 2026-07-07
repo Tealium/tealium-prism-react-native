@@ -57,53 +57,20 @@ public final class TealiumPrismBridge: NSObject {
         dataJson: String?,
         completion: @escaping (String?, NSError?) -> Void
     ) {
-        TealiumInstanceManager.shared.get(instanceId) { instance in
-            guard let instance else {
-                let error = NSError(
-                    domain: "INSTANCE_NOT_FOUND",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(instanceId)'"]
-                )
-                completion(nil, error)
-                return
-            }
-
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
             let dispatchType: DispatchType = (type == "view") ? .view : .event
 
             let data: DataObject?
-            if let jsonString = dataJson {
-                do {
-                    guard let jsonData = jsonString.data(using: .utf8) else {
-                        let error = NSError(
-                            domain: "DATA_PARSE_ERROR",
-                            code: 1,
-                            userInfo: [NSLocalizedDescriptionKey: "Data JSON string is not valid UTF-8"]
-                        )
-                        completion(nil, error)
-                        return
-                    }
-                    let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .fragmentsAllowed)
-                    guard let dictionary = jsonObject as? [String: Any] else {
-                        let error = NSError(
-                            domain: "DATA_PARSE_ERROR",
-                            code: 1,
-                            userInfo: [NSLocalizedDescriptionKey: "Data JSON is not a dictionary"]
-                        )
-                        completion(nil, error)
-                        return
-                    }
-                    data = try DataObject(jsonObject: dictionary)
-                } catch {
-                    let nsError = NSError(
-                        domain: "DATA_PARSE_ERROR",
-                        code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
-                    )
-                    completion(nil, nsError)
-                    return
-                }
-            } else {
-                data = nil
+            do {
+                data = try dataJson.map { try DataObject(jsonString: $0) }
+            } catch {
+                let nsError = NSError(
+                    domain: "DATA_PARSE_ERROR",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
+                )
+                completion(nil, nsError)
+                return
             }
 
             instance.track(name, type: dispatchType, data: data)

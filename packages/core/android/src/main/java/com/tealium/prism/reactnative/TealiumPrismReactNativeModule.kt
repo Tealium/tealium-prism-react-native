@@ -75,18 +75,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     dataJson: String?,
     promise: Promise
   ) {
-    Tealium.get(instanceId) { instance ->
-      if (instance == null) {
-        promise.reject("INSTANCE_NOT_FOUND", "No Tealium instance with key '$instanceId'")
-        return@get
-      }
-
+    Tealium.withInstance(instanceId, promise) { instance ->
       val dispatchType = if (type == "view") DispatchType.View else DispatchType.Event
 
       val data: DataObject = dataJson?.let {
         DataObject.fromString(it) ?: run {
           promise.reject("DATA_PARSE_ERROR", "Failed to parse data JSON")
-          return@get
+          return@withInstance
         }
       } ?: DataObject.EMPTY_OBJECT
 
