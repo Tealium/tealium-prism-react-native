@@ -85,7 +85,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
       } ?: DataObject.EMPTY_OBJECT
 
-      instance.track(name, dispatchType, data).subscribe(promise, ::trackResultAsDataItem)
+      instance.track(name, dispatchType, data).subscribe(promise, "TRACK_ERROR", converter = ::trackResultAsDataItem)
     }
   }
 

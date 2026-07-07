@@ -10,6 +10,8 @@ extension Single {
     /// it internally until then, so we don't retain the returned `Disposable`.
     func subscribe<T, E: Error>(
         _ completion: @escaping (String?, NSError?) -> Void,
+        errorCode: String = "UNKNOWN_ERROR",
+        errorMsg: String? = nil,
         converter: @escaping (T) -> DataItem
     ) where Element == Result<T, E> {
         var emitted = false
@@ -25,10 +27,10 @@ extension Single {
                     }
                 case .failure(let error):
                     completion(nil, NSError(
-                        domain: "TEALIUM_ERROR",
+                        domain: errorCode,
                         code: 1,
                         userInfo: [
-                            NSLocalizedDescriptionKey: error.localizedDescription,
+                            NSLocalizedDescriptionKey: errorMsg ?? error.localizedDescription,
                             NSUnderlyingErrorKey: error
                         ]
                     ))
