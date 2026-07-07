@@ -12,24 +12,37 @@ extension Single {
         _ completion: @escaping (String?, NSError?) -> Void,
         converter: @escaping (T) -> DataItem
     ) where Element == Result<T, E> {
-        subscribe { result in
-            switch result {
-            case .success(let value):
-                do {
-                    completion(try JsonValueConversions.jsonString(from: converter(value)), nil)
-                } catch let error as NSError {
-                    completion(nil, error)
+        var emitted = false
+        subscribe(
+            { result in
+                emitted = true
+                switch result {
+                case .success(let value):
+                    do {
+                        completion(try JsonValueConversions.jsonString(from: converter(value)), nil)
+                    } catch let error as NSError {
+                        completion(nil, error)
+                    }
+                case .failure(let error):
+                    completion(nil, NSError(
+                        domain: "TEALIUM_ERROR",
+                        code: 1,
+                        userInfo: [
+                            NSLocalizedDescriptionKey: error.localizedDescription,
+                            NSUnderlyingErrorKey: error
+                        ]
+                    ))
                 }
-            case .failure(let error):
-                completion(nil, NSError(
-                    domain: "TEALIUM_ERROR",
-                    code: 1,
-                    userInfo: [
-                        NSLocalizedDescriptionKey: error.localizedDescription,
-                        NSUnderlyingErrorKey: error
-                    ]
-                ))
+            },
+            onComplete: {
+                if !emitted {
+                    completion(nil, NSError(
+                        domain: "TEALIUM_CANCELLED",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "Single completed without emitting a value"]
+                    ))
+                }
             }
-        }
+        )
     }
 }

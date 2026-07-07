@@ -23,9 +23,18 @@ internal inline fun <T> SingleResult<T>.subscribe(
 ) {
   // One-shot subscription: it completes on first emission and the returned Disposable
   // deallocates on its own, so we don't retain it.
-  subscribe { result ->
-    result
-      .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
-      .onFailure(promise::reject)
-  }
+  var emitted = false
+  subscribe(
+    { result ->
+      emitted = true
+      result
+        .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
+        .onFailure(promise::reject)
+    },
+    {
+      if (!emitted) {
+        promise.reject("TEALIUM_CANCELLED", "Single completed without emitting a value")
+      }
+    }
+  )
 }
