@@ -106,49 +106,18 @@ public final class TealiumPrismBridge: NSObject {
                 data = nil
             }
 
-            // The subscription is a one-shot: it completes on first emission and the SDK retains
-            // it internally until then, so we don't retain the returned Disposable.
             instance.track(name, type: dispatchType, data: data)
-                .subscribe { result in
-                    switch result {
-                    case .success(let trackResult):
-                        let status: String = (trackResult.status == .accepted) ? "accepted" : "dropped"
-                        let resultDict: [String: Any] = [
-                            "status": status,
-                            "info": trackResult.info,
-                            "payload": trackResult.dispatch.payload.asDictionary()
-                        ]
-                        do {
-                            let jsonData = try JSONSerialization.data(withJSONObject: resultDict)
-                            guard let jsonString = String(data: jsonData, encoding: .utf8) else {
-                                completion(nil, NSError(
-                                    domain: "SERIALIZATION_ERROR", code: 1,
-                                    userInfo: [NSLocalizedDescriptionKey: "Failed to serialize TrackResult: UTF-8 encoding failed"]
-                                ))
-                                return
-                            }
-                            completion(jsonString, nil)
-                        } catch {
-                            completion(nil, NSError(
-                                domain: "SERIALIZATION_ERROR", code: 1,
-                                userInfo: [
-                                    NSLocalizedDescriptionKey: "Failed to serialize TrackResult: \(error.localizedDescription)",
-                                    NSUnderlyingErrorKey: error
-                                ]
-                            ))
-                        }
-                    case .failure(let error):
-                        completion(nil, NSError(
-                            domain: "TRACK_ERROR",
-                            code: 1,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: error.localizedDescription,
-                                NSUnderlyingErrorKey: error
-                            ]
-                        ))
-                    }
-                }
+                .subscribe(completion, converter: trackResultAsDataItem)
         }
+    }
+
+    private static func trackResultAsDataItem(_ result: TrackResult) -> DataItem {
+        let payload: DataObject = [
+            "status": result.status == .accepted ? "accepted" : "dropped",
+            "info": result.info,
+            "payload": result.dispatch.payload
+        ]
+        return DataItem(converting: payload)
     }
 
     @objc public static func shutdown(
