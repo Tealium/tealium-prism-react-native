@@ -60,9 +60,10 @@ public final class TealiumPrismBridge: NSObject {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
             let dispatchType: DispatchType = (type == "view") ? .view : .event
 
-            let data: DataObject?
             do {
-                data = try dataJson.map { try DataObject(jsonString: $0) }
+                let data = try dataJson.map { try DataObject(jsonString: $0) }
+                instance.track(name, type: dispatchType, data: data)
+                    .subscribe(completion, converter: trackResultAsDataItem)
             } catch {
                 let nsError = NSError(
                     domain: "DATA_PARSE_ERROR",
@@ -72,9 +73,6 @@ public final class TealiumPrismBridge: NSObject {
                 completion(nil, nsError)
                 return
             }
-
-            instance.track(name, type: dispatchType, data: data)
-                .subscribe(completion, converter: trackResultAsDataItem)
         }
     }
 
