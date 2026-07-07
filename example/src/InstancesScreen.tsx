@@ -9,7 +9,20 @@ import {
   Animated,
   Modal,
 } from "react-native";
-import { Tealium, type TrackResult } from "@tealium/prism-react-native";
+import {
+  Tealium,
+  type LogLevel,
+  type TrackResult,
+} from "@tealium/prism-react-native";
+
+const LOG_LEVELS: LogLevel[] = [
+  "trace",
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "silent",
+];
 
 type InstanceInfo = {
   key: string;
@@ -19,8 +32,9 @@ type InstanceInfo = {
 export default function InstancesScreen() {
   const [account, setAccount] = useState("tealiummobile");
   const [profile, setProfile] = useState("demo");
-  const [environment, setEnvironment] = useState<"dev" | "qa" | "prod">("dev");
-  const [logLevel, setLogLevel] = useState("");
+  const [environment, setEnvironment] = useState("dev");
+  const [logLevel, setLogLevel] = useState<LogLevel | null>(null);
+  const [logLevelDropdownOpen, setLogLevelDropdownOpen] = useState(false);
 
   const [instances, setInstances] = useState<InstanceInfo[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -92,7 +106,7 @@ export default function InstancesScreen() {
         account,
         profile,
         environment,
-        logLevel || undefined,
+        logLevel ?? undefined,
       );
       const key = instance.instanceId;
 
@@ -195,12 +209,67 @@ export default function InstancesScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <TextInput
-          style={styles.input}
-          placeholder="Log Level (optional: trace, debug, info, warn, error, silent)"
-          value={logLevel}
-          onChangeText={setLogLevel}
-        />
+        <TouchableOpacity
+          style={styles.dropdown}
+          onPress={() => setLogLevelDropdownOpen(true)}
+        >
+          <Text
+            style={logLevel ? styles.dropdownText : styles.dropdownPlaceholder}
+          >
+            {logLevel ?? "Select Log Level"}
+          </Text>
+          <Text style={styles.dropdownChevron}>▾</Text>
+        </TouchableOpacity>
+        <Modal
+          visible={logLevelDropdownOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setLogLevelDropdownOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.dropdownOverlay}
+            activeOpacity={1}
+            onPress={() => setLogLevelDropdownOpen(false)}
+          >
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setLogLevel(null);
+                  setLogLevelDropdownOpen(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dropdownItemText,
+                    logLevel === null && styles.dropdownItemTextSelected,
+                  ]}
+                >
+                  None
+                </Text>
+              </TouchableOpacity>
+              {LOG_LEVELS.map((level) => (
+                <TouchableOpacity
+                  key={level}
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setLogLevel(level);
+                    setLogLevelDropdownOpen(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      logLevel === level && styles.dropdownItemTextSelected,
+                    ]}
+                  >
+                    {level}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
         <TouchableOpacity style={styles.button} onPress={handleCreate}>
           <Text style={styles.buttonText}>Create</Text>
         </TouchableOpacity>
@@ -568,6 +637,60 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 12,
     color: "#333",
+  },
+  dropdown: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    backgroundColor: "#fff",
+  },
+  dropdownText: {
+    fontSize: 15,
+    color: "#000",
+  },
+  dropdownPlaceholder: {
+    fontSize: 15,
+    color: "#999",
+  },
+  dropdownChevron: {
+    fontSize: 14,
+    color: "#666",
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    padding: 32,
+  },
+  dropdownMenu: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dropdownItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#eee",
+  },
+  dropdownItemText: {
+    fontSize: 15,
+    color: "#333",
+  },
+  dropdownItemTextSelected: {
+    color: "#007AFF",
+    fontWeight: "600",
   },
   error: {
     backgroundColor: "#ffebee",

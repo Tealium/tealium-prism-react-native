@@ -1,6 +1,11 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 import { serialize } from "./serialization";
-import type { DispatchType, JsonValueObject, TrackResult } from "./types";
+import type {
+  DispatchType,
+  JsonValueObject,
+  LogLevel,
+  TrackResult,
+} from "./types";
 import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
 
 const instances = new Map<string, Tealium>();
@@ -16,8 +21,8 @@ export class Tealium {
   static create(
     account: string,
     profile: string,
-    environment: "dev" | "qa" | "prod",
-    logLevel?: string
+    environment: string,
+    logLevel?: LogLevel
   ): Tealium {
     if (!NativeTealiumPrismReactNative) {
       throw new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR);

@@ -8,7 +8,9 @@ export type {
   JsonValueObject,
   DispatchType,
   TrackResult,
+  LogLevel,
 } from "./types";
+export { Environment } from "./types";
 export { Tealium } from "./Tealium";
 
 /**
