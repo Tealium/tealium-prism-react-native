@@ -23,13 +23,14 @@
               resolve:(RCTPromiseResolveBlock)resolve
                reject:(RCTPromiseRejectBlock)reject
 {
-    NSError *error = nil;
-    NSString *result = [TealiumPrismBridge echoJsonValueFromJSON:input error:&error];
-    if (error) {
-        reject(@"ECHO_ERROR", error.localizedDescription, error);
-    } else {
-        resolve(result);
-    }
+    [TealiumPrismBridge echoJsonValue:input
+                           completion:^(NSString * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            reject(error.domain, error.localizedDescription, error);
+        } else {
+            resolve(result);
+        }
+    }];
 }
 
 - (NSString *)create:(NSString *)account

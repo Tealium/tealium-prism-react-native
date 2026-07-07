@@ -13,7 +13,7 @@ extension TealiumInstanceManager {
         get(key) { instance in
             guard let instance else {
                 let error = NSError(
-                    domain: "INSTANCE_NOT_FOUND",
+                    domain: ErrorCodes.INSTANCE_NOT_FOUND,
                     code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(key)'"]
                 )

@@ -19,7 +19,7 @@ internal fun <T : DataItemConvertible> SingleResult<T>.subscribe(promise: Promis
  */
 internal inline fun <T> SingleResult<T>.subscribe(
   promise: Promise,
-  errorCode: String = "UNKNOWN_ERROR",
+  errorCode: String = ErrorCodes.UNKNOWN_ERROR,
   errorMsg: String? = null,
   crossinline converter: (T) -> DataItem
 ) {
@@ -35,7 +35,7 @@ internal inline fun <T> SingleResult<T>.subscribe(
     },
     {
       if (!emitted) {
-        promise.reject("TEALIUM_CANCELLED", "Single completed without emitting a value")
+        promise.reject(ErrorCodes.TEALIUM_CANCELLED, "Single completed without emitting a value")
       }
     }
   )

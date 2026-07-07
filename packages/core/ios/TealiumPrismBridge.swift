@@ -12,16 +12,19 @@ public final class TealiumPrismBridge: NSObject {
     /// values survive the TurboModule bridge: `JSONSerialization` maps JSON
     /// null to `NSNull`, whereas the TurboModule bridge drops nil-valued keys
     /// from plain objects before the method body runs.
-    @objc public static func echoJsonValueFromJSON(
+    @objc public static func echoJsonValue(
         _ jsonString: String,
-        error: NSErrorPointer
-    ) -> String? {
+        completion: @escaping (String?, NSError?) -> Void
+    ) {
         do {
             let dataItem = try JsonValueConversions.dataItem(fromJSONString: jsonString)
-            return try JsonValueConversions.jsonString(from: dataItem)
+            completion(try JsonValueConversions.jsonString(from: dataItem), nil)
         } catch let e as NSError {
-            error?.pointee = e
-            return nil
+            completion(nil, NSError(
+                domain: ErrorCodes.ECHO_ERROR,
+                code: e.code,
+                userInfo: [NSLocalizedDescriptionKey: e.localizedDescription, NSUnderlyingErrorKey: e]
+            ))
         }
     }
 
@@ -63,10 +66,10 @@ public final class TealiumPrismBridge: NSObject {
             do {
                 let data = try dataJson.map { try DataObject(jsonString: $0) }
                 instance.track(name, type: dispatchType, data: data)
-                    .subscribe(completion, errorCode: "TRACK_ERROR", converter: trackResultAsDataItem)
+                    .subscribe(completion, errorCode: ErrorCodes.TRACK_ERROR, converter: trackResultAsDataItem)
             } catch {
                 let nsError = NSError(
-                    domain: "DATA_PARSE_ERROR",
+                    domain: ErrorCodes.DATA_PARSE_ERROR,
                     code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
                 )

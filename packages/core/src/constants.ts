@@ -1,11 +1,2 @@
 export const NATIVE_MODULE_NOT_REGISTERED_ERROR =
   "TealiumPrismReactNative native module is not registered.";
-
-export const ErrorCodes = {
-  DATA_PARSE_ERROR: "DATA_PARSE_ERROR",
-  ECHO_ERROR: "ECHO_ERROR",
-  INSTANCE_NOT_FOUND: "INSTANCE_NOT_FOUND",
-  TEALIUM_CANCELLED: "TEALIUM_CANCELLED",
-  TRACK_ERROR: "TRACK_ERROR",
-  UNKNOWN_ERROR: "UNKNOWN_ERROR",
-} as const;

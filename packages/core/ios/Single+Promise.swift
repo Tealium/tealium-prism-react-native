@@ -10,7 +10,7 @@ extension Single {
     /// it internally until then, so we don't retain the returned `Disposable`.
     func subscribe<T, E: Error>(
         _ completion: @escaping (String?, NSError?) -> Void,
-        errorCode: String = "UNKNOWN_ERROR",
+        errorCode: String = ErrorCodes.UNKNOWN_ERROR,
         errorMsg: String? = nil,
         converter: @escaping (T) -> DataItem
     ) where Element == Result<T, E> {
@@ -39,7 +39,7 @@ extension Single {
             onComplete: {
                 if !emitted {
                     completion(nil, NSError(
-                        domain: "TEALIUM_CANCELLED",
+                        domain: ErrorCodes.TEALIUM_CANCELLED,
                         code: 2,
                         userInfo: [NSLocalizedDescriptionKey: "Single completed without emitting a value"]
                     ))

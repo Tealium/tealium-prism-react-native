@@ -2,7 +2,7 @@ import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 import { serialize } from "./serialization";
 import type { JsonValue } from "./types";
 import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
-export { ErrorCodes } from "./constants";
+export { ErrorCodes } from "./ErrorCodes";
 
 export type {
   JsonValue,
