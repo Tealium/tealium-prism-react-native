@@ -9,15 +9,15 @@ import com.tealium.prism.core.api.Tealium
  * instead of invoking [block].
  */
 internal inline fun Tealium.Companion.withInstance(
-  instanceId: String,
-  promise: Promise,
-  crossinline block: (Tealium) -> Unit
+    instanceId: String,
+    promise: Promise,
+    crossinline block: (Tealium) -> Unit
 ) {
-  get(instanceId) { instance ->
-    if (instance == null) {
-      promise.reject(ErrorCode.INSTANCE_NOT_FOUND, "No Tealium instance with key '$instanceId'")
-    } else {
-      block(instance)
+    get(instanceId) { instance ->
+        if (instance == null) {
+            promise.reject(ErrorCode.INSTANCE_NOT_FOUND, "No Tealium instance with key '$instanceId'")
+        } else {
+            block(instance)
+        }
     }
-  }
 }
