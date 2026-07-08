@@ -24,9 +24,9 @@
                reject:(RCTPromiseRejectBlock)reject
 {
     [TealiumPrismBridge echoJsonValue:input
-                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable error) {
-        if (error) {
-            reject(error.code, error.message, error.error);
+                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
         } else {
             resolve(result);
         }
@@ -55,9 +55,9 @@
                                        name:name
                                        type:type
                                    dataJson:dataJson
-                                 completion:^(NSString * _Nullable result, PromiseRejection * _Nullable error) {
-        if (error) {
-            reject(error.code, error.message, error.error);
+                                 completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
         } else {
             resolve(result);
         }
