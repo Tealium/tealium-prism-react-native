@@ -10,7 +10,7 @@ import com.tealium.prism.core.api.pubsub.SingleResult
  * emitted [DataItemConvertible] on success and rejecting it with the error on failure.
  */
 internal fun <T : DataItemConvertible> SingleResult<T>.subscribe(promise: Promise) =
-  subscribe(promise, converter = DataItemConvertible::asDataItem)
+  subscribe(promise, DataItemConvertible::asDataItem)
 
 /**
  * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via
@@ -19,8 +19,6 @@ internal fun <T : DataItemConvertible> SingleResult<T>.subscribe(promise: Promis
  */
 internal inline fun <T> SingleResult<T>.subscribe(
   promise: Promise,
-  errorCode: String = ErrorCodes.UNKNOWN_ERROR,
-  errorMsg: String? = null,
   crossinline converter: (T) -> DataItem
 ) {
   // One-shot subscription: it completes on first emission and the returned Disposable
@@ -31,7 +29,7 @@ internal inline fun <T> SingleResult<T>.subscribe(
       emitted = true
       result
         .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
-        .onFailure { t -> promise.reject(errorCode, errorMsg ?: t.message, t) }
+        .onFailure { t -> promise.reject(ErrorCodes.PRISM_NATIVE_ERROR, t.message, t) }
     },
     {
       if (!emitted) {

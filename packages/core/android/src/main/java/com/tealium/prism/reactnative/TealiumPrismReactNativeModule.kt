@@ -27,7 +27,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     try {
       promise.resolve(jsonString(dataItem(input)))
     } catch (e: Exception) {
-      promise.reject(ErrorCodes.ECHO_ERROR, e.message, e)
+      promise.reject(ErrorCodes.PRISM_NATIVE_ERROR, e.message, e)
     }
   }
 
@@ -85,7 +85,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
       } ?: DataObject.EMPTY_OBJECT
 
-      instance.track(name, dispatchType, data).subscribe(promise, ErrorCodes.TRACK_ERROR, converter = ::trackResultAsDataItem)
+      instance.track(name, dispatchType, data).subscribe(promise, ::trackResultAsDataItem)
     }
   }
 

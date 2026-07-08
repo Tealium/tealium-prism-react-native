@@ -21,7 +21,7 @@ public final class TealiumPrismBridge: NSObject {
             completion(try JsonValueConversions.jsonString(from: dataItem), nil)
         } catch let e as NSError {
             completion(nil, NSError(
-                domain: ErrorCodes.ECHO_ERROR,
+                domain: ErrorCodes.PRISM_NATIVE_ERROR,
                 code: e.code,
                 userInfo: [NSLocalizedDescriptionKey: e.localizedDescription, NSUnderlyingErrorKey: e]
             ))
@@ -66,7 +66,7 @@ public final class TealiumPrismBridge: NSObject {
             do {
                 let data = try dataJson.map { try DataObject(jsonString: $0) }
                 instance.track(name, type: dispatchType, data: data)
-                    .subscribe(completion, errorCode: ErrorCodes.TRACK_ERROR, converter: trackResultAsDataItem)
+                    .subscribe(completion, converter: trackResultAsDataItem)
             } catch {
                 let nsError = NSError(
                     domain: ErrorCodes.DATA_PARSE_ERROR,
