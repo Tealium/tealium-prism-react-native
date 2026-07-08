@@ -7,17 +7,15 @@ extension TealiumInstanceManager {
     /// `INSTANCE_NOT_FOUND` error instead of invoking `found`.
     func withInstance(
         _ key: String,
-        completion: @escaping (String?, NSError?) -> Void,
+        completion: @escaping (String?, PromiseRejection?) -> Void,
         found: @escaping (Tealium) -> Void
     ) {
         get(key) { instance in
             guard let instance else {
-                let error = NSError(
-                    domain: ErrorCodes.INSTANCE_NOT_FOUND,
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "No Tealium instance with key '\(key)'"]
+                completion(nil, PromiseRejection(
+                    code: .INSTANCE_NOT_FOUND,
+                    message: "No Tealium instance with key '\(key)'")
                 )
-                completion(nil, error)
                 return
             }
             found(instance)

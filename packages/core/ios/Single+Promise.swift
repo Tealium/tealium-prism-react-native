@@ -9,7 +9,7 @@ extension Single {
     /// The subscription is a one-shot: it completes on first emission and the SDK retains
     /// it internally until then, so we don't retain the returned `Disposable`.
     func subscribe<T, E: Error>(
-        _ completion: @escaping (String?, NSError?) -> Void,
+        _ completion: @escaping (String?, PromiseRejection?) -> Void,
         converter: @escaping (T) -> DataItem
     ) where Element == Result<T, E> {
         var emitted = false
@@ -20,26 +20,25 @@ extension Single {
                 case .success(let value):
                     do {
                         completion(try JsonValueConversions.jsonString(from: converter(value)), nil)
-                    } catch let error as NSError {
-                        completion(nil, error)
+                    } catch {
+                        // Should never happen if the DataItem contains only json encodable values.
+                        completion(nil, PromiseRejection(
+                            code: .DATA_PARSE_ERROR,
+                            error: error
+                        ))
                     }
                 case .failure(let error):
-                    completion(nil, NSError(
-                        domain: ErrorCodes.PRISM_NATIVE_ERROR,
-                        code: 1,
-                        userInfo: [
-                            NSLocalizedDescriptionKey: error.localizedDescription,
-                            NSUnderlyingErrorKey: error
-                        ]
+                    completion(nil, PromiseRejection(
+                        code: .PRISM_NATIVE_ERROR,
+                        error: error
                     ))
                 }
             },
             onComplete: {
                 if !emitted {
-                    completion(nil, NSError(
-                        domain: ErrorCodes.TEALIUM_CANCELLED,
-                        code: 2,
-                        userInfo: [NSLocalizedDescriptionKey: "Single completed without emitting a value"]
+                    completion(nil, PromiseRejection(
+                        code: .TEALIUM_CANCELLED,
+                        message: "Single completed without emitting a value"
                     ))
                 }
             }

@@ -33,8 +33,8 @@ fs.writeFileSync(
 // Swift
 const swiftLines = [
   header,
-  "enum ErrorCodes {",
-  ...codes.map((c) => `    static let ${c} = "${c}"`),
+  "enum ErrorCodes: String {",
+  ...codes.map((c) => `    case ${c}`),
   "}",
   "",
 ];

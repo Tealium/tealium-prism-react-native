@@ -14,16 +14,15 @@ public final class TealiumPrismBridge: NSObject {
     /// from plain objects before the method body runs.
     @objc public static func echoJsonValue(
         _ jsonString: String,
-        completion: @escaping (String?, NSError?) -> Void
+        completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         do {
             let dataItem = try JsonValueConversions.dataItem(fromJSONString: jsonString)
             completion(try JsonValueConversions.jsonString(from: dataItem), nil)
-        } catch let e as NSError {
-            completion(nil, NSError(
-                domain: ErrorCodes.PRISM_NATIVE_ERROR,
-                code: e.code,
-                userInfo: [NSLocalizedDescriptionKey: e.localizedDescription, NSUnderlyingErrorKey: e]
+        } catch {
+            completion(nil, PromiseRejection(
+                code: .PRISM_NATIVE_ERROR,
+                error: error
             ))
         }
     }
@@ -58,7 +57,7 @@ public final class TealiumPrismBridge: NSObject {
         name: String,
         type: String,
         dataJson: String?,
-        completion: @escaping (String?, NSError?) -> Void
+        completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
             let dispatchType: DispatchType = (type == "view") ? .view : .event
@@ -68,12 +67,10 @@ public final class TealiumPrismBridge: NSObject {
                 instance.track(name, type: dispatchType, data: data)
                     .subscribe(completion, converter: trackResultAsDataItem)
             } catch {
-                let nsError = NSError(
-                    domain: ErrorCodes.DATA_PARSE_ERROR,
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to parse data JSON: \(error.localizedDescription)"]
-                )
-                completion(nil, nsError)
+                completion(nil, PromiseRejection(
+                    code: .DATA_PARSE_ERROR,
+                    error: error
+                ))
                 return
             }
         }
