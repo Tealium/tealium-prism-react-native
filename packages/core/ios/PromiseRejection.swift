@@ -13,14 +13,14 @@ public class PromiseRejection: NSObject, @unchecked Sendable {
     /// Underlying Swift error, if any, passed as the third argument to RN's `reject`.
     public let error: Error?
 
-    init(code: ErrorCodes, message: String, error: Error? = nil) {
+    init(code: ErrorCode, message: String, error: Error? = nil) {
         self.code = code.rawValue
         self.message = message
         self.error = error
     }
 
     /// Convenience initialiser that derives `message` from `error.localizedDescription`.
-    convenience init(code: ErrorCodes, error: Error) {
+    convenience init(code: ErrorCode, error: Error) {
         self.init(code: code, message: error.localizedDescription, error: error)
     }
 

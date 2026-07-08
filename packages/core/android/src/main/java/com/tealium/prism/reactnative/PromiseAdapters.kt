@@ -29,11 +29,11 @@ internal inline fun <T> SingleResult<T>.subscribe(
       emitted = true
       result
         .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
-        .onFailure { t -> promise.reject(ErrorCodes.PRISM_NATIVE_ERROR, t.message, t) }
+        .onFailure { t -> promise.reject(ErrorCode.PRISM_NATIVE_ERROR, t.message, t) }
     },
     {
       if (!emitted) {
-        promise.reject(ErrorCodes.TEALIUM_CANCELLED, "Single completed without emitting a value")
+        promise.reject(ErrorCode.TEALIUM_CANCELLED, "Single completed without emitting a value")
       }
     }
   )

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates typed ErrorCodes constants for Kotlin, Swift, and TypeScript from
+// Generates typed ErrorCode constants for Kotlin, Swift, and TypeScript from
 // packages/core/error-codes.json. Run via: node scripts/generate-error-codes.js
 
 const fs = require("fs");
@@ -12,12 +12,17 @@ const codes = JSON.parse(
 
 const header = "// Generated from error-codes.json — do not edit manually";
 
+function toSwiftCamelCase(screaming) {
+  const parts = screaming.toLowerCase().split("_");
+  return parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join("");
+}
+
 // Kotlin
 const ktLines = [
   header,
   "package com.tealium.prism.reactnative",
   "",
-  "internal object ErrorCodes {",
+  "internal object ErrorCode {",
   ...codes.map((c) => `    const val ${c} = "${c}"`),
   "}",
   "",
@@ -25,7 +30,7 @@ const ktLines = [
 fs.writeFileSync(
   path.join(
     root,
-    "packages/core/android/src/main/java/com/tealium/prism/reactnative/ErrorCodes.kt"
+    "packages/core/android/src/main/java/com/tealium/prism/reactnative/ErrorCode.kt"
   ),
   ktLines.join("\n")
 );
@@ -33,27 +38,27 @@ fs.writeFileSync(
 // Swift
 const swiftLines = [
   header,
-  "enum ErrorCodes: String {",
-  ...codes.map((c) => `    case ${c}`),
+  "enum ErrorCode: String {",
+  ...codes.map((c) => `    case ${toSwiftCamelCase(c)} = "${c}"`),
   "}",
   "",
 ];
 fs.writeFileSync(
-  path.join(root, "packages/core/ios/ErrorCodes.swift"),
+  path.join(root, "packages/core/ios/ErrorCode.swift"),
   swiftLines.join("\n")
 );
 
 // TypeScript
 const tsLines = [
   header,
-  "export const ErrorCodes = {",
+  "export const ErrorCode = {",
   ...codes.map((c) => `  ${c}: "${c}",`),
   "} as const;",
   "",
 ];
 fs.writeFileSync(
-  path.join(root, "packages/core/src/ErrorCodes.ts"),
+  path.join(root, "packages/core/src/ErrorCode.ts"),
   tsLines.join("\n")
 );
 
-console.log("Generated ErrorCodes for Kotlin, Swift, and TypeScript.");
+console.log("Generated ErrorCode for Kotlin, Swift, and TypeScript.");

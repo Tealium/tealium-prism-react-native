@@ -23,13 +23,13 @@ extension Single {
                     } catch {
                         // Should never happen if the DataItem contains only json encodable values.
                         completion(nil, PromiseRejection(
-                            code: .DATA_PARSE_ERROR,
+                            code: .dataParseError,
                             error: error
                         ))
                     }
                 case .failure(let error):
                     completion(nil, PromiseRejection(
-                        code: .PRISM_NATIVE_ERROR,
+                        code: .prismNativeError,
                         error: error
                     ))
                 }
@@ -37,7 +37,7 @@ extension Single {
             onComplete: {
                 if !emitted {
                     completion(nil, PromiseRejection(
-                        code: .TEALIUM_CANCELLED,
+                        code: .tealiumCancelled,
                         message: "Single completed without emitting a value"
                     ))
                 }

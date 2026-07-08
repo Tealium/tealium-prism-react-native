@@ -21,7 +21,7 @@ public final class TealiumPrismBridge: NSObject {
             completion(try JsonValueConversions.jsonString(from: dataItem), nil)
         } catch {
             completion(nil, PromiseRejection(
-                code: .PRISM_NATIVE_ERROR,
+                code: .prismNativeError,
                 error: error
             ))
         }
@@ -68,7 +68,7 @@ public final class TealiumPrismBridge: NSObject {
                     .subscribe(completion, converter: trackResultAsDataItem)
             } catch {
                 completion(nil, PromiseRejection(
-                    code: .DATA_PARSE_ERROR,
+                    code: .dataParseError,
                     error: error
                 ))
                 return

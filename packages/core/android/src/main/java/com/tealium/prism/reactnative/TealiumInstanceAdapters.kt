@@ -15,7 +15,7 @@ internal inline fun Tealium.Companion.withInstance(
 ) {
   get(instanceId) { instance ->
     if (instance == null) {
-      promise.reject(ErrorCodes.INSTANCE_NOT_FOUND, "No Tealium instance with key '$instanceId'")
+      promise.reject(ErrorCode.INSTANCE_NOT_FOUND, "No Tealium instance with key '$instanceId'")
     } else {
       block(instance)
     }

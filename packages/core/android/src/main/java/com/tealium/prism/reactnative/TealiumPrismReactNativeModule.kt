@@ -27,7 +27,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     try {
       promise.resolve(jsonString(dataItem(input)))
     } catch (e: Exception) {
-      promise.reject(ErrorCodes.PRISM_NATIVE_ERROR, e.message, e)
+      promise.reject(ErrorCode.PRISM_NATIVE_ERROR, e.message, e)
     }
   }
 
@@ -80,7 +80,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
       val data: DataObject = dataJson?.let {
         DataObject.fromString(it) ?: run {
-          promise.reject(ErrorCodes.DATA_PARSE_ERROR, "Failed to parse data JSON")
+          promise.reject(ErrorCode.DATA_PARSE_ERROR, "Failed to parse data JSON")
           return@withInstance
         }
       } ?: DataObject.EMPTY_OBJECT
