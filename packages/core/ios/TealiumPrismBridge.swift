@@ -12,16 +12,87 @@ public final class TealiumPrismBridge: NSObject {
     /// values survive the TurboModule bridge: `JSONSerialization` maps JSON
     /// null to `NSNull`, whereas the TurboModule bridge drops nil-valued keys
     /// from plain objects before the method body runs.
-    @objc public static func echoJsonValueFromJSON(
+    @objc public static func echoJsonValue(
         _ jsonString: String,
-        error: NSErrorPointer
-    ) -> String? {
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
         do {
             let dataItem = try JsonValueConversions.dataItem(fromJSONString: jsonString)
-            return try JsonValueConversions.jsonString(from: dataItem)
-        } catch let e as NSError {
-            error?.pointee = e
-            return nil
+            completion(try JsonValueConversions.jsonString(from: dataItem), nil)
+        } catch {
+            completion(nil, PromiseRejection(
+                code: .prismNativeError,
+                error: error
+            ))
+        }
+    }
+
+    @objc public static func createInstance(
+        account: String,
+        profile: String,
+        environment: String,
+        logLevel: String?
+    ) -> String {
+        let forcingSettingsBlock: ((CoreSettingsBuilder) -> CoreSettingsBuilder)? = logLevel.flatMap { level in
+            LogLevel.Minimum(from: level).map { minLevel in
+                { builder in builder.setMinLogLevel(minLevel) }
+            }
+        }
+
+        let config = TealiumConfig(
+            account: account,
+            profile: profile,
+            environment: environment,
+            forcingSettings: forcingSettingsBlock
+        )
+
+        // The SDK reuses the existing instance (and logs a warning) for a duplicate key.
+        let instance = Tealium.create(config: config)
+        instance.strongCapture = instance
+        return config.key
+    }
+
+    @objc public static func track(
+        instanceId: String,
+        name: String,
+        type: String,
+        dataJson: String?,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            let dispatchType: DispatchType = (type == "view") ? .view : .event
+
+            do {
+                let data = try dataJson.map { try DataObject(jsonString: $0) }
+                instance.track(name, type: dispatchType, data: data)
+                    .subscribe(completion, converter: trackResultAsDataItem)
+            } catch {
+                completion(nil, PromiseRejection(
+                    code: .dataParseError,
+                    error: error
+                ))
+                return
+            }
+        }
+    }
+
+    private static func trackResultAsDataItem(_ result: TrackResult) -> DataItem {
+        let payload: DataObject = [
+            "status": result.status == .accepted ? "accepted" : "dropped",
+            "info": result.info,
+            "payload": result.dispatch.payload
+        ]
+        return DataItem(converting: payload)
+    }
+
+    @objc public static func shutdown(
+        instanceId: String,
+        completion: @escaping () -> Void
+    ) {
+        TealiumInstanceManager.shared.get(instanceId) { instance in
+            // Dropping the last strong reference triggers deinit, which shuts the instance down.
+            instance?.strongCapture = nil
+            completion()
         }
     }
 }

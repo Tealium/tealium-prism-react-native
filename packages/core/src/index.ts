@@ -1,8 +1,18 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 import { serialize } from "./serialization";
 import type { JsonValue } from "./types";
+import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
+export { ErrorCode } from "./ErrorCode";
 
-export type { JsonValue, JsonValueObject } from "./types";
+export type {
+  JsonValue,
+  JsonValueObject,
+  DispatchType,
+  TrackResult,
+  LogLevel,
+} from "./types";
+export { Environment } from "./types";
+export { Tealium } from "./Tealium";
 
 /**
  * Returns the linked Prism SDK version for the current platform.
@@ -12,9 +22,7 @@ export type { JsonValue, JsonValueObject } from "./types";
  */
 export function getSdkVersion(): Promise<string> {
   if (!NativeTealiumPrismReactNative) {
-    return Promise.reject(
-      new Error("TealiumPrismReactNative native module is not registered.")
-    );
+    return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
   }
   return NativeTealiumPrismReactNative.getSdkVersion();
 }
@@ -36,9 +44,7 @@ export function getSdkVersion(): Promise<string> {
  */
 export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
   if (!NativeTealiumPrismReactNative) {
-    return Promise.reject(
-      new Error("TealiumPrismReactNative native module is not registered.")
-    );
+    return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
   }
   return NativeTealiumPrismReactNative.echoJsonValue(serialize(input)).then(
     (result) => {

@@ -7,24 +7,24 @@ import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 
 class TealiumPrismReactNativePackage : BaseReactPackage() {
-  override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
-    return if (name == TealiumPrismReactNativeModule.NAME) {
-      TealiumPrismReactNativeModule(reactContext)
-    } else {
-      null
+    override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
+        return if (name == TealiumPrismReactNativeModule.NAME) {
+            TealiumPrismReactNativeModule(reactContext)
+        } else {
+            null
+        }
     }
-  }
 
-  override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
-    mapOf(
-      TealiumPrismReactNativeModule.NAME to ReactModuleInfo(
-        name = TealiumPrismReactNativeModule.NAME,
-        className = TealiumPrismReactNativeModule::class.java.name,
-        canOverrideExistingModule = false,
-        needsEagerInit = false,
-        isCxxModule = false,
-        isTurboModule = true
-      )
-    )
-  }
+    override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
+        mapOf(
+            TealiumPrismReactNativeModule.NAME to ReactModuleInfo(
+                name = TealiumPrismReactNativeModule.NAME,
+                className = TealiumPrismReactNativeModule::class.java.name,
+                canOverrideExistingModule = false,
+                needsEagerInit = false,
+                isCxxModule = false,
+                isTurboModule = true
+            )
+        )
+    }
 }

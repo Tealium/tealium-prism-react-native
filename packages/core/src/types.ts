@@ -33,3 +33,38 @@ export type JsonValue =
  * A JSON object: the JS-side shape that maps to the native SDK `DataObject`.
  */
 export type JsonValueObject = Record<string, JsonValue>;
+
+/**
+ * Dispatch type for tracking events and views.
+ */
+export type DispatchType = "event" | "view";
+
+/**
+ * Log verbosity level passed to the native Prism SDK.
+ *
+ * Values map directly to the native SDK's log-level constants on both
+ * iOS (`TealiumLogLevel`) and Android (`LogLevel`).
+ */
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "silent";
+
+/**
+ * Conventional Prism environment identifiers.
+ *
+ * `dev`, `qa`, and `prod` are the standard values used by the CDH publishing
+ * workflow. Any other string is valid — the native SDKs accept a free-form
+ * environment name.
+ */
+export const Environment = {
+  dev: "dev",
+  qa: "qa",
+  prod: "prod",
+} as const;
+
+/**
+ * Result of a track operation.
+ */
+export interface TrackResult {
+  status: "accepted" | "dropped";
+  info: string;
+  payload: JsonValueObject;
+}
