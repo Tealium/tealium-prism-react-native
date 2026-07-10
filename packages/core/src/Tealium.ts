@@ -6,7 +6,8 @@ import type {
   LogLevel,
   TrackResult,
 } from "./types";
-import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
+import { ErrorCode } from "./ErrorCode";
+import { tealiumError } from "./errors";
 
 const instances = new Map<string, Tealium>();
 
@@ -25,7 +26,7 @@ export class Tealium {
     logLevel?: LogLevel
   ): Tealium {
     if (!NativeTealiumPrismReactNative) {
-      throw new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR);
+      throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
     }
 
     const key = `${account}-${profile}`;
@@ -57,11 +58,13 @@ export class Tealium {
   ): Promise<TrackResult> {
     if (this._isShutdown) {
       return Promise.reject(
-        new Error(`Tealium instance "${this.instanceId}" has been shut down.`)
+        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
       );
     }
     if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
+      return Promise.reject(
+        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
+      );
     }
 
     const dataJson = data !== undefined ? serialize(data) : null;
@@ -75,8 +78,10 @@ export class Tealium {
       try {
         return JSON.parse(resultJson) as TrackResult;
       } catch {
-        throw new Error(
-          `Tealium.track: native returned non-JSON string: ${resultJson}`
+        throw tealiumError(
+          ErrorCode.DATA_PARSE_ERROR,
+          "Tealium.track",
+          resultJson
         );
       }
     });
@@ -87,7 +92,9 @@ export class Tealium {
       return Promise.resolve();
     }
     if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
+      return Promise.reject(
+        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
+      );
     }
 
     this._isShutdown = true;

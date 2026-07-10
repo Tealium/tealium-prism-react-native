@@ -1,5 +1,4 @@
-import { getSdkVersion, _echoJsonValue, Tealium } from "../index";
-import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "../constants";
+import { getSdkVersion, _echoJsonValue, Tealium, ErrorCode } from "../index";
 
 // In the Jest (JS-only) environment no native TurboModule is registered, so
 // calling getSdkVersion() throws (NativeModule is null). This guards the
@@ -31,29 +30,39 @@ describe("Tealium", () => {
     expect(Tealium.prototype.constructor).toBe(Tealium);
   });
 
-  it("throws when creating instance without native binding", () => {
+  it("create throws with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", () => {
     expect(() => Tealium.create("account", "profile", "dev")).toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
+      "TealiumPrismReactNative native module is not registered."
     );
+
+    let caught: unknown;
+    try {
+      Tealium.create("account", "profile", "dev");
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+    });
   });
 
-  it("rejects track when native binding is missing", async () => {
+  it("rejects track with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
     const mockInstance = Object.create(Tealium.prototype);
     mockInstance.instanceId = "test-instance";
     mockInstance._isShutdown = false;
 
-    await expect(mockInstance.track("event_name")).rejects.toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
-    );
+    await expect(mockInstance.track("event_name")).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+    });
   });
 
-  it("rejects shutdown when native binding is missing", async () => {
+  it("rejects shutdown with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
     const mockInstance = Object.create(Tealium.prototype);
     mockInstance.instanceId = "test-instance";
     mockInstance._isShutdown = false;
 
-    await expect(mockInstance.shutdown()).rejects.toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
-    );
+    await expect(mockInstance.shutdown()).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+    });
   });
 });

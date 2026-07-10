@@ -10,6 +10,12 @@ const codes = JSON.parse(
   fs.readFileSync(path.join(root, "packages/core/error-codes.json"), "utf8")
 );
 
+function codesFor(platform) {
+  return codes
+    .filter((e) => !e.platforms || e.platforms.includes(platform))
+    .map((e) => e.code);
+}
+
 const header = "// Generated from error-codes.json — do not edit manually";
 
 function toSwiftCamelCase(screaming) {
@@ -18,12 +24,13 @@ function toSwiftCamelCase(screaming) {
 }
 
 // Kotlin
+const ktCodes = codesFor("kotlin");
 const ktLines = [
   header,
   "package com.tealium.prism.reactnative",
   "",
   "internal object ErrorCode {",
-  ...codes.map((c) => `    const val ${c} = "${c}"`),
+  ...ktCodes.map((c) => `    const val ${c} = "${c}"`),
   "}",
   "",
 ];
@@ -36,10 +43,11 @@ fs.writeFileSync(
 );
 
 // Swift
+const swiftCodes = codesFor("swift");
 const swiftLines = [
   header,
   "enum ErrorCode: String {",
-  ...codes.map((c) => `    case ${toSwiftCamelCase(c)} = "${c}"`),
+  ...swiftCodes.map((c) => `    case ${toSwiftCamelCase(c)} = "${c}"`),
   "}",
   "",
 ];
@@ -49,10 +57,11 @@ fs.writeFileSync(
 );
 
 // TypeScript
+const tsCodes = codesFor("ts");
 const tsLines = [
   header,
   "export const ErrorCode = {",
-  ...codes.map((c) => `  ${c}: "${c}",`),
+  ...tsCodes.map((c) => `  ${c}: "${c}",`),
   "} as const;",
   "",
 ];
