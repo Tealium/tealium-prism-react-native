@@ -63,7 +63,7 @@ public final class TealiumPrismBridge: NSObject {
             let dispatchType: DispatchType = (type == "view") ? .view : .event
 
             do {
-                let data = try dataJson.map { try DataObject(jsonString: $0) }
+                let data = try dataJson.map { try DataObject(jsonString: $0) } ?? [:]
                 instance.track(name, type: dispatchType, data: data)
                     .subscribe(completion, converter: trackResultAsDataItem)
             } catch {

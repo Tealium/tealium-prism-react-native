@@ -1,8 +1,11 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
 import { serialize } from "./serialization";
 import type { JsonValue } from "./types";
-import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "./constants";
+import { ErrorCode } from "./ErrorCode";
+import { tealiumError } from "./errors";
 export { ErrorCode } from "./ErrorCode";
+export type { TealiumError, TealiumErrorCode } from "./errors";
+export { tealiumError } from "./errors";
 
 export type {
   JsonValue,
@@ -22,7 +25,7 @@ export { Tealium } from "./Tealium";
  */
 export function getSdkVersion(): Promise<string> {
   if (!NativeTealiumPrismReactNative) {
-    return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
+    return Promise.reject(tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED));
   }
   return NativeTealiumPrismReactNative.getSdkVersion();
 }
@@ -44,15 +47,17 @@ export function getSdkVersion(): Promise<string> {
  */
 export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
   if (!NativeTealiumPrismReactNative) {
-    return Promise.reject(new Error(NATIVE_MODULE_NOT_REGISTERED_ERROR));
+    return Promise.reject(tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED));
   }
   return NativeTealiumPrismReactNative.echoJsonValue(serialize(input)).then(
     (result) => {
       try {
         return JSON.parse(result) as JsonValue;
       } catch {
-        throw new Error(
-          `_echoJsonValue: native returned non-JSON string: ${result}`
+        throw tealiumError(
+          ErrorCode.DATA_PARSE_ERROR,
+          "_echoJsonValue",
+          result
         );
       }
     }

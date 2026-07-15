@@ -1,6 +1,8 @@
 [
-  "DATA_PARSE_ERROR",
-  "INSTANCE_NOT_FOUND",
-  "PRISM_NATIVE_ERROR",
-  "TEALIUM_CANCELLED"
+  { "code": "DATA_PARSE_ERROR" },
+  { "code": "INSTANCE_NOT_FOUND" },
+  { "code": "INSTANCE_SHUT_DOWN", "platforms": ["ts"] },
+  { "code": "NATIVE_MODULE_NOT_REGISTERED", "platforms": ["ts"] },
+  { "code": "PRISM_NATIVE_ERROR" },
+  { "code": "TEALIUM_CANCELLED" }
 ]

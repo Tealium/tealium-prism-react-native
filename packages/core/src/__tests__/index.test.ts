@@ -1,5 +1,4 @@
-import { getSdkVersion, _echoJsonValue, Tealium } from "../index";
-import { NATIVE_MODULE_NOT_REGISTERED_ERROR } from "../constants";
+import { getSdkVersion, _echoJsonValue, Tealium, ErrorCode } from "../index";
 
 // In the Jest (JS-only) environment no native TurboModule is registered, so
 // calling getSdkVersion() throws (NativeModule is null). This guards the
@@ -10,8 +9,11 @@ describe("getSdkVersion", () => {
     expect(typeof getSdkVersion).toBe("function");
   });
 
-  it("rejects when no native binding is registered", async () => {
-    await expect(getSdkVersion()).rejects.toThrow();
+  it("rejects with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
+    await expect(getSdkVersion()).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+      message: "TealiumPrismReactNative native module is not registered.",
+    });
   });
 });
 
@@ -20,8 +22,11 @@ describe("_echoJsonValue", () => {
     expect(typeof _echoJsonValue).toBe("function");
   });
 
-  it("rejects when no native binding is registered", async () => {
-    await expect(_echoJsonValue(42)).rejects.toThrow();
+  it("rejects with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
+    await expect(_echoJsonValue(42)).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+      message: "TealiumPrismReactNative native module is not registered.",
+    });
   });
 });
 
@@ -31,29 +36,45 @@ describe("Tealium", () => {
     expect(Tealium.prototype.constructor).toBe(Tealium);
   });
 
-  it("throws when creating instance without native binding", () => {
+  it("create throws with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", () => {
     expect(() => Tealium.create("account", "profile", "dev")).toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
+      expect.objectContaining({
+        code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+        message: "TealiumPrismReactNative native module is not registered.",
+      })
     );
   });
 
-  it("rejects track when native binding is missing", async () => {
+  it("rejects track with INSTANCE_SHUT_DOWN code when instance has been shut down", async () => {
+    const mockInstance = Object.create(Tealium.prototype);
+    mockInstance.instanceId = "test-instance";
+    mockInstance._isShutdown = true;
+
+    await expect(mockInstance.track("event_name")).rejects.toMatchObject({
+      code: ErrorCode.INSTANCE_SHUT_DOWN,
+      message: 'Tealium instance "test-instance" has been shut down.',
+    });
+  });
+
+  it("rejects track with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
     const mockInstance = Object.create(Tealium.prototype);
     mockInstance.instanceId = "test-instance";
     mockInstance._isShutdown = false;
 
-    await expect(mockInstance.track("event_name")).rejects.toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
-    );
+    await expect(mockInstance.track("event_name")).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+      message: "TealiumPrismReactNative native module is not registered.",
+    });
   });
 
-  it("rejects shutdown when native binding is missing", async () => {
+  it("rejects shutdown with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
     const mockInstance = Object.create(Tealium.prototype);
     mockInstance.instanceId = "test-instance";
     mockInstance._isShutdown = false;
 
-    await expect(mockInstance.shutdown()).rejects.toThrow(
-      NATIVE_MODULE_NOT_REGISTERED_ERROR
-    );
+    await expect(mockInstance.shutdown()).rejects.toMatchObject({
+      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
+      message: "TealiumPrismReactNative native module is not registered.",
+    });
   });
 });
