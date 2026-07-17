@@ -1,0 +1,48 @@
+buildscript {
+  ext.getExtOrDefault = { prop, fallback ->
+    return rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.12.0"
+    // noinspection DifferentKotlinGradleVersion
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion', '2.1.20')}"
+  }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+repositories {
+  maven { url "https://maven.tealiumiq.com/android/releases/" }
+}
+
+android {
+  namespace "com.tealium.prism.reactnative.jstransformer"
+
+  compileSdkVersion getExtOrDefault("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion getExtOrDefault("minSdkVersion", 24)
+    targetSdkVersion getExtOrDefault("targetSdkVersion", 36)
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  // Base JavaScript transformer. It defines the transformer but ships no JS
+  // engine, so an engine artifact (Rhino) must also be present to run scripts
+  // on Android — provided by @tealium/prism-react-native-js-transformer-rhino.
+  implementation "com.tealium.prism:prism-js-transformer:0.1.0"
+}

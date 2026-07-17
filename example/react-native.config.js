@@ -1,5 +1,8 @@
 const path = require("path");
 const pkg = require("../packages/core/package.json");
+const extensionsPkg = require("../packages/extensions/package.json");
+const jsTransformerPkg = require("../packages/js-transformer/package.json");
+const jsTransformerRhinoPkg = require("../packages/js-transformer-rhino/package.json");
 const lifecyclePkg = require("../packages/lifecycle/package.json");
 
 module.exports = {
@@ -15,6 +18,27 @@ module.exports = {
         // Codegen script incorrectly fails without this
         // So we explicitly specify the platforms with empty object
         ios: {},
+        android: {},
+      },
+    },
+    [extensionsPkg.name]: {
+      root: path.join(__dirname, "../packages/extensions"),
+      platforms: {
+        ios: {},
+        android: {},
+      },
+    },
+    [jsTransformerPkg.name]: {
+      root: path.join(__dirname, "../packages/js-transformer"),
+      platforms: {
+        ios: {},
+        android: {},
+      },
+    },
+    [jsTransformerRhinoPkg.name]: {
+      root: path.join(__dirname, "../packages/js-transformer-rhino"),
+      platforms: {
+        // Android-only: iOS uses the OS-provided JavaScriptCore engine.
         android: {},
       },
     },

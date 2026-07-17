@@ -1752,6 +1752,12 @@ PODS:
   - SQLite.swift/standard (0.15.5)
   - tealium-prism/Core (0.5.0):
     - SQLite.swift (~> 0.15.0)
+  - tealium-prism/Extensions (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
+  - tealium-prism/JavaScriptTransformer (0.5.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
   - tealium-prism/Lifecycle (0.5.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
@@ -1778,6 +1784,10 @@ PODS:
     - ReactNativeDependencies
     - tealium-prism/Core (~> 0.5)
     - Yoga
+  - TealiumPrismReactNativeExtensions (0.1.0):
+    - tealium-prism/Extensions (~> 0.5)
+  - TealiumPrismReactNativeJavaScriptTransformer (0.1.0):
+    - tealium-prism/JavaScriptTransformer (~> 0.5)
   - TealiumPrismReactNativeLifecycle (0.1.0):
     - tealium-prism/Lifecycle (~> 0.5)
   - Yoga (0.0.0)
@@ -1857,6 +1867,8 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - TealiumPrismReactNative (from `../../packages/core`)
+  - TealiumPrismReactNativeExtensions (from `../../packages/extensions`)
+  - TealiumPrismReactNativeJavaScriptTransformer (from `../../packages/js-transformer`)
   - TealiumPrismReactNativeLifecycle (from `../../packages/lifecycle`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2013,6 +2025,10 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   TealiumPrismReactNative:
     :path: "../../packages/core"
+  TealiumPrismReactNativeExtensions:
+    :path: "../../packages/extensions"
+  TealiumPrismReactNativeJavaScriptTransformer:
+    :path: "../../packages/js-transformer"
   TealiumPrismReactNativeLifecycle:
     :path: "../../packages/lifecycle"
   Yoga:
@@ -2094,6 +2110,8 @@ SPEC CHECKSUMS:
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
   tealium-prism: 26b047d4350524eb9776ce54d577e9e2a3872fd7
   TealiumPrismReactNative: 0633e5f47274e25406ff4c9ec1a7a8bdabe5b11e
+  TealiumPrismReactNativeExtensions: df8c6da1ca1770f0044a01dc0ad49e0320c26dc2
+  TealiumPrismReactNativeJavaScriptTransformer: 5fc7e6d509c1e5ff4af6ab682a254a8c155de2fd
   TealiumPrismReactNativeLifecycle: 8c99942804e931dbc3f4f5d682a4355cfc80e875
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 

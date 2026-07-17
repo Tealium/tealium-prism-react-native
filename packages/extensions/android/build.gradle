@@ -1,0 +1,47 @@
+buildscript {
+  ext.getExtOrDefault = { prop, fallback ->
+    return rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.12.0"
+    // noinspection DifferentKotlinGradleVersion
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion', '2.1.20')}"
+  }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+repositories {
+  maven { url "https://maven.tealiumiq.com/android/releases/" }
+}
+
+android {
+  namespace "com.tealium.prism.reactnative.extensions"
+
+  compileSdkVersion getExtOrDefault("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion getExtOrDefault("minSdkVersion", 24)
+    targetSdkVersion getExtOrDefault("targetSdkVersion", 36)
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  // The Extensions module auto-registers its transformer factories via its
+  // AndroidManifest ComponentDiscoveryService entries, merged in by adding this dependency.
+  implementation "com.tealium.prism:prism-extensions:0.1.0"
+}
