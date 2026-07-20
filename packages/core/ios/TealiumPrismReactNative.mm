@@ -79,12 +79,12 @@
 #pragma mark - Trace
 
 - (void)joinTrace:(NSString *)instanceId
-               id:(NSString *)id
+               id:(NSString *)traceId
           resolve:(RCTPromiseResolveBlock)resolve
            reject:(RCTPromiseRejectBlock)reject
 {
     [TealiumPrismBridge joinTraceWithInstanceId:instanceId
-                                             id:id
+                                             id:traceId
                                      completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
