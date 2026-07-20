@@ -87,6 +87,72 @@ export class Tealium {
     });
   }
 
+  /**
+   * Joins a trace for the given id. The trace id is added to every subsequent
+   * dispatch until {@link leaveTrace} is called or the session expires.
+   */
+  joinTrace(id: string): Promise<void> {
+    if (this._isShutdown) {
+      return Promise.reject(
+        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
+      );
+    }
+    if (!NativeTealiumPrismReactNative) {
+      return Promise.reject(
+        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
+      );
+    }
+
+    return NativeTealiumPrismReactNative.joinTrace(this.instanceId, id);
+  }
+
+  /** Leaves the current trace, if one has been joined. */
+  leaveTrace(): Promise<void> {
+    if (this._isShutdown) {
+      return Promise.reject(
+        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
+      );
+    }
+    if (!NativeTealiumPrismReactNative) {
+      return Promise.reject(
+        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
+      );
+    }
+
+    return NativeTealiumPrismReactNative.leaveTrace(this.instanceId);
+  }
+
+  /**
+   * Forces the end of the current visit. Dispatches a kill-session event and
+   * resolves with its {@link TrackResult}. Rejects if no trace is joined.
+   */
+  forceEndOfVisit(): Promise<TrackResult> {
+    if (this._isShutdown) {
+      return Promise.reject(
+        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
+      );
+    }
+    if (!NativeTealiumPrismReactNative) {
+      return Promise.reject(
+        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
+      );
+    }
+
+    return NativeTealiumPrismReactNative.forceEndOfVisit(this.instanceId).then(
+      (resultJson) => {
+        try {
+          return JSON.parse(resultJson) as TrackResult;
+        } catch {
+          throw tealiumError(
+            ErrorCode.DATA_PARSE_ERROR,
+            "Tealium.forceEndOfVisit",
+            resultJson
+          );
+        }
+      }
+    );
+  }
+
   shutdown(): Promise<void> {
     if (this._isShutdown) {
       return Promise.resolve();

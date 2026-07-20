@@ -4,6 +4,7 @@ import android.app.Application
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.tealium.prism.core.BuildConfig as PrismBuildConfig
+import com.tealium.prism.core.api.Modules
 import com.tealium.prism.core.api.Tealium
 import com.tealium.prism.core.api.TealiumConfig
 import com.tealium.prism.core.api.data.DataItem
@@ -65,6 +66,18 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             }
         }
 
+        // Enable the Trace module with default (non-null) enforced settings. The registry's default
+        // registration uses the null variant, which only instantiates Trace when local/remote
+        // settings exist; adding it here makes the module available so the RN-driven join/leave/
+        // forceEndOfVisit calls work out of the box. Trace stays inert until join() is called.
+        //
+        // TODO(next PR): This force-adds Trace for every consumer, unlike the native SDKs where the
+        //  app developer opts in via config modules or settings JSON (see the Kotlin/Swift example
+        //  apps). Once the wrapper exposes a JS config surface (module registration + per-module
+        //  settings such as Trace.setTrackErrors, and settingsFile/settingsUrl), remove this
+        //  hardcoded add and let the consumer enable/configure Trace themselves.
+        configBuilder.addModule(Modules.trace())
+
         return configBuilder.build()
     }
 
@@ -89,6 +102,42 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Joins the trace [id] on the instance, adding the id to every subsequent dispatch until
+     * [leaveTrace] is called or the session expires. Resolves with no value on success (the Unit
+     * [subscribe] overload resolves the promise with `null`).
+     */
+    override fun joinTrace(instanceId: String, id: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.trace.join(id).subscribe(promise)
+        }
+    }
+
+    /**
+     * Leaves the current trace on the instance. A no-op natively if no trace is joined; resolves
+     * with no value in either case.
+     */
+    override fun leaveTrace(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.trace.leave().subscribe(promise)
+        }
+    }
+
+    /**
+     * Forces the end of the current visit, dispatching a kill-session event. Resolves with the
+     * JSON [TrackResult] of that dispatch (via [trackResultAsDataItem]) and rejects natively when
+     * no trace is joined.
+     */
+    override fun forceEndOfVisit(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.trace.forceEndOfVisit().subscribe(promise, ::trackResultAsDataItem)
+        }
+    }
+
+    /**
+     * Converts a [TrackResult] into the JSON-serializable [DataItem] shape shared with `track`:
+     * `status` (lowercased accepted/dropped), `info`, and the dispatch `payload`.
+     */
     private fun trackResultAsDataItem(result: TrackResult): DataItem =
         DataObject.create {
             put("status", result.status.name.lowercase())

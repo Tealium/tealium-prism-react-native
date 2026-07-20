@@ -14,6 +14,8 @@
   return @"TealiumPrismReactNative";
 }
 
+#pragma mark - Core
+
 - (void)getSdkVersion:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
     resolve(TealiumPrismVersion.sdkVersion);
@@ -71,6 +73,52 @@
     [TealiumPrismBridge shutdownWithInstanceId:instanceId
                                     completion:^{
         resolve(nil);
+    }];
+}
+
+#pragma mark - Trace
+
+- (void)joinTrace:(NSString *)instanceId
+               id:(NSString *)id
+          resolve:(RCTPromiseResolveBlock)resolve
+           reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge joinTraceWithInstanceId:instanceId
+                                             id:id
+                                     completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)leaveTrace:(NSString *)instanceId
+           resolve:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge leaveTraceWithInstanceId:instanceId
+                                      completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)forceEndOfVisit:(NSString *)instanceId
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge forceEndOfVisitWithInstanceId:instanceId
+                                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
     }];
 }
 
