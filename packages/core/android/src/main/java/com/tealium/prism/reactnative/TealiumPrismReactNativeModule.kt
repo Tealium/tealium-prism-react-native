@@ -36,9 +36,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?
+        logLevel: String?,
+        settingsFile: String?,
+        settingsUrl: String?
     ): String {
-        val config = buildConfig(account, profile, environment, logLevel)
+        val config = buildConfig(account, profile, environment, logLevel, settingsFile, settingsUrl)
         // The SDK returns the existing instance (and logs a warning) for a duplicate key.
         return Tealium.create(config).key
     }
@@ -47,7 +49,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?
+        logLevel: String?,
+        settingsFile: String?,
+        settingsUrl: String?
     ): TealiumConfig {
         val application = reactApplicationContext.applicationContext as Application
         val configBuilder = TealiumConfig.Builder(
@@ -77,6 +81,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         //  settings such as Trace.setTrackErrors, and settingsFile/settingsUrl), remove this
         //  hardcoded add and let the consumer enable/configure Trace themselves.
         configBuilder.addModule(Modules.trace())
+
+        // Local (asset) and remote settings sources. Precedence is enforced by the
+        // SDK: local < remote < programmatic. Omitted sources stay unconfigured.
+        settingsFile?.let { configBuilder.setSettingsFile(it) }
+        settingsUrl?.let { configBuilder.setSettingsUrl(it) }
 
         return configBuilder.build()
     }

@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Tealium, type LogLevel } from "@tealium/prism-react-native";
+import { Tealium, TealiumConfigOptions } from "@tealium/prism-react-native";
 
 type InstanceInfo = {
   key: string;
@@ -29,7 +29,7 @@ type TealiumContextValue = {
     account: string,
     profile: string,
     environment: string,
-    logLevel?: LogLevel,
+    options?: TealiumConfigOptions,
   ) => void;
   /**
    * Shuts down and removes the instance; clears {@link activeKey} app-wide if it
@@ -64,10 +64,10 @@ export function TealiumProvider({ children }: { children: ReactNode }) {
       account: string,
       profile: string,
       environment: string,
-      logLevel?: LogLevel,
+      options?: TealiumConfigOptions,
     ) => {
       // May throw — Tealium.create is synchronous; let the caller surface it.
-      const instance = Tealium.create(account, profile, environment, logLevel);
+      const instance = Tealium.create(account, profile, environment, options);
       const key = instance.instanceId;
 
       setInstances((prev) =>

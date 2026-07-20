@@ -13,6 +13,7 @@ export type {
   DispatchType,
   TrackResult,
   LogLevel,
+  TealiumConfigOptions,
 } from "./types";
 export { Environment } from "./types";
 export { Tealium } from "./Tealium";

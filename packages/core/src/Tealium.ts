@@ -3,7 +3,7 @@ import { parseTrackResult, serialize } from "./serialization";
 import type {
   DispatchType,
   JsonValueObject,
-  LogLevel,
+  TealiumConfigOptions,
   TrackResult,
 } from "./types";
 import { ErrorCode } from "./ErrorCode";
@@ -76,7 +76,7 @@ export class Tealium {
     account: string,
     profile: string,
     environment: string,
-    logLevel?: LogLevel
+    options?: TealiumConfigOptions
   ): Tealium {
     if (!NativeTealiumPrismReactNative) {
       throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
@@ -87,7 +87,7 @@ export class Tealium {
     const cached = instances.get(key);
     if (cached && !cached._isShutdown) {
       console.warn(
-        `[Tealium] Duplicate Tealium instance requested for ${key}. Returning existing instance. Note: environment and logLevel from this call are ignored.`
+        `[Tealium] Duplicate Tealium instance requested for ${key}. Returning existing instance. Note: environment and options from this call are ignored.`
       );
       return cached;
     }
@@ -96,7 +96,9 @@ export class Tealium {
       account,
       profile,
       environment,
-      logLevel ?? null
+      options?.logLevel ?? null,
+      options?.settingsFile ?? null,
+      options?.settingsUrl ?? null
     );
 
     const instance = new Tealium(instanceId);
