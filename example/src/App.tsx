@@ -4,10 +4,19 @@ import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./BridgeTestScreen";
 import InstancesScreen from "./InstancesScreen";
 import TraceScreen from "./TraceScreen";
+import { TealiumProvider } from "./TealiumProvider";
 
 type Screen = "home" | "bridgeTests" | "instances" | "trace";
 
 export default function App() {
+  return (
+    <TealiumProvider>
+      <AppContent />
+    </TealiumProvider>
+  );
+}
+
+function AppContent() {
   const [version, setVersion] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>("home");
 

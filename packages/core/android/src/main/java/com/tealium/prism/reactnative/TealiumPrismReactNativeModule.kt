@@ -104,22 +104,23 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Joins the trace [id] on the instance, adding the id to every subsequent dispatch until
-     * [leaveTrace] is called or the session expires. Resolves with no value on success (the Unit
-     * [subscribe] overload resolves the promise with `null`).
+     * [leaveTrace] is called or the session expires. Trace.join emits [Unit]; the payload-less
+     * result is converted to [DataItem.NULL] so the promise resolves with a JSON `null`.
      */
     override fun joinTrace(instanceId: String, id: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            instance.trace.join(id).subscribe(promise)
+            instance.trace.join(id).subscribe(promise) { DataItem.NULL }
         }
     }
 
     /**
-     * Leaves the current trace on the instance. A no-op natively if no trace is joined; resolves
-     * with no value in either case.
+     * Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
+     * emits [Unit]; the payload-less result is converted to [DataItem.NULL] so the promise resolves
+     * with a JSON `null`.
      */
     override fun leaveTrace(instanceId: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            instance.trace.leave().subscribe(promise)
+            instance.trace.leave().subscribe(promise) { DataItem.NULL }
         }
     }
 

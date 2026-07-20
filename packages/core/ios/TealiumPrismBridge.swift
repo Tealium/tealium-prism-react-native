@@ -88,26 +88,27 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Joins the trace `id` on the instance, adding the id to every subsequent dispatch until
-    /// `leaveTrace` is called or the session expires. Completes with no value on success (the Void
-    /// `subscribe` overload completes with a `nil` JSON string).
+    /// `leaveTrace` is called or the session expires. Trace.join emits `Void`; the payload-less
+    /// result is converted to `DataItem.null` so the promise completes with a JSON `null`.
     @objc public static func joinTrace(
         instanceId: String,
         id: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.trace.join(id: id).subscribe(completion)
+            instance.trace.join(id: id).subscribe(completion) { _ in DataItem.null }
         }
     }
 
-    /// Leaves the current trace on the instance. A no-op natively if no trace is joined; completes
-    /// with no value in either case.
+    /// Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
+    /// emits `Void`; the payload-less result is converted to `DataItem.null` so the promise
+    /// completes with a JSON `null`.
     @objc public static func leaveTrace(
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.trace.leave().subscribe(completion)
+            instance.trace.leave().subscribe(completion) { _ in DataItem.null }
         }
     }
 

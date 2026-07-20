@@ -7,27 +7,19 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { Tealium, type TrackResult } from "@tealium/prism-react-native";
+import { type TrackResult } from "@tealium/prism-react-native";
+import { useTealium } from "./TealiumProvider";
 
-// Self-contained Trace demo: create an instance, then join/leave a trace and
-// force end-of-visit. Track an event in between to observe the trace id being
-// added to (and removed from) the dispatch payload.
+// Trace demo: join/leave a trace and force end-of-visit on the shared app
+// instance. Track an event in between to observe the trace id being added to
+// (and removed from) the dispatch payload.
 export default function TraceScreen() {
-  const [instance, setInstance] = useState<Tealium | null>(null);
+  const { instance, error: instanceError } = useTealium();
   const [traceId, setTraceId] = useState("");
   const [joined, setJoined] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCreate = () => {
-    setError(null);
-    try {
-      setInstance(Tealium.create("tealiummobile", "demo", "dev"));
-    } catch (e) {
-      setError(String(e));
-    }
-  };
+  const [error, setError] = useState<string | null>(instanceError);
 
   const handleJoin = () => {
     setError(null);
@@ -80,9 +72,7 @@ export default function TraceScreen() {
       {instance ? (
         <Text style={styles.instanceKey}>{instance.instanceId}</Text>
       ) : (
-        <TouchableOpacity style={styles.button} onPress={handleCreate}>
-          <Text style={styles.buttonText}>Create Instance</Text>
-        </TouchableOpacity>
+        <Text style={styles.hint}>Shared instance unavailable.</Text>
       )}
 
       {instance && (

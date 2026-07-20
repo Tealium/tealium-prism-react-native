@@ -19,6 +19,38 @@ export class Tealium {
     this.instanceId = instanceId;
   }
 
+  /**
+   * Returns the native module, throwing if this instance was shut down or the
+   * module failed to register. Callers should use {@link withNative} so the
+   * throw is converted to a rejected Promise.
+   */
+  private getNativeModule(): NonNullable<typeof NativeTealiumPrismReactNative> {
+    if (this._isShutdown) {
+      throw tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId);
+    }
+    if (!NativeTealiumPrismReactNative) {
+      throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
+    }
+    return NativeTealiumPrismReactNative;
+  }
+
+  /**
+   * Runs an action against the native module, so each method only handles the
+   * happy path. The synchronous throw from {@link getNativeModule} is turned
+   * into a rejected Promise; a Promise the action returns passes through as-is.
+   */
+  private withNative<T>(
+    action: (
+      native: NonNullable<typeof NativeTealiumPrismReactNative>
+    ) => Promise<T>
+  ): Promise<T> {
+    try {
+      return action(this.getNativeModule());
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   static create(
     account: string,
     profile: string,
@@ -56,35 +88,21 @@ export class Tealium {
     type: DispatchType = "event",
     data?: JsonValueObject
   ): Promise<TrackResult> {
-    if (this._isShutdown) {
-      return Promise.reject(
-        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
-      );
-    }
-    if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
-      );
-    }
-
     const dataJson = data !== undefined ? serialize(data) : null;
 
-    return NativeTealiumPrismReactNative.track(
-      this.instanceId,
-      name,
-      type,
-      dataJson
-    ).then((resultJson) => {
-      try {
-        return JSON.parse(resultJson) as TrackResult;
-      } catch {
-        throw tealiumError(
-          ErrorCode.DATA_PARSE_ERROR,
-          "Tealium.track",
-          resultJson
-        );
-      }
-    });
+    return this.withNative((native) =>
+      native.track(this.instanceId, name, type, dataJson).then((resultJson) => {
+        try {
+          return JSON.parse(resultJson) as TrackResult;
+        } catch {
+          throw tealiumError(
+            ErrorCode.DATA_PARSE_ERROR,
+            "Tealium.track",
+            resultJson
+          );
+        }
+      })
+    );
   }
 
   /**
@@ -92,34 +110,12 @@ export class Tealium {
    * dispatch until {@link leaveTrace} is called or the session expires.
    */
   joinTrace(id: string): Promise<void> {
-    if (this._isShutdown) {
-      return Promise.reject(
-        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
-      );
-    }
-    if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
-      );
-    }
-
-    return NativeTealiumPrismReactNative.joinTrace(this.instanceId, id);
+    return this.withNative((native) => native.joinTrace(this.instanceId, id));
   }
 
   /** Leaves the current trace, if one has been joined. */
   leaveTrace(): Promise<void> {
-    if (this._isShutdown) {
-      return Promise.reject(
-        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
-      );
-    }
-    if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
-      );
-    }
-
-    return NativeTealiumPrismReactNative.leaveTrace(this.instanceId);
+    return this.withNative((native) => native.leaveTrace(this.instanceId));
   }
 
   /**
@@ -127,19 +123,8 @@ export class Tealium {
    * resolves with its {@link TrackResult}. Rejects if no trace is joined.
    */
   forceEndOfVisit(): Promise<TrackResult> {
-    if (this._isShutdown) {
-      return Promise.reject(
-        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
-      );
-    }
-    if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
-      );
-    }
-
-    return NativeTealiumPrismReactNative.forceEndOfVisit(this.instanceId).then(
-      (resultJson) => {
+    return this.withNative((native) =>
+      native.forceEndOfVisit(this.instanceId).then((resultJson) => {
         try {
           return JSON.parse(resultJson) as TrackResult;
         } catch {
@@ -149,7 +134,7 @@ export class Tealium {
             resultJson
           );
         }
-      }
+      })
     );
   }
 
