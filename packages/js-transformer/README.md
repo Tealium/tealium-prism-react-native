@@ -2,7 +2,8 @@
 
 Optional [Tealium Prism](https://github.com/Tealium/tealium-prism-react-native) JavaScript transformer for React Native. Lets you transform dispatches with JavaScript defined in your Tealium settings.
 
-This package ships no JavaScript of its own. Installing it links the native Prism JavaScript transformer, which registers itself automatically — no app-side wiring is required.
+This package ships no JavaScript of its own. Installing it links the native Prism JavaScript transformer, which registers itself automatically — no app-side wiring is required (on Android a JavaScript engine is also required before transformations run — see below).
+
 
 ## The JavaScript engine
 
