@@ -9,11 +9,8 @@ import {
   Animated,
   Modal,
 } from "react-native";
-import {
-  Tealium,
-  type LogLevel,
-  type TrackResult,
-} from "@tealium/prism-react-native";
+import { type LogLevel, type TrackResult } from "@tealium/prism-react-native";
+import { useTealium } from "./TealiumProvider";
 
 const LOG_LEVELS: LogLevel[] = [
   "trace",
@@ -24,20 +21,21 @@ const LOG_LEVELS: LogLevel[] = [
   "silent",
 ];
 
-type InstanceInfo = {
-  key: string;
-  instance: Tealium;
-};
-
 export default function InstancesScreen() {
+  const {
+    instances,
+    activeKey,
+    activeInstance,
+    createInstance,
+    shutdownInstance,
+    setActiveKey,
+  } = useTealium();
+
   const [account, setAccount] = useState("tealiummobile");
   const [profile, setProfile] = useState("demo");
   const [environment, setEnvironment] = useState("dev");
   const [logLevel, setLogLevel] = useState<LogLevel | null>(null);
   const [logLevelDropdownOpen, setLogLevelDropdownOpen] = useState(false);
-
-  const [instances, setInstances] = useState<InstanceInfo[]>([]);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const [trackName, setTrackName] = useState("test_event");
   const [trackType, setTrackType] = useState<"event" | "view">("event");
@@ -102,49 +100,23 @@ export default function InstancesScreen() {
   const handleCreate = () => {
     setError(null);
     try {
-      const instance = Tealium.create(
-        account,
-        profile,
-        environment,
-        logLevel ?? undefined,
-      );
-      const key = instance.instanceId;
-
-      setInstances((prevInstances) => {
-        const existing = prevInstances.find((i) => i.key === key);
-        if (!existing) {
-          return [...prevInstances, { key, instance }];
-        }
-        return prevInstances;
-      });
-      setSelectedKey(key);
+      createInstance(account, profile, environment, logLevel ?? undefined);
     } catch (e) {
       setError(String(e));
     }
   };
 
   const handleShutdown = (key: string) => {
-    const info = instances.find((i) => i.key === key);
-    if (info) {
-      info.instance
-        .shutdown()
-        .then(() => {
-          setInstances((prevInstances) =>
-            prevInstances.filter((i) => i.key !== key),
-          );
-          if (selectedKey === key) {
-            setSelectedKey(null);
-            setLastResult(null);
-          }
-        })
-        .catch((e) => setError(String(e)));
+    setError(null);
+    if (activeKey === key) {
+      setLastResult(null);
     }
+    shutdownInstance(key).catch((e) => setError(String(e)));
   };
 
   const handleTrack = () => {
     setError(null);
-    const info = instances.find((i) => i.key === selectedKey);
-    if (!info) {
+    if (!activeInstance) {
       setError("No instance selected");
       return;
     }
@@ -159,15 +131,13 @@ export default function InstancesScreen() {
       }
     }
 
-    info.instance
+    activeInstance
       .track(trackName, trackType, data)
       .then((result) => {
         setLastResult(result);
       })
       .catch((e) => setError(String(e)));
   };
-
-  const selectedInstance = instances.find((i) => i.key === selectedKey);
 
   return (
     <View style={styles.wrapper}>
@@ -285,12 +255,12 @@ export default function InstancesScreen() {
               key={info.key}
               style={[
                 styles.instanceRow,
-                selectedKey === info.key && styles.instanceRowSelected,
+                activeKey === info.key && styles.instanceRowSelected,
               ]}
             >
               <TouchableOpacity
                 style={styles.instanceMain}
-                onPress={() => setSelectedKey(info.key)}
+                onPress={() => setActiveKey(info.key)}
               >
                 <Text style={styles.instanceKey}>{info.key}</Text>
               </TouchableOpacity>
@@ -304,7 +274,7 @@ export default function InstancesScreen() {
           ))
         )}
 
-        {selectedInstance && (
+        {activeInstance && (
           <>
             <Text style={styles.sectionTitle}>Track Event/View</Text>
             <TextInput
