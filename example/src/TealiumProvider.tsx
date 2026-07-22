@@ -84,10 +84,11 @@ export function TealiumProvider({ children }: { children: ReactNode }) {
       if (!info) {
         return Promise.resolve();
       }
-      return info.instance.shutdown().then(() => {
-        setInstances((prev) => prev.filter((i) => i.key !== key));
-        setActiveKey((prev) => (prev === key ? null : prev));
-      });
+      // shutdown() kills the instance synchronously, so drop it from state up
+      // front (even if native shutdown rejects) instead of in a .then.
+      setInstances((prev) => prev.filter((i) => i.key !== key));
+      setActiveKey((prev) => (prev === key ? null : prev));
+      return info.instance.shutdown();
     },
     [instances],
   );
