@@ -51,6 +51,19 @@ export class Tealium {
     }
   }
 
+  /**
+   * Parses a {@link TrackResult} JSON string returned by a native method,
+   * throwing a {@link ErrorCode.DATA_PARSE_ERROR} tagged with {@link context}
+   * if it is not valid JSON.
+   */
+  private parseTrackResult(resultJson: string, context: string): TrackResult {
+    try {
+      return JSON.parse(resultJson) as TrackResult;
+    } catch {
+      throw tealiumError(ErrorCode.DATA_PARSE_ERROR, context, resultJson);
+    }
+  }
+
   static create(
     account: string,
     profile: string,
@@ -91,17 +104,11 @@ export class Tealium {
     const dataJson = data !== undefined ? serialize(data) : null;
 
     return this.withNative((native) =>
-      native.track(this.instanceId, name, type, dataJson).then((resultJson) => {
-        try {
-          return JSON.parse(resultJson) as TrackResult;
-        } catch {
-          throw tealiumError(
-            ErrorCode.DATA_PARSE_ERROR,
-            "Tealium.track",
-            resultJson
-          );
-        }
-      })
+      native
+        .track(this.instanceId, name, type, dataJson)
+        .then((resultJson) =>
+          this.parseTrackResult(resultJson, "Tealium.track")
+        )
     );
   }
 
@@ -124,17 +131,11 @@ export class Tealium {
    */
   forceEndOfVisit(): Promise<TrackResult> {
     return this.withNative((native) =>
-      native.forceEndOfVisit(this.instanceId).then((resultJson) => {
-        try {
-          return JSON.parse(resultJson) as TrackResult;
-        } catch {
-          throw tealiumError(
-            ErrorCode.DATA_PARSE_ERROR,
-            "Tealium.forceEndOfVisit",
-            resultJson
-          );
-        }
-      })
+      native
+        .forceEndOfVisit(this.instanceId)
+        .then((resultJson) =>
+          this.parseTrackResult(resultJson, "Tealium.forceEndOfVisit")
+        )
     );
   }
 

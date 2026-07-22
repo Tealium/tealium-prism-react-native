@@ -45,28 +45,6 @@ describe("Tealium", () => {
     );
   });
 
-  it("rejects track with INSTANCE_SHUT_DOWN code when instance has been shut down", async () => {
-    const mockInstance = Object.create(Tealium.prototype);
-    mockInstance.instanceId = "test-instance";
-    mockInstance._isShutdown = true;
-
-    await expect(mockInstance.track("event_name")).rejects.toMatchObject({
-      code: ErrorCode.INSTANCE_SHUT_DOWN,
-      message: 'Tealium instance "test-instance" has been shut down.',
-    });
-  });
-
-  it("rejects track with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
-    const mockInstance = Object.create(Tealium.prototype);
-    mockInstance.instanceId = "test-instance";
-    mockInstance._isShutdown = false;
-
-    await expect(mockInstance.track("event_name")).rejects.toMatchObject({
-      code: ErrorCode.NATIVE_MODULE_NOT_REGISTERED,
-      message: "TealiumPrismReactNative native module is not registered.",
-    });
-  });
-
   it("rejects shutdown with NATIVE_MODULE_NOT_REGISTERED code when native binding is missing", async () => {
     const mockInstance = Object.create(Tealium.prototype);
     mockInstance.instanceId = "test-instance";
@@ -78,16 +56,18 @@ describe("Tealium", () => {
     });
   });
 
-  // Trace API (joinTrace / leaveTrace / forceEndOfVisit) shares the same guard
-  // contract as track/shutdown. End-to-end trace-id-on-payload verification
-  // happens in native tests and the example app.
-  const traceMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
+  // track and the trace API (joinTrace / leaveTrace / forceEndOfVisit) share the
+  // same guard contract: reject with INSTANCE_SHUT_DOWN when shut down and
+  // NATIVE_MODULE_NOT_REGISTERED when the native binding is missing. End-to-end
+  // behavior is verified in native tests and the example app.
+  const tealiumMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
+    ["track", (i) => i.track("event_name")],
     ["joinTrace", (i) => i.joinTrace("trace-123")],
     ["leaveTrace", (i) => i.leaveTrace()],
     ["forceEndOfVisit", (i) => i.forceEndOfVisit()],
   ];
 
-  describe.each(traceMethods)("%s", (_name, call) => {
+  describe.each(tealiumMethods)("%s", (_name, call) => {
     it("rejects with INSTANCE_SHUT_DOWN code when instance has been shut down", async () => {
       const mockInstance = Object.create(Tealium.prototype);
       mockInstance.instanceId = "test-instance";

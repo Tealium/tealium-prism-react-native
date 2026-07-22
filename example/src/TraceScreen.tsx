@@ -23,15 +23,16 @@ export default function TraceScreen() {
 
   const handleJoin = () => {
     setError(null);
-    if (!traceId.trim()) {
+    const id = traceId.trim();
+    if (!id) {
       setError("Enter a trace id");
       return;
     }
     instance
-      ?.joinTrace(traceId.trim())
+      ?.joinTrace(id)
       .then(() => {
         setJoined(true);
-        setStatus(`Joined trace ${traceId.trim()}`);
+        setStatus(`Joined trace ${id}`);
       })
       .catch((e) => setError(String(e)));
   };
