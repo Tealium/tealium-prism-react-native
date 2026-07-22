@@ -14,7 +14,7 @@ type InstanceInfo = {
 };
 
 type TealiumContextValue = {
-  /** All instances created via the provider, keyed by instance id. */
+  /** All instances created via the provider (each entry's key is its instance id). */
   instances: InstanceInfo[];
   /** The key of the active instance, or null if none is active. */
   activeKey: string | null;
