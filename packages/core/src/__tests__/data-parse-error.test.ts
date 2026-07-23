@@ -24,12 +24,12 @@ describe("DATA_PARSE_ERROR", () => {
     });
   });
 
-  it("Tealium.forceEndOfVisit rejects with DATA_PARSE_ERROR when native returns non-JSON", async () => {
+  it("Tealium.trace.forceEndOfVisit rejects with DATA_PARSE_ERROR when native returns non-JSON", async () => {
     const instance = Tealium.create("account", "profile", "dev");
 
-    await expect(instance.forceEndOfVisit()).rejects.toMatchObject({
+    await expect(instance.trace.forceEndOfVisit()).rejects.toMatchObject({
       code: ErrorCode.DATA_PARSE_ERROR,
-      message: `Tealium.forceEndOfVisit: native returned non-JSON string: ${INVALID_JSON}`,
+      message: `Tealium.trace.forceEndOfVisit: native returned non-JSON string: ${INVALID_JSON}`,
     });
   });
 

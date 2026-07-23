@@ -37,8 +37,8 @@ export default function TraceScreen() {
       setError("Enter a trace id");
       return;
     }
-    activeInstance
-      ?.joinTrace(id)
+    activeInstance?.trace
+      .join(id)
       .then(() => {
         setJoined(true);
         setStatus(`Joined trace ${id}`);
@@ -48,8 +48,8 @@ export default function TraceScreen() {
 
   const handleLeave = () => {
     setError(null);
-    activeInstance
-      ?.leaveTrace()
+    activeInstance?.trace
+      .leave()
       .then(() => {
         setJoined(false);
         setStatus("Left trace");
@@ -59,8 +59,8 @@ export default function TraceScreen() {
 
   const handleForceEndOfVisit = () => {
     setError(null);
-    activeInstance
-      ?.forceEndOfVisit()
+    activeInstance?.trace
+      .forceEndOfVisit()
       .then((result) => {
         setLastResult(result);
         setStatus(`Force end of visit: ${result.status}`);
