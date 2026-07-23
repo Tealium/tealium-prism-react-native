@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Text,
   TextInput,
@@ -10,16 +10,25 @@ import {
 import { type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "./TealiumProvider";
 
-// Trace demo: join/leave a trace and force end-of-visit on the shared app
-// instance. Track an event in between to observe the trace id being added to
-// (and removed from) the dispatch payload.
+// Trace demo: join/leave a trace and force end-of-visit on the active app
+// instance selected on the Instances screen. Track an event in between to
+// observe the trace id being added to (and removed from) the dispatch payload.
 export default function TraceScreen() {
-  const { instance, error: instanceError } = useTealium();
+  const { activeInstance } = useTealium();
   const [traceId, setTraceId] = useState("");
   const [joined, setJoined] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
-  const [error, setError] = useState<string | null>(instanceError);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset trace UI when the active instance changes or goes away, so stale
+  // "in a trace" state from a previous instance is not shown.
+  useEffect(() => {
+    setJoined(false);
+    setStatus(null);
+    setLastResult(null);
+    setError(null);
+  }, [activeInstance?.instanceId]);
 
   const handleJoin = () => {
     setError(null);
@@ -28,7 +37,7 @@ export default function TraceScreen() {
       setError("Enter a trace id");
       return;
     }
-    instance
+    activeInstance
       ?.joinTrace(id)
       .then(() => {
         setJoined(true);
@@ -39,7 +48,7 @@ export default function TraceScreen() {
 
   const handleLeave = () => {
     setError(null);
-    instance
+    activeInstance
       ?.leaveTrace()
       .then(() => {
         setJoined(false);
@@ -50,7 +59,7 @@ export default function TraceScreen() {
 
   const handleForceEndOfVisit = () => {
     setError(null);
-    instance
+    activeInstance
       ?.forceEndOfVisit()
       .then((result) => {
         setLastResult(result);
@@ -61,7 +70,7 @@ export default function TraceScreen() {
 
   const handleTrack = () => {
     setError(null);
-    instance
+    activeInstance
       ?.track("trace_demo_event", "event")
       .then((result) => setLastResult(result))
       .catch((e) => setError(String(e)));
@@ -70,13 +79,15 @@ export default function TraceScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Instance</Text>
-      {instance ? (
-        <Text style={styles.instanceKey}>{instance.instanceId}</Text>
+      {activeInstance ? (
+        <Text style={styles.instanceKey}>{activeInstance.instanceId}</Text>
       ) : (
-        <Text style={styles.hint}>Shared instance unavailable.</Text>
+        <Text style={styles.hint}>
+          No active instance. Create one on the Instances screen.
+        </Text>
       )}
 
-      {instance && (
+      {activeInstance && (
         <>
           <Text style={styles.sectionTitle}>Trace</Text>
           <Text style={styles.stateText}>
