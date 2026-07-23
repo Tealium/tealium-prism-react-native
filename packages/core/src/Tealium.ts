@@ -8,15 +8,38 @@ import type {
 } from "./types";
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
+import { Trace } from "./modules/Trace";
+import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
 const instances = new Map<string, Tealium>();
 
 export class Tealium {
   readonly instanceId: string;
+  /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
+  readonly trace: Trace;
   private _isShutdown = false;
 
   private constructor(instanceId: string) {
     this.instanceId = instanceId;
+    this.trace = new Trace(this.createModuleProxy());
+  }
+
+  /**
+   * Builds the {@link ModuleProxy} handed to each sub-module. The `withNative`
+   * arrow closes over `this`, so {@link getNativeModule} reads the live
+   * `_isShutdown` at call time — a module call after {@link shutdown} still
+   * rejects with `INSTANCE_SHUT_DOWN`. Shutdown state stays owned solely by
+   * this class; the proxy never snapshots it.
+   */
+  private createModuleProxy(): ModuleProxy {
+    return {
+      instanceId: this.instanceId,
+      withNative: <T>(
+        action: (native: NativeModule) => Promise<T>
+      ): Promise<T> => this.withNative(action),
+      parseTrackResult: (resultJson, context) =>
+        this.parseTrackResult(resultJson, context),
+    };
   }
 
   /**
@@ -108,33 +131,6 @@ export class Tealium {
         .track(this.instanceId, name, type, dataJson)
         .then((resultJson) =>
           this.parseTrackResult(resultJson, "Tealium.track")
-        )
-    );
-  }
-
-  /**
-   * Joins a trace for the given id. The trace id is added to every subsequent
-   * dispatch until {@link leaveTrace} is called or the session expires.
-   */
-  joinTrace(id: string): Promise<void> {
-    return this.withNative((native) => native.joinTrace(this.instanceId, id));
-  }
-
-  /** Leaves the current trace, if one has been joined. */
-  leaveTrace(): Promise<void> {
-    return this.withNative((native) => native.leaveTrace(this.instanceId));
-  }
-
-  /**
-   * Forces the end of the current visit. Dispatches a kill-session event and
-   * resolves with its {@link TrackResult}. Rejects if no trace is joined.
-   */
-  forceEndOfVisit(): Promise<TrackResult> {
-    return this.withNative((native) =>
-      native
-        .forceEndOfVisit(this.instanceId)
-        .then((resultJson) =>
-          this.parseTrackResult(resultJson, "Tealium.forceEndOfVisit")
         )
     );
   }
