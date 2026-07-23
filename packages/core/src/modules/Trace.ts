@@ -1,5 +1,6 @@
 import type { ModuleProxy } from "./ModuleProxy";
 import type { TrackResult } from "../types";
+import { parseTrackResult } from "../serialization";
 
 /**
  * Trace controls: join a trace, leave it, or force the end of the current
@@ -36,10 +37,7 @@ export class Trace {
       native
         .forceEndOfVisit(this.proxy.instanceId)
         .then((resultJson) =>
-          this.proxy.parseTrackResult(
-            resultJson,
-            "Tealium.trace.forceEndOfVisit"
-          )
+          parseTrackResult(resultJson, "Tealium.trace.forceEndOfVisit")
         )
     );
   }

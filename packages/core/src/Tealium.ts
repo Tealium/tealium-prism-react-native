@@ -1,5 +1,5 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
-import { serialize } from "./serialization";
+import { parseTrackResult, serialize } from "./serialization";
 import type {
   DispatchType,
   JsonValueObject,
@@ -37,8 +37,6 @@ export class Tealium {
       withNative: <T>(
         action: (native: NativeModule) => Promise<T>
       ): Promise<T> => this.withNative(action),
-      parseTrackResult: (resultJson, context) =>
-        this.parseTrackResult(resultJson, context),
     };
   }
 
@@ -71,19 +69,6 @@ export class Tealium {
       return action(this.getNativeModule());
     } catch (error) {
       return Promise.reject(error);
-    }
-  }
-
-  /**
-   * Parses a {@link TrackResult} JSON string returned by a native method,
-   * throwing a {@link ErrorCode.DATA_PARSE_ERROR} tagged with {@link context}
-   * if it is not valid JSON.
-   */
-  private parseTrackResult(resultJson: string, context: string): TrackResult {
-    try {
-      return JSON.parse(resultJson) as TrackResult;
-    } catch {
-      throw tealiumError(ErrorCode.DATA_PARSE_ERROR, context, resultJson);
     }
   }
 
@@ -129,9 +114,7 @@ export class Tealium {
     return this.withNative((native) =>
       native
         .track(this.instanceId, name, type, dataJson)
-        .then((resultJson) =>
-          this.parseTrackResult(resultJson, "Tealium.track")
-        )
+        .then((resultJson) => parseTrackResult(resultJson, "Tealium.track"))
     );
   }
 
