@@ -2,7 +2,6 @@ const path = require("path");
 const pkg = require("../packages/core/package.json");
 const extensionsPkg = require("../packages/extensions/package.json");
 const jsTransformerPkg = require("../packages/js-transformer/package.json");
-const jsTransformerRhinoPkg = require("../packages/js-transformer-rhino/package.json");
 const lifecyclePkg = require("../packages/lifecycle/package.json");
 
 module.exports = {
@@ -32,13 +31,6 @@ module.exports = {
       root: path.join(__dirname, "../packages/js-transformer"),
       platforms: {
         ios: {},
-        android: {},
-      },
-    },
-    [jsTransformerRhinoPkg.name]: {
-      root: path.join(__dirname, "../packages/js-transformer-rhino"),
-      platforms: {
-        // Android-only: iOS uses the OS-provided JavaScriptCore engine.
         android: {},
       },
     },

@@ -15,7 +15,8 @@ Pod::Spec.new do |s|
 
   # No wrapper source of its own: the JavaScriptTransformer subspec (backed by
   # the OS-provided JavaScriptCore) ships an ObjC `+load` loader that registers
-  # the transformer factory with every Tealium instance at launch. On iOS there
-  # is no separate JS engine dependency to add — unlike Android's Rhino package.
+  # the transformer factory with every Tealium instance at launch. On iOS the JS
+  # engine is provided by the OS, so there is no separate engine dependency to
+  # add; on Android the Rhino engine is bundled via the Gradle dependency.
   s.dependency "tealium-prism/JavaScriptTransformer", "~> 0.5"
 end

@@ -41,8 +41,11 @@ android {
 
 dependencies {
   implementation "com.facebook.react:react-android"
-  // Base JavaScript transformer. It defines the transformer but ships no JS
-  // engine, so an engine artifact (Rhino) must also be present to run scripts
-  // on Android — provided by @tealium/prism-react-native-js-transformer-rhino.
-  implementation "com.tealium.prism:prism-js-transformer:0.1.0"
+  // Rhino build of the JavaScript transformer. The base transformer ships no JS
+  // engine and registers nothing on its own, so on Android we depend on the
+  // Rhino variant, which transitively pulls the base transformer plus the Rhino
+  // engine and registers the transformer factory via its AndroidManifest
+  // ComponentDiscoveryService entry. This mirrors iOS (JavaScriptCore) so the
+  // single package works on both platforms with no extra install.
+  implementation "com.tealium.prism:prism-js-transformer-rhino:0.1.0"
 }

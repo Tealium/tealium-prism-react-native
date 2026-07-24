@@ -1,7 +1,7 @@
 {
   "name": "@tealium/prism-react-native-js-transformer",
   "version": "0.1.0",
-  "description": "Tealium Prism JavaScript transformer for React Native (iOS uses JavaScriptCore; Android requires @tealium/prism-react-native-js-transformer-rhino)",
+  "description": "Tealium Prism JavaScript transformer for React Native (iOS and Android)",
   "files": [
     "android",
     "*.podspec",

@@ -2534,7 +2534,6 @@ __metadata:
     "@tealium/prism-react-native": "workspace:*"
     "@tealium/prism-react-native-extensions": "workspace:*"
     "@tealium/prism-react-native-js-transformer": "workspace:*"
-    "@tealium/prism-react-native-js-transformer-rhino": "workspace:*"
     "@tealium/prism-react-native-lifecycle": "workspace:*"
     "@types/react": "npm:^19.2.0"
     react: "npm:19.2.3"
@@ -2551,18 +2550,6 @@ __metadata:
     del-cli: "npm:^7.0.0"
   peerDependencies:
     "@tealium/prism-react-native": "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
-"@tealium/prism-react-native-js-transformer-rhino@workspace:*, @tealium/prism-react-native-js-transformer-rhino@workspace:packages/js-transformer-rhino":
-  version: 0.0.0-use.local
-  resolution: "@tealium/prism-react-native-js-transformer-rhino@workspace:packages/js-transformer-rhino"
-  dependencies:
-    del-cli: "npm:^7.0.0"
-  peerDependencies:
-    "@tealium/prism-react-native": "*"
-    "@tealium/prism-react-native-js-transformer": "*"
     react-native: "*"
   languageName: unknown
   linkType: soft
