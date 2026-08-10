@@ -1,5 +1,5 @@
 import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
-import { serialize } from "./serialization";
+import { parseTrackResult, serialize } from "./serialization";
 import type {
   DispatchType,
   JsonValueObject,
@@ -8,15 +8,68 @@ import type {
 } from "./types";
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
+import { Trace } from "./modules/Trace";
+import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
 const instances = new Map<string, Tealium>();
 
 export class Tealium {
   readonly instanceId: string;
+  /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
+  readonly trace: Trace;
   private _isShutdown = false;
 
   private constructor(instanceId: string) {
     this.instanceId = instanceId;
+    this.trace = new Trace(this.createModuleProxy());
+  }
+
+  /**
+   * Builds the {@link ModuleProxy} handed to each sub-module. The `withNative`
+   * arrow closes over `this`, so {@link getNativeModule} reads the live
+   * `_isShutdown` at call time — a module call after {@link shutdown} still
+   * rejects with `INSTANCE_SHUT_DOWN`. Shutdown state stays owned solely by
+   * this class; the proxy never snapshots it.
+   */
+  private createModuleProxy(): ModuleProxy {
+    return {
+      instanceId: this.instanceId,
+      withNative: <T>(
+        action: (native: NativeModule) => Promise<T>
+      ): Promise<T> => this.withNative(action),
+    };
+  }
+
+  /**
+   * Returns the native module, throwing if this instance was shut down or the
+   * module failed to register. Callers should use {@link withNative} so the
+   * throw is converted to a rejected Promise.
+   */
+  private getNativeModule(): NonNullable<typeof NativeTealiumPrismReactNative> {
+    if (this._isShutdown) {
+      throw tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId);
+    }
+    if (!NativeTealiumPrismReactNative) {
+      throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
+    }
+    return NativeTealiumPrismReactNative;
+  }
+
+  /**
+   * Runs an action against the native module, so each method only handles the
+   * happy path. The synchronous throw from {@link getNativeModule} is turned
+   * into a rejected Promise; a Promise the action returns passes through as-is.
+   */
+  private withNative<T>(
+    action: (
+      native: NonNullable<typeof NativeTealiumPrismReactNative>
+    ) => Promise<T>
+  ): Promise<T> {
+    try {
+      return action(this.getNativeModule());
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   static create(
@@ -56,35 +109,13 @@ export class Tealium {
     type: DispatchType = "event",
     data?: JsonValueObject
   ): Promise<TrackResult> {
-    if (this._isShutdown) {
-      return Promise.reject(
-        tealiumError(ErrorCode.INSTANCE_SHUT_DOWN, this.instanceId)
-      );
-    }
-    if (!NativeTealiumPrismReactNative) {
-      return Promise.reject(
-        tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED)
-      );
-    }
-
     const dataJson = data !== undefined ? serialize(data) : null;
 
-    return NativeTealiumPrismReactNative.track(
-      this.instanceId,
-      name,
-      type,
-      dataJson
-    ).then((resultJson) => {
-      try {
-        return JSON.parse(resultJson) as TrackResult;
-      } catch {
-        throw tealiumError(
-          ErrorCode.DATA_PARSE_ERROR,
-          "Tealium.track",
-          resultJson
-        );
-      }
-    });
+    return this.withNative((native) =>
+      native
+        .track(this.instanceId, name, type, dataJson)
+        .then((resultJson) => parseTrackResult(resultJson, "Tealium.track"))
+    );
   }
 
   shutdown(): Promise<void> {

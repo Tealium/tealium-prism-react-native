@@ -16,6 +16,9 @@ export interface Spec extends TurboModule {
     dataJson: string | null
   ): Promise<string>;
   shutdown(instanceId: string): Promise<void>;
+  joinTrace(instanceId: string, id: string): Promise<void>;
+  leaveTrace(instanceId: string): Promise<void>;
+  forceEndOfVisit(instanceId: string): Promise<string>;
 }
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)

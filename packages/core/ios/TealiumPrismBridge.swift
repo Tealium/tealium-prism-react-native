@@ -39,10 +39,21 @@ public final class TealiumPrismBridge: NSObject {
             }
         }
 
+        // Enable the Trace module with default (non-nil) enforced settings. The registry's default
+        // registration uses the nil variant, which only instantiates Trace when local/remote
+        // settings exist; passing it here makes the module available so the RN-driven join/leave/
+        // forceEndOfVisit calls work out of the box. Trace stays inert until join() is called.
+        //
+        // TODO(next PR): This force-adds Trace for every consumer, unlike the native SDKs where the
+        //   app developer opts in via config modules or settings JSON (see the Kotlin/Swift example
+        //   apps). Once the wrapper exposes a JS config surface (module registration + per-module
+        //   settings such as Trace.setTrackErrors, and settingsFile/settingsUrl), remove this
+        //   hardcoded module and let the consumer enable/configure Trace themselves.
         let config = TealiumConfig(
             account: account,
             profile: profile,
             environment: environment,
+            modules: [Modules.trace()],
             forcingSettings: forcingSettingsBlock
         )
 
@@ -76,6 +87,45 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
+    /// Joins the trace `id` on the instance, adding the id to every subsequent dispatch until
+    /// `leaveTrace` is called or the session expires. Trace.join emits `Void`; the payload-less
+    /// result is converted to `DataItem.null` so the promise completes with a JSON `null`.
+    @objc public static func joinTrace(
+        instanceId: String,
+        id: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.trace.join(id: id).subscribe(completion) { _ in DataItem.null }
+        }
+    }
+
+    /// Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
+    /// emits `Void`; the payload-less result is converted to `DataItem.null` so the promise
+    /// completes with a JSON `null`.
+    @objc public static func leaveTrace(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.trace.leave().subscribe(completion) { _ in DataItem.null }
+        }
+    }
+
+    /// Forces the end of the current visit, dispatching a kill-session event. Completes with the
+    /// JSON `TrackResult` of that dispatch (via `trackResultAsDataItem`) and fails natively when
+    /// no trace is joined.
+    @objc public static func forceEndOfVisit(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.trace.forceEndOfVisit().subscribe(completion, converter: trackResultAsDataItem)
+        }
+    }
+
+    /// Converts a `TrackResult` into the JSON-serializable `DataItem` shape shared with `track`:
+    /// `status` (accepted/dropped), `info`, and the dispatch `payload`.
     private static func trackResultAsDataItem(_ result: TrackResult) -> DataItem {
         let payload: DataObject = [
             "status": result.status == .accepted ? "accepted" : "dropped",

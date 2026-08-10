@@ -3,10 +3,20 @@ import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./BridgeTestScreen";
 import InstancesScreen from "./InstancesScreen";
+import TraceScreen from "./TraceScreen";
+import { TealiumProvider } from "./TealiumProvider";
 
-type Screen = "home" | "bridgeTests" | "instances";
+type Screen = "home" | "bridgeTests" | "instances" | "trace";
 
 export default function App() {
+  return (
+    <TealiumProvider>
+      <AppContent />
+    </TealiumProvider>
+  );
+}
+
+function AppContent() {
   const [version, setVersion] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>("home");
 
@@ -48,6 +58,20 @@ export default function App() {
     );
   }
 
+  if (screen === "trace") {
+    return (
+      <View style={styles.flex}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => setScreen("home")}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <TraceScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tealium Prism</Text>
@@ -59,6 +83,12 @@ export default function App() {
         onPress={() => setScreen("instances")}
       >
         <Text style={styles.buttonText}>Instances</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setScreen("trace")}
+      >
+        <Text style={styles.buttonText}>Trace</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
