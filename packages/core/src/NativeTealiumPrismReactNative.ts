@@ -19,6 +19,8 @@ export interface Spec extends TurboModule {
   joinTrace(instanceId: string, id: string): Promise<void>;
   leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
+  resetVisitorId(instanceId: string): Promise<string>;
+  clearStoredVisitorIds(instanceId: string): Promise<string>;
 }
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)

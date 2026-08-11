@@ -124,6 +124,29 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
+    /// Resets the anonymous visitor id, completing with the new id. Visitor id is a core capability
+    /// (flat on the instance, always available), so no module registration is needed. The id is a
+    /// raw String, completed directly (not JSON-encoded).
+    @objc public static func resetVisitorId(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.resetVisitorId().subscribe(completion)
+        }
+    }
+
+    /// Clears the stored history of identity-linked ids and regenerates the anonymous visitor id,
+    /// completing with the new id (raw String).
+    @objc public static func clearStoredVisitorIds(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.clearStoredVisitorIds().subscribe(completion)
+        }
+    }
+
     /// Converts a `TrackResult` into the JSON-serializable `DataItem` shape shared with `track`:
     /// `status` (accepted/dropped), `info`, and the dispatch `payload`.
     private static func trackResultAsDataItem(_ result: TrackResult) -> DataItem {

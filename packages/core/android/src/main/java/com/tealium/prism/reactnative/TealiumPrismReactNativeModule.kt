@@ -146,6 +146,27 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             put("payload", result.dispatch.payload())
         }.asDataItem()
 
+    /**
+     * Resets the anonymous visitor id, resolving with the new id. Visitor id is a core capability
+     * (flat on the instance, always available), so no module registration is needed. The id is a
+     * raw String, resolved directly via [subscribeString] (not JSON-encoded).
+     */
+    override fun resetVisitorId(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.resetVisitorId().subscribeString(promise)
+        }
+    }
+
+    /**
+     * Clears the stored history of identity-linked ids and regenerates the anonymous visitor id,
+     * resolving with the new id (raw String, via [subscribeString]).
+     */
+    override fun clearStoredVisitorIds(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.clearStoredVisitorIds().subscribeString(promise)
+        }
+    }
+
     override fun shutdown(instanceId: String, promise: Promise) {
         Tealium.shutdown(instanceId)
         promise.resolve(null)

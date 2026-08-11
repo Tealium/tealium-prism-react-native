@@ -1,15 +1,18 @@
 import { getSdkVersion, _echoJsonValue, Tealium, ErrorCode } from "../index";
 import { Trace } from "../modules/Trace";
+import { VisitorId } from "../modules/VisitorId";
 
 // Builds a Tealium mock without running the (native-touching) constructor, then
-// wires a real Trace exactly as the constructor would. This keeps trace.* driven
-// by the same withNative/_isShutdown guard as track(), so the guard-contract
-// table below exercises the genuine shutdown-aware path, not a test-local fake.
+// wires real modules exactly as the constructor would. This keeps trace.* and
+// visitorId.* driven by the same withNative/_isShutdown guard as track(), so the
+// guard-contract table below exercises the genuine shutdown-aware path, not a
+// test-local fake.
 function makeMockTealium(isShutdown: boolean): Tealium {
   const mock = Object.create(Tealium.prototype);
   mock.instanceId = "test-instance";
   mock._isShutdown = isShutdown; // Set before creating the proxy.
   mock.trace = new Trace(mock.createModuleProxy());
+  mock.visitorId = new VisitorId(mock.createModuleProxy());
   return mock as Tealium;
 }
 
@@ -69,15 +72,18 @@ describe("Tealium", () => {
     });
   });
 
-  // track and the trace API (trace.join / trace.leave / trace.forceEndOfVisit)
-  // share the same guard contract: reject with INSTANCE_SHUT_DOWN when shut down
-  // and NATIVE_MODULE_NOT_REGISTERED when the native binding is missing.
+  // track, the trace API (trace.join / trace.leave / trace.forceEndOfVisit), and
+  // the visitor-id API (visitorId.reset / visitorId.clearStored) share the same
+  // guard contract: reject with INSTANCE_SHUT_DOWN when shut down and
+  // NATIVE_MODULE_NOT_REGISTERED when the native binding is missing.
   // End-to-end behavior is verified in native tests and the example app.
   const tealiumMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
     ["track", (i) => i.track("event_name")],
     ["trace.join", (i) => i.trace.join("trace-123")],
     ["trace.leave", (i) => i.trace.leave()],
     ["trace.forceEndOfVisit", (i) => i.trace.forceEndOfVisit()],
+    ["visitorId.reset", (i) => i.visitorId.reset()],
+    ["visitorId.clearStored", (i) => i.visitorId.clearStored()],
   ];
 
   describe.each(tealiumMethods)("%s", (_name, call) => {

@@ -17,6 +17,7 @@ export type {
 export { Environment } from "./types";
 export { Tealium } from "./Tealium";
 export type { Trace } from "./modules/Trace";
+export type { VisitorId } from "./modules/VisitorId";
 
 /**
  * Returns the linked Prism SDK version for the current platform.
