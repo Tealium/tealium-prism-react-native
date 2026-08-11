@@ -9,6 +9,7 @@ import type {
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
 import { Trace } from "./modules/Trace";
+import { VisitorId } from "./modules/VisitorId";
 import { DataLayer } from "./modules/DataLayer";
 import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
@@ -38,6 +39,9 @@ export class Tealium {
   readonly instanceId: string;
   /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
   readonly trace: Trace;
+  /** Visitor id controls, mirroring the native Prism core visitor-id API. */
+  readonly visitorId: VisitorId;
+
   /** DataLayer facade, mirroring the native Prism `DataLayer` module. */
   readonly dataLayer: DataLayer;
   private _isShutdown = false;
@@ -45,6 +49,7 @@ export class Tealium {
   private constructor(instanceId: string) {
     this.instanceId = instanceId;
     this.trace = new Trace(this.createModuleProxy());
+    this.visitorId = new VisitorId(this.createModuleProxy());
     this.dataLayer = new DataLayer(this.createModuleProxy());
   }
 

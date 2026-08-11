@@ -40,6 +40,8 @@ export interface Spec extends TurboModule {
   /** Leaves the current trace, if any. */
   leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
+  resetVisitorId(instanceId: string): Promise<string>;
+  clearStoredVisitorIds(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
    * expiry: `-1` forever, `-2` session, `-3` untilRestart, otherwise a Unix
