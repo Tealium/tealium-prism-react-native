@@ -1,8 +1,9 @@
-// Verifies that Tealium.create maps its optional config options onto the
-// native create() call. The bridge spec takes flat, nullable primitives, so
-// each option is coalesced to its value or null at the boundary (mirroring the
-// existing logLevel handling). Native SDK behavior for those settings sources
-// is covered by the underlying Prism SDKs, not here.
+// Verifies that Tealium.create maps its optional settings arguments onto the
+// native create() call. The JS API and the native spec share the same argument
+// order (settingsFile, settingsUrl, logLevel); the bridge spec takes flat,
+// nullable primitives, so each argument is coalesced to its value or null at
+// the boundary. Native SDK behavior for those settings sources is covered by
+// the underlying Prism SDKs, not here.
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
@@ -19,17 +20,17 @@ import { Tealium } from "../index";
 
 const nativeCreate = NativeTealiumPrismReactNative!.create;
 
-describe("Tealium.create options", () => {
+describe("Tealium.create settings arguments", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("passes null for every settings source when options is omitted", () => {
-    Tealium.create("acct", "no-options", "dev");
+  it("passes null for every settings source when no arguments are provided", () => {
+    Tealium.create("acct", "no-args", "dev");
 
     expect(nativeCreate).toHaveBeenCalledWith(
       "acct",
-      "no-options",
+      "no-args",
       "dev",
       null,
       null,
@@ -37,35 +38,42 @@ describe("Tealium.create options", () => {
     );
   });
 
-  it("forwards logLevel, settingsFile, and settingsUrl when provided", () => {
-    Tealium.create("acct", "all-options", "dev", {
-      logLevel: "debug",
-      settingsFile: "tealium-settings.json",
-      settingsUrl: "https://cdn.example.com/mobile.settings.json",
-    });
+  it("forwards settingsFile, settingsUrl, and logLevel when provided", () => {
+    Tealium.create(
+      "acct",
+      "all-args",
+      "dev",
+      "tealium-settings.json",
+      "https://cdn.example.com/mobile.settings.json",
+      "debug"
+    );
 
     expect(nativeCreate).toHaveBeenCalledWith(
       "acct",
-      "all-options",
+      "all-args",
       "dev",
-      "debug",
       "tealium-settings.json",
-      "https://cdn.example.com/mobile.settings.json"
+      "https://cdn.example.com/mobile.settings.json",
+      "debug"
     );
   });
 
-  it("coalesces only the omitted options to null", () => {
-    Tealium.create("acct", "partial-options", "dev", {
-      settingsUrl: "https://cdn.example.com/mobile.settings.json",
-    });
+  it("coalesces only the omitted arguments to null", () => {
+    Tealium.create(
+      "acct",
+      "partial-args",
+      "dev",
+      undefined,
+      "https://cdn.example.com/mobile.settings.json"
+    );
 
     expect(nativeCreate).toHaveBeenCalledWith(
       "acct",
-      "partial-options",
+      "partial-args",
       "dev",
       null,
-      null,
-      "https://cdn.example.com/mobile.settings.json"
+      "https://cdn.example.com/mobile.settings.json",
+      null
     );
   });
 });

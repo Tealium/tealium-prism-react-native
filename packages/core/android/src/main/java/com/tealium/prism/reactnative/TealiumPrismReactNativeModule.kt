@@ -36,11 +36,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?,
         settingsFile: String?,
-        settingsUrl: String?
+        settingsUrl: String?,
+        logLevel: String?
     ): String {
-        val config = buildConfig(account, profile, environment, logLevel, settingsFile, settingsUrl)
+        val config = buildConfig(account, profile, environment, settingsFile, settingsUrl, logLevel)
         // The SDK returns the existing instance (and logs a warning) for a duplicate key.
         return Tealium.create(config).key
     }
@@ -49,9 +49,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?,
         settingsFile: String?,
-        settingsUrl: String?
+        settingsUrl: String?,
+        logLevel: String?
     ): TealiumConfig {
         val application = reactApplicationContext.applicationContext as Application
         val configBuilder = TealiumConfig.Builder(

@@ -31,9 +31,9 @@ public final class TealiumPrismBridge: NSObject {
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?,
         settingsFile: String?,
-        settingsUrl: String?
+        settingsUrl: String?,
+        logLevel: String?
     ) -> String {
         let forcingSettingsBlock: ((CoreSettingsBuilder) -> CoreSettingsBuilder)? = logLevel.flatMap { level in
             LogLevel.Minimum(from: level).map { minLevel in
