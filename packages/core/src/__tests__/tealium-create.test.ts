@@ -76,4 +76,30 @@ describe("Tealium.create settings arguments", () => {
       null
     );
   });
+
+  it("returns the cached instance and ignores options on a duplicate key", () => {
+    const first = Tealium.create(
+      "acct",
+      "dup",
+      "dev",
+      undefined,
+      undefined,
+      "debug"
+    );
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const second = Tealium.create(
+      "acct",
+      "dup",
+      "dev",
+      undefined,
+      "https://cdn.example.com/mobile.settings.json",
+      undefined
+    );
+
+    expect(second).toBe(first);
+    expect(nativeCreate).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });

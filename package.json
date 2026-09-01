@@ -12,6 +12,7 @@
     "test": "yarn workspace @tealium/prism-react-native test",
     "typecheck": "yarn workspaces foreach --all run typecheck",
     "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" && yarn typecheck",
+    "fix": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" --fix",
     "prepare": "husky"
   },
   "devDependencies": {
