@@ -36,11 +36,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?,
         settingsFile: String?,
-        settingsUrl: String?
+        settingsUrl: String?,
+        logLevel: String?
     ): String {
-        val config = buildConfig(account, profile, environment, logLevel, settingsFile, settingsUrl)
+        val config = buildConfig(account, profile, environment, settingsFile, settingsUrl, logLevel)
         // The SDK returns the existing instance (and logs a warning) for a duplicate key.
         return Tealium.create(config).key
     }
@@ -49,9 +49,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         account: String,
         profile: String,
         environment: String,
-        logLevel: String?,
         settingsFile: String?,
-        settingsUrl: String?
+        settingsUrl: String?,
+        logLevel: String?
     ): TealiumConfig {
         val application = reactApplicationContext.applicationContext as Application
         val configBuilder = TealiumConfig.Builder(
@@ -69,18 +69,6 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 settings.setLogLevel(parsedLevel)
             }
         }
-
-        // Enable the Trace module with default (non-null) enforced settings. The registry's default
-        // registration uses the null variant, which only instantiates Trace when local/remote
-        // settings exist; adding it here makes the module available so the RN-driven join/leave/
-        // forceEndOfVisit calls work out of the box. Trace stays inert until join() is called.
-        //
-        // TODO(next PR): This force-adds Trace for every consumer, unlike the native SDKs where the
-        //  app developer opts in via config modules or settings JSON (see the Kotlin/Swift example
-        //  apps). Once the wrapper exposes a JS config surface (module registration + per-module
-        //  settings such as Trace.setTrackErrors, and settingsFile/settingsUrl), remove this
-        //  hardcoded add and let the consumer enable/configure Trace themselves.
-        configBuilder.addModule(Modules.trace())
 
         // Local (asset) and remote settings sources. Precedence is enforced by the
         // SDK: local < remote < programmatic. Omitted sources stay unconfigured.

@@ -7,9 +7,9 @@ export interface Spec extends TurboModule {
     account: string,
     profile: string,
     environment: string,
-    logLevel: string | null,
     settingsFile: string | null,
-    settingsUrl: string | null
+    settingsUrl: string | null,
+    logLevel: string | null
   ): string;
   track(
     instanceId: string,

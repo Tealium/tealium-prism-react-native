@@ -3,7 +3,7 @@ import { parseTrackResult, serialize } from "./serialization";
 import type {
   DispatchType,
   JsonValueObject,
-  TealiumConfigOptions,
+  LogLevel,
   TrackResult,
 } from "./types";
 import { ErrorCode } from "./ErrorCode";
@@ -72,11 +72,37 @@ export class Tealium {
     }
   }
 
+  /**
+   * Creates (or reuses) a Tealium instance for the given account/profile.
+   *
+   * The optional settings arguments mirror the sources on the native
+   * `TealiumConfig`; an omitted argument leaves that source unconfigured on the
+   * native SDK. Settings precedence on both platforms is
+   * `local < remote < programmatic`, so a key in `settingsUrl` (remote)
+   * overrides the same key in `settingsFile` (local), and `logLevel`
+   * (programmatic) overrides both.
+   *
+   * @param account Tealium account identifier.
+   * @param profile Tealium profile identifier.
+   * @param environment Environment name (e.g. `dev`, `qa`, `prod`).
+   * @param settingsFile Name of a JSON settings file bundled with the app,
+   *   providing local (lowest-priority) settings. On iOS this is a resource
+   *   name in the app's main bundle (the `.json` extension is optional); on
+   *   Android it is a file name in the `assets/` directory. If the file is
+   *   missing or invalid, the native SDK skips local settings silently.
+   * @param settingsUrl Full URL of a remote JSON settings resource. When set,
+   *   the native SDK fetches and caches remote (middle-priority) settings and
+   *   refreshes them per the configured interval. When omitted, no remote
+   *   settings are fetched.
+   * @param logLevel Log verbosity for the native Prism SDK.
+   */
   static create(
     account: string,
     profile: string,
     environment: string,
-    options?: TealiumConfigOptions
+    settingsFile?: string,
+    settingsUrl?: string,
+    logLevel?: LogLevel
   ): Tealium {
     if (!NativeTealiumPrismReactNative) {
       throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
@@ -87,7 +113,7 @@ export class Tealium {
     const cached = instances.get(key);
     if (cached && !cached._isShutdown) {
       console.warn(
-        `[Tealium] Duplicate Tealium instance requested for ${key}. Returning existing instance. Note: environment and options from this call are ignored.`
+        `[Tealium] Duplicate Tealium instance requested for ${key}. Returning existing instance. Note: environment, settingsFile, settingsUrl, and logLevel from this call are ignored.`
       );
       return cached;
     }
@@ -96,9 +122,9 @@ export class Tealium {
       account,
       profile,
       environment,
-      options?.logLevel ?? null,
-      options?.settingsFile ?? null,
-      options?.settingsUrl ?? null
+      settingsFile ?? null,
+      settingsUrl ?? null,
+      logLevel ?? null
     );
 
     const instance = new Tealium(instanceId);
