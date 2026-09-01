@@ -104,7 +104,7 @@ export default function InstancesScreen() {
         account,
         profile,
         environment,
-        undefined,
+        "mobile_settings",
         undefined,
         logLevel ?? undefined,
       );
