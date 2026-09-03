@@ -100,7 +100,14 @@ export default function InstancesScreen() {
   const handleCreate = () => {
     setError(null);
     try {
-      createInstance(account, profile, environment, logLevel ?? undefined);
+      createInstance(
+        account,
+        profile,
+        environment,
+        "mobile_settings.json",
+        undefined,
+        logLevel ?? undefined,
+      );
     } catch (e) {
       setError(String(e));
     }

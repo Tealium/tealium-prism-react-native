@@ -38,11 +38,15 @@
 - (NSString *)create:(NSString *)account
              profile:(NSString *)profile
          environment:(NSString *)environment
+        settingsFile:(NSString * _Nullable)settingsFile
+         settingsUrl:(NSString * _Nullable)settingsUrl
             logLevel:(NSString * _Nullable)logLevel
 {
     return [TealiumPrismBridge createInstanceWithAccount:account
                                                 profile:profile
                                             environment:environment
+                                           settingsFile:settingsFile
+                                            settingsUrl:settingsUrl
                                                logLevel:logLevel];
 }
 

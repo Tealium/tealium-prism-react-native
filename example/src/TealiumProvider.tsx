@@ -29,6 +29,8 @@ type TealiumContextValue = {
     account: string,
     profile: string,
     environment: string,
+    settingsFile?: string,
+    settingsUrl?: string,
     logLevel?: LogLevel,
   ) => void;
   /**
@@ -64,10 +66,19 @@ export function TealiumProvider({ children }: { children: ReactNode }) {
       account: string,
       profile: string,
       environment: string,
+      settingsFile?: string,
+      settingsUrl?: string,
       logLevel?: LogLevel,
     ) => {
       // May throw — Tealium.create is synchronous; let the caller surface it.
-      const instance = Tealium.create(account, profile, environment, logLevel);
+      const instance = Tealium.create(
+        account,
+        profile,
+        environment,
+        settingsFile,
+        settingsUrl,
+        logLevel,
+      );
       const key = instance.instanceId;
 
       setInstances((prev) =>

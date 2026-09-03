@@ -31,6 +31,8 @@ public final class TealiumPrismBridge: NSObject {
         account: String,
         profile: String,
         environment: String,
+        settingsFile: String?,
+        settingsUrl: String?,
         logLevel: String?
     ) -> String {
         let forcingSettingsBlock: ((CoreSettingsBuilder) -> CoreSettingsBuilder)? = logLevel.flatMap { level in
@@ -39,21 +41,12 @@ public final class TealiumPrismBridge: NSObject {
             }
         }
 
-        // Enable the Trace module with default (non-nil) enforced settings. The registry's default
-        // registration uses the nil variant, which only instantiates Trace when local/remote
-        // settings exist; passing it here makes the module available so the RN-driven join/leave/
-        // forceEndOfVisit calls work out of the box. Trace stays inert until join() is called.
-        //
-        // TODO(next PR): This force-adds Trace for every consumer, unlike the native SDKs where the
-        //   app developer opts in via config modules or settings JSON (see the Kotlin/Swift example
-        //   apps). Once the wrapper exposes a JS config surface (module registration + per-module
-        //   settings such as Trace.setTrackErrors, and settingsFile/settingsUrl), remove this
-        //   hardcoded module and let the consumer enable/configure Trace themselves.
         let config = TealiumConfig(
             account: account,
             profile: profile,
             environment: environment,
-            modules: [Modules.trace()],
+            settingsFile: settingsFile,
+            settingsUrl: settingsUrl,
             forcingSettings: forcingSettingsBlock
         )
 
