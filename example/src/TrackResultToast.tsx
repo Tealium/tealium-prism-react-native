@@ -36,12 +36,22 @@ export default function TrackResultToast({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideToast = useCallback(() => {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
+    setShowPayloadModal(false);
     Animated.timing(toastOpacity, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
-      onDismiss();
+    }).start(({ finished }) => {
+      // Only the fade that actually ran to completion clears the result; an
+      // interrupted animation (e.g. a second hideToast) must not fire a
+      // duplicate onDismiss.
+      if (finished) {
+        onDismiss();
+      }
     });
   }, [toastOpacity, onDismiss]);
 
@@ -61,6 +71,11 @@ export default function TrackResultToast({
       toastTimer.current = setTimeout(() => {
         hideToast();
       }, 5000);
+    } else {
+      // Result cleared externally (e.g. active instance changed): make sure a
+      // previously-open payload modal doesn't linger and reopen on the next
+      // result.
+      setShowPayloadModal(false);
     }
 
     return () => {
@@ -136,21 +151,13 @@ export default function TrackResultToast({
         visible={showPayloadModal}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          setShowPayloadModal(false);
-          hideToast();
-        }}
+        onRequestClose={hideToast}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Dispatch Payload</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowPayloadModal(false);
-                  hideToast();
-                }}
-              >
+              <TouchableOpacity onPress={hideToast}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>

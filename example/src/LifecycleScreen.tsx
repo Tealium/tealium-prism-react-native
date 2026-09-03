@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "./TealiumProvider";
+import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
 import TrackResultToast from "./TrackResultToast";
 
 // Lifecycle demo: tracks a "lifecycle_data_test" event on the active app
@@ -18,6 +19,7 @@ export default function LifecycleScreen() {
   const { activeInstance } = useTealium();
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const guard = useActiveInstanceGuard(activeInstance);
 
   // Drop any stale result when the active instance changes or goes away.
   useEffect(() => {
@@ -33,8 +35,8 @@ export default function LifecycleScreen() {
     }
     activeInstance
       .track("lifecycle_data_test", "event")
-      .then((result) => setLastResult(result))
-      .catch((e) => setError(String(e)));
+      .then(guard((result) => setLastResult(result)))
+      .catch(guard((e) => setError(String(e))));
   };
 
   const handleToastDismiss = useCallback(() => setLastResult(null), []);

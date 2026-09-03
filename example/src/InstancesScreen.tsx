@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { type LogLevel, type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "./TealiumProvider";
+import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
 import TrackResultToast from "./TrackResultToast";
 
 const LOG_LEVELS: LogLevel[] = [
@@ -42,6 +43,7 @@ export default function InstancesScreen() {
   const [trackData, setTrackData] = useState("");
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const guard = useActiveInstanceGuard(activeInstance);
 
   const handleToastDismiss = useCallback(() => setLastResult(null), []);
 
@@ -88,10 +90,8 @@ export default function InstancesScreen() {
 
     activeInstance
       .track(trackName, trackType, data)
-      .then((result) => {
-        setLastResult(result);
-      })
-      .catch((e) => setError(String(e)));
+      .then(guard((result) => setLastResult(result)))
+      .catch(guard((e) => setError(String(e))));
   };
 
   return (
