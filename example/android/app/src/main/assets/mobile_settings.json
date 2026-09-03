@@ -15,6 +15,7 @@
       "module_type": "Lifecycle",
       "enabled": true,
       "order": 1,
+      "rules": "lc-data",
       "configuration": {
         "tracked_lifecycle_events": [
           "launch",
@@ -22,7 +23,21 @@
           "sleep"
         ],
         "autotracking_enabled": true,
-        "data_target": "allevents"
+        "data_target": "allEvents"
+      }
+    }
+  },
+  "load_rules": {
+    "lc-data": {
+      "id": "lc-data",
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "lifecycle_data_test"
+        }
       }
     }
   },
