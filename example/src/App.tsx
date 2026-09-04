@@ -4,9 +4,10 @@ import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./BridgeTestScreen";
 import InstancesScreen from "./InstancesScreen";
 import TraceScreen from "./TraceScreen";
+import LifecycleScreen from "./LifecycleScreen";
 import { TealiumProvider } from "./TealiumProvider";
 
-type Screen = "home" | "bridgeTests" | "instances" | "trace";
+type Screen = "home" | "bridgeTests" | "instances" | "trace" | "lifecycle";
 
 export default function App() {
   return (
@@ -72,6 +73,20 @@ function AppContent() {
     );
   }
 
+  if (screen === "lifecycle") {
+    return (
+      <View style={styles.flex}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => setScreen("home")}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <LifecycleScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tealium Prism</Text>
@@ -89,6 +104,12 @@ function AppContent() {
         onPress={() => setScreen("trace")}
       >
         <Text style={styles.buttonText}>Trace</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setScreen("lifecycle")}
+      >
+        <Text style={styles.buttonText}>Lifecycle</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}

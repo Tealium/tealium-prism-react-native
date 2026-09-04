@@ -2532,11 +2532,23 @@ __metadata:
     "@react-native/metro-config": "npm:0.85.0"
     "@react-native/typescript-config": "npm:0.85.0"
     "@tealium/prism-react-native": "workspace:*"
+    "@tealium/prism-react-native-lifecycle": "workspace:*"
     "@types/react": "npm:^19.2.0"
     react: "npm:19.2.3"
     react-native: "npm:0.85.0"
     react-native-builder-bob: "npm:^0.42.1"
     react-native-monorepo-config: "npm:^0.3.3"
+  languageName: unknown
+  linkType: soft
+
+"@tealium/prism-react-native-lifecycle@workspace:*, @tealium/prism-react-native-lifecycle@workspace:packages/lifecycle":
+  version: 0.0.0-use.local
+  resolution: "@tealium/prism-react-native-lifecycle@workspace:packages/lifecycle"
+  dependencies:
+    del-cli: "npm:^7.0.0"
+  peerDependencies:
+    "@tealium/prism-react-native": "*"
+    react-native: "*"
   languageName: unknown
   linkType: soft
 
