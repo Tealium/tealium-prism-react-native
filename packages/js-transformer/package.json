@@ -1,0 +1,48 @@
+{
+  "name": "@tealium/prism-react-native-js-transformer",
+  "version": "0.1.0",
+  "description": "Tealium Prism JavaScript transformer for React Native (iOS and Android)",
+  "files": [
+    "android",
+    "*.podspec",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/.*"
+  ],
+  "scripts": {
+    "clean": "del-cli android/build"
+  },
+  "keywords": [
+    "tealium-prism",
+    "tealium",
+    "prism",
+    "react-native",
+    "javascript-transformer",
+    "ios",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tealium/tealium-prism-react-native.git"
+  },
+  "author": "Tealium Inc. <dev@tealium.com> (https://github.com/Tealium)",
+  "license": "Commercial",
+  "bugs": {
+    "url": "https://github.com/Tealium/tealium-prism-react-native/issues"
+  },
+  "homepage": "https://github.com/Tealium/tealium-prism-react-native#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@tealium/prism-react-native": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "del-cli": "^7.0.0"
+  },
+  "packageManager": "yarn@4.11.0"
+}

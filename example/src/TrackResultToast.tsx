@@ -166,7 +166,7 @@ export default function TrackResultToast({
                 💡 Payload logged to dev console
               </Text>
             </View>
-            <ScrollView style={styles.modalBody}>
+            <ScrollView contentContainerStyle={styles.modalBody}>
               <Text style={styles.payloadText}>
                 {JSON.stringify(result.payload, null, 2)}
               </Text>
