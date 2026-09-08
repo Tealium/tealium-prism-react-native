@@ -53,6 +53,15 @@
             "key": "enabled_modules"
           }
         ]
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "lowercase_modules"
+        }
       }
     },
     "SetDataValues-2": {
@@ -71,6 +80,15 @@
             }
           }
         ]
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "set_copied_event"
+        }
       }
     },
     "PersistDataValue-3": {
@@ -87,6 +105,15 @@
         "destination": {
           "path": "persistent.value"
         }
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "persist_value"
+        }
       }
     },
     "JavaScriptTransformer-4": {
@@ -95,7 +122,16 @@
       "order": 4,
       "scope": "aftercollectors",
       "configuration": {
-        "js_code": "payload.js_result = payload.enabled_modules.reduce((acc, val) => { \nacc = acc + val[0] + 'a' \nreturn acc \n}, '')"
+        "js_code": "payload.js_result = payload.enabled_modules.length + ' modules active'"
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "js_demo_event"
+        }
       }
     }
   }
