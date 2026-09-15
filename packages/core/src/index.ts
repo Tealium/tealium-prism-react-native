@@ -13,10 +13,12 @@ export type {
   DispatchType,
   TrackResult,
   LogLevel,
+  Disposable,
 } from "./types";
 export { Environment } from "./types";
 export { Tealium } from "./Tealium";
 export type { Trace } from "./modules/Trace";
+export type { DataLayer } from "./modules/DataLayer";
 
 /**
  * Returns the linked Prism SDK version for the current platform.

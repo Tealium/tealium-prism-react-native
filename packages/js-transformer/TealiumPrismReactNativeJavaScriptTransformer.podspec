@@ -18,5 +18,5 @@ Pod::Spec.new do |s|
   # the transformer factory with every Tealium instance at launch. On iOS the JS
   # engine is provided by the OS, so there is no separate engine dependency to
   # add; on Android the Rhino engine is bundled via the Gradle dependency.
-  s.dependency "tealium-prism/JavaScriptTransformer", "~> 0.5"
+  s.dependency "tealium-prism/JavaScriptTransformer", "~> 0.6"
 end

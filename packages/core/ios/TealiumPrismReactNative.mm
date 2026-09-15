@@ -80,6 +80,24 @@
     }];
 }
 
+#pragma mark - DataLayer
+
+- (void)dataLayerSubscribeUpdated:(NSString *)instanceId
+                   subscriptionId:(NSString *)subscriptionId
+{
+    __weak __typeof(self) weakSelf = self;
+    [TealiumPrismBridge dataLayerSubscribeUpdatedWithInstanceId:instanceId
+                                                subscriptionId:subscriptionId
+                                                          emit:^(NSDictionary *value) {
+        [weakSelf emitOnDataUpdated:value];
+    }];
+}
+
+- (void)disposeSubscription:(NSString *)subscriptionId
+{
+    [TealiumPrismBridge disposeSubscriptionWithSubscriptionId:subscriptionId];
+}
+
 #pragma mark - Trace
 
 - (void)joinTrace:(NSString *)instanceId

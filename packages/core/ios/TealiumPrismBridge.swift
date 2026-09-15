@@ -4,6 +4,11 @@ import TealiumPrism
 @objc(TealiumPrismBridge)
 public final class TealiumPrismBridge: NSObject {
 
+    /// Lifecycle tracker for DataLayer subscriptions. Thread-safe because the SDK
+    /// delivers `register`/event callbacks on arbitrary Tealium queues while JS
+    /// `unsubscribe`/`shutdown` calls arrive on their own thread.
+    private static let subscriptions = SubscriptionStore()
+
     /// Converts a JSON string inbound through the Prism SDK's DataItem
     /// representation and back out as a JSON string, exercising the full
     /// conversion path without any side effects.
@@ -51,8 +56,9 @@ public final class TealiumPrismBridge: NSObject {
         )
 
         // The SDK reuses the existing instance (and logs a warning) for a duplicate key.
-        let instance = Tealium.create(config: config)
-        instance.strongCapture = instance
+        // TealiumInstanceManager retains the instance until it is shut down, so we hold
+        // no reference of our own.
+        _ = Tealium.create(config: config)
         return config.key
     }
 
@@ -128,14 +134,61 @@ public final class TealiumPrismBridge: NSObject {
         return DataItem(converting: payload)
     }
 
+    /// Subscribes to the instance's `onDataUpdated` stream, tagging each emitted
+    /// delta with `subscriptionId` so JS routes it to a single listener. The
+    /// registration is async: `markPending` records intent, and once the SDK
+    /// hands back a `Disposable` it is stored via `SubscriptionStore.register`
+    /// (or disposed immediately if the subscription was torn down while
+    /// registering). The stream's completion is wired to `teardown` so an
+    /// upstream `onComplete` releases the entry without leaking.
+    ///
+    /// `emit` forwards each event to the module's generated `emitOnDataUpdated:`.
+    @objc public static func dataLayerSubscribeUpdated(
+        instanceId: String,
+        subscriptionId: String,
+        emit: @escaping ([String: Any]) -> Void
+    ) {
+        subscriptions.markPending(subscriptionId: subscriptionId, instanceId: instanceId)
+        TealiumInstanceManager.shared.get(instanceId) { instance in
+            guard let instance else {
+                subscriptions.cancelPending(subscriptionId: subscriptionId, instanceId: instanceId)
+                return
+            }
+            let disposable = instance.dataLayer.onDataUpdated.subscribe(
+                { dataObject in
+                    // DataObject.serialize() is the SDK's public JSON serialization.
+                    guard let payloadJson = try? dataObject.serialize() else { return }
+                    emit([
+                        "subscriptionId": subscriptionId,
+                        "payloadJson": payloadJson
+                    ])
+                },
+                onComplete: {
+                    subscriptions.teardown(subscriptionId: subscriptionId)
+                }
+            )
+            subscriptions.register(
+                subscriptionId: subscriptionId,
+                instanceId: instanceId,
+                disposable: disposable
+            )
+        }
+    }
+
+    /// Tears down the subscription for `subscriptionId`; a no-op if unknown.
+    @objc public static func disposeSubscription(subscriptionId: String) {
+        subscriptions.teardown(subscriptionId: subscriptionId)
+    }
+
     @objc public static func shutdown(
         instanceId: String,
         completion: @escaping () -> Void
     ) {
-        TealiumInstanceManager.shared.get(instanceId) { instance in
-            // Dropping the last strong reference triggers deinit, which shuts the instance down.
-            instance?.strongCapture = nil
-            completion()
-        }
+        // Dispose tracked subscriptions up front so their teardown is deterministic
+        // rather than racing the SDK's asynchronous shutdown `onComplete`, then hand
+        // the instance to the SDK's own lifecycle manager to shut it down.
+        subscriptions.disposeAll(for: instanceId)
+        TealiumInstanceManager.shared.shutdown(instanceId)
+        completion()
     }
 }

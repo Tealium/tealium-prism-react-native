@@ -9,6 +9,7 @@ import type {
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
 import { Trace } from "./modules/Trace";
+import { DataLayer } from "./modules/DataLayer";
 import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
 const instances = new Map<string, Tealium>();
@@ -17,11 +18,14 @@ export class Tealium {
   readonly instanceId: string;
   /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
   readonly trace: Trace;
+  /** DataLayer subscriptions, mirroring the native Prism `DataLayer` module. */
+  readonly dataLayer: DataLayer;
   private _isShutdown = false;
 
   private constructor(instanceId: string) {
     this.instanceId = instanceId;
     this.trace = new Trace(this.createModuleProxy());
+    this.dataLayer = new DataLayer(this.createModuleProxy());
   }
 
   /**
@@ -37,6 +41,7 @@ export class Tealium {
       withNative: <T>(
         action: (native: NativeModule) => Promise<T>
       ): Promise<T> => this.withNative(action),
+      getNative: (): NativeModule => this.getNativeModule(),
     };
   }
 

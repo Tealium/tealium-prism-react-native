@@ -97,10 +97,10 @@
       "order": 3,
       "scope": "aftercollectors",
       "configuration": {
-        "update_policy": "keepfirstvalue",
+        "update_policy": "allowupdate",
         "duration": -1,
         "input": {
-          "value": "persistence is the key"
+          "value": "persisted forever (but can be updated)"
         },
         "destination": {
           "path": "persistent.value"
@@ -131,6 +131,31 @@
         "operator": "equals_ignore_case",
         "filter": {
           "value": "js_demo_event"
+        }
+      }
+    },
+    "PersistDataValue-5": {
+      "transformer_id": "PersistDataValue",
+      "transformation_id": "5",
+      "order": 5,
+      "scope": "aftercollectors",
+      "configuration": {
+        "update_policy": "keepfirstvalue",
+        "duration": 5,
+        "input": {
+          "value": "persisted for 5 seconds"
+        },
+        "destination": {
+          "path": "data_layer_demo.persisted_value"
+        }
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "data_layer_demo_event"
         }
       }
     }

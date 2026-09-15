@@ -6,6 +6,7 @@ import InstancesScreen from "./InstancesScreen";
 import TraceScreen from "./TraceScreen";
 import LifecycleScreen from "./LifecycleScreen";
 import TransformationsScreen from "./TransformationsScreen";
+import DataLayerScreen from "./DataLayerScreen";
 import { TealiumProvider } from "./TealiumProvider";
 
 type Screen =
@@ -14,7 +15,8 @@ type Screen =
   | "instances"
   | "trace"
   | "lifecycle"
-  | "transformations";
+  | "transformations"
+  | "dataLayer";
 
 export default function App() {
   return (
@@ -108,6 +110,20 @@ function AppContent() {
     );
   }
 
+  if (screen === "dataLayer") {
+    return (
+      <View style={styles.flex}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => setScreen("home")}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <DataLayerScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tealium Prism</Text>
@@ -137,6 +153,12 @@ function AppContent() {
         onPress={() => setScreen("transformations")}
       >
         <Text style={styles.buttonText}>Transformations</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setScreen("dataLayer")}
+      >
+        <Text style={styles.buttonText}>Data Layer</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
