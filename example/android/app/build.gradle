@@ -78,6 +78,15 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.tealium.prism.reactnative.example"
+
+    // Single source of truth for the example Prism settings, shared with iOS.
+    // See example/shared/mobile_settings.json.
+    sourceSets {
+        main {
+            assets.srcDirs += ["$rootDir/../shared"]
+        }
+    }
+
     defaultConfig {
         applicationId "com.tealium.prism.reactnative.example"
         minSdkVersion rootProject.ext.minSdkVersion
