@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Text,
   TouchableOpacity,
@@ -6,62 +6,29 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import {
-  type Disposable,
-  type JsonValueObject,
-} from "@tealium/prism-react-native";
 import { useTealium } from "./TealiumProvider";
+import { useDataLayerSubscription } from "./DataLayerSubscriptionProvider";
 
 // DataLayer demo: subscribe to the active instance's `onDataUpdated` stream and
 // show each delta as it arrives. Track an event to induce data-layer changes.
-// The subscription is disposed on unmount and whenever the active instance
-// changes, exercising the wrapper's subscription lifecycle end-to-end.
+// The subscription lives in DataLayerSubscriptionProvider (above the screen
+// tree), one per instance, so it survives leaving and returning to this screen
+// and switching the active instance, and keeps accumulating updates while away;
+// it is disposed only when its instance is shut down or the user unsubscribes.
 export default function DataLayerScreen() {
   const { activeInstance } = useTealium();
-  const [subscribed, setSubscribed] = useState(false);
-  const [updates, setUpdates] = useState<JsonValueObject[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const subscription = useRef<Disposable | null>(null);
-
-  // Dispose and reset when the active instance changes or the screen unmounts,
-  // so a subscription never outlives the instance it belongs to.
-  useEffect(() => {
-    setSubscribed(false);
-    setUpdates([]);
-    setError(null);
-    return () => {
-      subscription.current?.dispose();
-      subscription.current = null;
-    };
-  }, [activeInstance?.instanceId]);
-
-  const handleSubscribe = () => {
-    setError(null);
-    if (!activeInstance || subscription.current) {
-      return;
-    }
-    try {
-      subscription.current = activeInstance.dataLayer.onDataUpdated((data) => {
-        setUpdates((prev) => [data, ...prev]);
-      });
-      setSubscribed(true);
-    } catch (e) {
-      setError(String(e));
-    }
-  };
-
-  const handleUnsubscribe = () => {
-    subscription.current?.dispose();
-    subscription.current = null;
-    setSubscribed(false);
-  };
+  const { subscribed, updates, error, subscribe, unsubscribe } =
+    useDataLayerSubscription();
+  const [trackError, setTrackError] = useState<string | null>(null);
 
   const handleTrack = () => {
-    setError(null);
+    setTrackError(null);
     activeInstance
       ?.track("data_layer_demo_event", "event")
-      .catch((e) => setError(String(e)));
+      .catch((e) => setTrackError(String(e)));
   };
+
+  const displayError = error ?? trackError;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -81,11 +48,11 @@ export default function DataLayerScreen() {
             {subscribed ? "🟢 Subscribed" : "⚪ Not subscribed"}
           </Text>
           {subscribed ? (
-            <TouchableOpacity style={styles.button} onPress={handleUnsubscribe}>
+            <TouchableOpacity style={styles.button} onPress={unsubscribe}>
               <Text style={styles.buttonText}>Unsubscribe</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
+            <TouchableOpacity style={styles.button} onPress={subscribe}>
               <Text style={styles.buttonText}>Subscribe</Text>
             </TouchableOpacity>
           )}
@@ -116,9 +83,9 @@ export default function DataLayerScreen() {
         </>
       )}
 
-      {error && (
+      {displayError && (
         <View style={styles.error}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{displayError}</Text>
         </View>
       )}
     </ScrollView>

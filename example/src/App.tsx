@@ -8,6 +8,7 @@ import LifecycleScreen from "./LifecycleScreen";
 import TransformationsScreen from "./TransformationsScreen";
 import DataLayerScreen from "./DataLayerScreen";
 import { TealiumProvider } from "./TealiumProvider";
+import { DataLayerSubscriptionProvider } from "./DataLayerSubscriptionProvider";
 
 type Screen =
   | "home"
@@ -21,7 +22,9 @@ type Screen =
 export default function App() {
   return (
     <TealiumProvider>
-      <AppContent />
+      <DataLayerSubscriptionProvider>
+        <AppContent />
+      </DataLayerSubscriptionProvider>
     </TealiumProvider>
   );
 }
