@@ -37,7 +37,7 @@ export interface Spec extends TurboModule {
   forceEndOfVisit(instanceId: string): Promise<string>;
 
   // DataLayer subscriptions. Fire-and-forget: JS mints the opaque
-  // `subscriptionId` (see modules/subscriptionRouter), native tags the SDK
+  // `subscriptionId` (see subscriptionRouter), native tags the SDK
   // subscription with it and echoes it back on every emitted event so JS routes
   // each event to exactly one listener.
   dataLayerSubscribeUpdated(instanceId: string, subscriptionId: string): void;

@@ -1,6 +1,6 @@
 import type { CodegenTypes } from "react-native";
-import type { SubscriptionEmission } from "../NativeTealiumPrismReactNative";
-import type { Disposable } from "../types";
+import type { SubscriptionEmission } from "./NativeTealiumPrismReactNative";
+import type { Disposable } from "./types";
 
 type PayloadListener = (payloadJson: string) => void;
 

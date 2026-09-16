@@ -1,6 +1,6 @@
 import type { ModuleProxy } from "./ModuleProxy";
 import type { Disposable, JsonValueObject } from "../types";
-import { subscribe } from "./subscriptionRouter";
+import { subscribe } from "../subscriptionRouter";
 
 /**
  * DataLayer subscriptions. Mirrors the native Prism `DataLayer` module
