@@ -1,15 +1,20 @@
 package com.tealium.prism.reactnative
 
 import com.tealium.prism.core.api.pubsub.Disposable
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Tracks the lifecycle of native DataLayer subscriptions, keyed by the opaque
- * `subscriptionId` JS mints. Every promise-backed and event-backed call can run
- * on an arbitrary Tealium thread, so all state is held in [ConcurrentHashMap]s
- * and every mutation is a single atomic [ConcurrentHashMap.compute]; the
- * [Disposable] is disposed *outside* the compute lambda to avoid re-entering
- * the map from within its own update.
+ * `subscriptionId` JS mints. The Android mirror of the iOS `SubscriptionStore`.
+ *
+ * Every promise-backed and event-backed call can run on an arbitrary Tealium
+ * thread while JS `unsubscribe`/`shutdown` calls arrive on their own thread, so
+ * all state is serialized on a single [lock]: the [states] and [byInstance]
+ * maps only ever mutate together inside the critical section, so a multi-map
+ * operation can never interleave with another (a per-key [java.util.concurrent.ConcurrentHashMap]
+ * would leave a window where `states` holds an entry `byInstance` does not yet,
+ * letting shutdown miss it). Each mutation computes the [Disposable]s to dispose
+ * inside the critical section but calls `dispose()` *outside* it, so a dispose
+ * can never re-enter the lock.
  *
  * The registration path is async: JS asks to subscribe ([markPending]) before
  * the SDK hands back a [Disposable] ([register]). Three orderings must not leak
@@ -30,13 +35,16 @@ internal class SubscriptionStore {
     private data class Active(val instanceId: String, val disposable: Disposable) : State
     private data object Tombstoned : State
 
-    private val states = ConcurrentHashMap<String, State>()
-    private val byInstance = ConcurrentHashMap<String, MutableSet<String>>()
+    private val lock = Any()
+    private val states = HashMap<String, State>()
+    private val byInstance = HashMap<String, MutableSet<String>>()
 
     /** Records intent to subscribe, before the SDK returns a [Disposable]. */
     fun markPending(subscriptionId: String, instanceId: String) {
-        states[subscriptionId] = Pending(instanceId)
-        byInstance.computeIfAbsent(instanceId) { ConcurrentHashMap.newKeySet() }.add(subscriptionId)
+        synchronized(lock) {
+            states[subscriptionId] = Pending(instanceId)
+            byInstance.getOrPut(instanceId) { mutableSetOf() }.add(subscriptionId)
+        }
     }
 
     /**
@@ -45,19 +53,25 @@ internal class SubscriptionStore {
      * [disposable] is disposed immediately and never stored.
      */
     fun register(subscriptionId: String, instanceId: String, disposable: Disposable) {
-        val resolved = states.compute(subscriptionId) { _, current ->
-            if (current is Tombstoned) null else Active(instanceId, disposable)
+        val tombstoned = synchronized(lock) {
+            if (states[subscriptionId] is Tombstoned) {
+                states.remove(subscriptionId)
+                byInstance[instanceId]?.remove(subscriptionId)
+                true
+            } else {
+                states[subscriptionId] = Active(instanceId, disposable)
+                false
+            }
         }
-        if (resolved == null) {
-            disposable.dispose()
-            byInstance[instanceId]?.remove(subscriptionId)
-        }
+        if (tombstoned) disposable.dispose()
     }
 
     /** Drops a still-[Pending] subscription whose instance was not found. */
     fun cancelPending(subscriptionId: String, instanceId: String) {
-        states.remove(subscriptionId)
-        byInstance[instanceId]?.remove(subscriptionId)
+        synchronized(lock) {
+            states.remove(subscriptionId)
+            byInstance[instanceId]?.remove(subscriptionId)
+        }
     }
 
     /**
@@ -66,18 +80,21 @@ internal class SubscriptionStore {
      * the late [Disposable]); Tombstoned/absent → no-op.
      */
     fun teardown(subscriptionId: String) {
-        var doomed: Active? = null
-        states.compute(subscriptionId) { _, current ->
-            when (current) {
-                is Active -> { doomed = current; null }
-                is Pending -> Tombstoned
-                else -> current
+        val doomed = synchronized(lock) {
+            when (val current = states[subscriptionId]) {
+                is Active -> {
+                    states.remove(subscriptionId)
+                    byInstance[current.instanceId]?.remove(subscriptionId)
+                    current.disposable
+                }
+                is Pending -> {
+                    states[subscriptionId] = Tombstoned
+                    null
+                }
+                else -> null
             }
         }
-        doomed?.let {
-            it.disposable.dispose()
-            byInstance[it.instanceId]?.remove(subscriptionId)
-        }
+        doomed?.dispose()
     }
 
     /**
@@ -86,16 +103,20 @@ internal class SubscriptionStore {
      * SDK subscriptions would leak.
      */
     fun disposeAllForInstance(instanceId: String) {
-        val ids = byInstance.remove(instanceId) ?: return
-        val doomed = ArrayList<Disposable>(ids.size)
-        for (id in ids) {
-            states.compute(id) { _, current ->
-                when (current) {
-                    is Active -> { doomed.add(current.disposable); null }
-                    is Pending -> Tombstoned
-                    else -> current
+        val doomed = synchronized(lock) {
+            val ids = byInstance.remove(instanceId) ?: return@synchronized emptyList<Disposable>()
+            val result = ArrayList<Disposable>(ids.size)
+            for (id in ids) {
+                when (val current = states[id]) {
+                    is Active -> {
+                        states.remove(id)
+                        result.add(current.disposable)
+                    }
+                    is Pending -> states[id] = Tombstoned
+                    else -> {}
                 }
             }
+            result
         }
         doomed.forEach { it.dispose() }
     }
