@@ -11,10 +11,16 @@ import { tealiumError } from "./errors";
 import { Trace } from "./modules/Trace";
 import { DataLayer } from "./modules/DataLayer";
 import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
+import { disposeInstanceSubscriptions } from "./subscriptionRouter";
 
 const instances = new Map<string, Tealium>();
 
 export class Tealium {
+  /**
+   * Stable id addressing this instance in every native call. Equal to the
+   * SDK's `TealiumConfig.key`, the string `"{account}-{profile}"`, so it also
+   * matches the key this class caches instances under (see {@link create}).
+   */
   readonly instanceId: string;
   /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
   readonly trace: Trace;
@@ -113,6 +119,10 @@ export class Tealium {
       throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
     }
 
+    // Mirrors the SDK's `TealiumConfig.key`, so this is exactly the id
+    // `native.create` returns (see the spec's `create` doc). Caching under it
+    // lets `shutdown` remove the entry by `instanceId` and matches the SDK's
+    // own dedupe of duplicate account/profile pairs.
     const key = `${account}-${profile}`;
 
     const cached = instances.get(key);
@@ -163,6 +173,9 @@ export class Tealium {
 
     this._isShutdown = true;
     instances.delete(this.instanceId);
+    // Native disposes this instance's SDK subscriptions on shutdown without
+    // echoing a completion back, so purge the router's routing state to match.
+    disposeInstanceSubscriptions(this.instanceId);
 
     return NativeTealiumPrismReactNative.shutdown(this.instanceId);
   }

@@ -30,8 +30,9 @@ async function setup(): Promise<Harness> {
   jest.resetModules();
 
   let capturedHandler: ((event: NativeEvent) => void) | undefined;
+  let nextInstanceNumber = 0;
   const native = {
-    create: jest.fn(() => "inst-1"),
+    create: jest.fn(() => `inst-${++nextInstanceNumber}`),
     shutdown: jest.fn(() => Promise.resolve()),
     dataLayerSubscribeUpdated: jest.fn(),
     disposeSubscription: jest.fn(),
@@ -143,6 +144,51 @@ describe("DataLayer.onDataUpdated", () => {
       emit({ subscriptionId: "sub_999_inst_other", payloadJson: "{}" })
     ).not.toThrow();
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("disposes outstanding handles on shutdown, without a per-subscription native unsubscribe", async () => {
+    const { Tealium, native, emit, lastSubscriptionId } = await setup();
+    const instance = Tealium.create("acct", "prof", "dev");
+
+    const listener = jest.fn();
+    const subscription = instance.dataLayer.onDataUpdated(listener);
+    const subscriptionId = lastSubscriptionId();
+    expect(subscription.isDisposed).toBe(false);
+
+    await instance.shutdown();
+
+    expect(subscription.isDisposed).toBe(true);
+    // Native tears the SDK subscription down as part of shutdown, so the router
+    // must not issue a redundant per-subscription unregister.
+    expect(native.disposeSubscription).not.toHaveBeenCalled();
+
+    // Routing state is purged: a late event for the id no longer reaches JS.
+    emit({ subscriptionId, payloadJson: '{"late":true}' });
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("shutting down one instance leaves another instance's subscription active", async () => {
+    const { Tealium, native, emit } = await setup();
+    const instanceA = Tealium.create("acctA", "prof", "dev");
+    const instanceB = Tealium.create("acctB", "prof", "dev");
+
+    const listenerA = jest.fn();
+    const listenerB = jest.fn();
+    const subscriptionA = instanceA.dataLayer.onDataUpdated(listenerA);
+    const idA = native.dataLayerSubscribeUpdated.mock.calls[0][1] as string;
+    const subscriptionB = instanceB.dataLayer.onDataUpdated(listenerB);
+    const idB = native.dataLayerSubscribeUpdated.mock.calls[1][1] as string;
+
+    await instanceA.shutdown();
+
+    expect(subscriptionA.isDisposed).toBe(true);
+    expect(subscriptionB.isDisposed).toBe(false);
+
+    emit({ subscriptionId: idA, payloadJson: "{}" });
+    emit({ subscriptionId: idB, payloadJson: '{"ok":true}' });
+
+    expect(listenerA).not.toHaveBeenCalled();
+    expect(listenerB).toHaveBeenCalledWith({ ok: true });
   });
 
   it("throws INSTANCE_SHUT_DOWN when subscribing after shutdown", async () => {

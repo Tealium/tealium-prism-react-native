@@ -17,6 +17,15 @@ export type SubscriptionEmission = {
 export interface Spec extends TurboModule {
   getSdkVersion(): Promise<string>;
   echoJsonValue(input: string): Promise<string>;
+  /**
+   * Creates (or reuses) the native Tealium instance and returns its id. The id
+   * is the SDK's `TealiumConfig.key` on both platforms — the string
+   * `"{account}-{profile}"` (e.g. account `"tealium"` + profile `"main"` →
+   * `"tealium-main"`) — so it is stable for a given account/profile pair rather
+   * than an opaque per-call token. It is the handle every other method passes
+   * back to native to address one instance. The SDK reuses (and logs a warning
+   * for) an existing instance when a duplicate key is created.
+   */
   create(
     account: string,
     profile: string,

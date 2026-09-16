@@ -11,6 +11,12 @@ type PayloadListener = (payloadJson: string) => void;
 // listener. Keeping this module-level (not per-instance) means we attach to
 // each native emitter exactly once, not once per subscription.
 const listeners = new Map<string, PayloadListener>();
+// Live (not-yet-disposed) handles grouped by owning instance so
+// `disposeInstanceSubscriptions` can purge them on `Tealium.shutdown()`. Native
+// disposes its own SDK subscriptions on shutdown but echoes no completion back
+// to JS, so without this the `listeners` closures — and everything they
+// capture — would outlive the instance and `isDisposed` would never flip.
+const handlesByInstance = new Map<string, Set<RoutedSubscription>>();
 const attachedEmitters = new WeakSet<
   CodegenTypes.EventEmitter<SubscriptionEmission>
 >();
@@ -46,13 +52,15 @@ function attachEmitterOnce(
 /**
  * One listener's handle. Idempotent: the first {@link dispose} removes the JS
  * listener and unregisters the native subscription (at most once); later calls
- * are no-ops. `isDisposed` flips on the first dispose.
+ * are no-ops. `isDisposed` flips on the first teardown, whether that is a
+ * caller {@link dispose} or a {@link disposeInstanceSubscriptions} on shutdown.
  */
 class RoutedSubscription implements Disposable {
   private _isDisposed = false;
 
   constructor(
     private readonly subscriptionId: string,
+    private readonly instanceId: string,
     private readonly unregister: (subscriptionId: string) => void
   ) {}
 
@@ -61,12 +69,50 @@ class RoutedSubscription implements Disposable {
   }
 
   dispose(): void {
+    if (this.forget()) {
+      this.unregister(this.subscriptionId);
+    }
+  }
+
+  /**
+   * Drops this handle's JS routing state — its `listeners` entry and its slot
+   * in {@link handlesByInstance} — and flips `isDisposed`, at most once.
+   * Returns whether this call performed the teardown (`false` if already
+   * disposed). Deliberately does not touch native: callers that need the native
+   * subscription torn down do that themselves ({@link dispose}), while shutdown
+   * relies on native having already disposed it.
+   */
+  private forget(): boolean {
     if (this._isDisposed) {
-      return;
+      return false;
     }
     this._isDisposed = true;
     listeners.delete(this.subscriptionId);
-    this.unregister(this.subscriptionId);
+    const siblings = handlesByInstance.get(this.instanceId);
+    if (siblings) {
+      siblings.delete(this);
+      if (siblings.size === 0) {
+        handlesByInstance.delete(this.instanceId);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Purges every live handle for `instanceId` without a native unregister:
+   * `Tealium.shutdown()` has already asked native to dispose the instance's SDK
+   * subscriptions, and native sends no completion back, so this only drops the
+   * JS routing state native left dangling (see {@link handlesByInstance}).
+   */
+  static disposeInstance(instanceId: string): void {
+    const handles = handlesByInstance.get(instanceId);
+    if (!handles) {
+      return;
+    }
+    // Copy first: forget() removes each handle from this set as it runs.
+    for (const handle of [...handles]) {
+      handle.forget();
+    }
   }
 }
 
@@ -100,7 +146,31 @@ export function subscribe(params: SubscribeParams): Disposable {
 
   const subscriptionId = `sub_${++nextSubscriptionId}_inst_${instanceId}`;
   listeners.set(subscriptionId, onPayload);
+
+  const subscription = new RoutedSubscription(
+    subscriptionId,
+    instanceId,
+    unregister
+  );
+  const siblings = handlesByInstance.get(instanceId);
+  if (siblings) {
+    siblings.add(subscription);
+  } else {
+    handlesByInstance.set(instanceId, new Set([subscription]));
+  }
+
   register(subscriptionId);
 
-  return new RoutedSubscription(subscriptionId, unregister);
+  return subscription;
+}
+
+/**
+ * Disposes every routed subscription still open for `instanceId`, dropping its
+ * JS routing state and flipping each handle's `isDisposed`. Called from
+ * {@link Tealium.shutdown} so a caller that never disposed its handles does not
+ * leak their listener closures once the instance — and its native subscriptions
+ * — are gone. Idempotent and a no-op for an instance with no open subscriptions.
+ */
+export function disposeInstanceSubscriptions(instanceId: string): void {
+  RoutedSubscription.disposeInstance(instanceId);
 }
