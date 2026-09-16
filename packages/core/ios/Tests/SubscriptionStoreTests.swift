@@ -116,6 +116,30 @@ final class SubscriptionStoreTests: XCTestCase {
         XCTAssertEqual(disposable2.disposeCount, 1)
     }
 
+    func test_disposeAll_without_instance_disposes_every_active_subscription() {
+        let store = SubscriptionStore()
+        let disposableA = FakeDisposable()
+        let disposableB = FakeDisposable()
+        let pendingDisposable = FakeDisposable()
+        store.markPending(subscriptionId: "sA", instanceId: "iA")
+        store.register(subscriptionId: "sA", instanceId: "iA", disposable: disposableA)
+        store.markPending(subscriptionId: "sB", instanceId: "iB")
+        store.register(subscriptionId: "sB", instanceId: "iB", disposable: disposableB)
+        store.markPending(subscriptionId: "sC", instanceId: "iC")
+
+        store.disposeAll()
+
+        XCTAssertEqual(disposableA.disposeCount, 1)
+        XCTAssertEqual(disposableB.disposeCount, 1)
+
+        // The still-pending subscription is tombstoned: a late register disposes the
+        // incoming disposable immediately, matching disposeAll(for:)'s behavior.
+        store.register(subscriptionId: "sC", instanceId: "iC", disposable: pendingDisposable)
+
+        XCTAssertEqual(pendingDisposable.disposeCount, 1)
+        XCTAssertTrue(pendingDisposable.isDisposed)
+    }
+
     func test_teardown_unknownSubscription_isNoOp() {
         let store = SubscriptionStore()
         let disposable = FakeDisposable()

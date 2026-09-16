@@ -127,6 +127,31 @@ class SubscriptionStoreTest {
     }
 
     @Test
+    fun disposeAll_disposesEveryActiveSubscriptionAcrossAllInstances() {
+        val store = SubscriptionStore()
+        val disposableA = FakeDisposable()
+        val disposableB = FakeDisposable()
+        val pendingDisposable = FakeDisposable()
+        store.markPending("sA", "iA")
+        store.register("sA", "iA", disposableA)
+        store.markPending("sB", "iB")
+        store.register("sB", "iB", disposableB)
+        store.markPending("sC", "iC")
+
+        store.disposeAll()
+
+        assertEquals(1, disposableA.disposeCount)
+        assertEquals(1, disposableB.disposeCount)
+
+        // The still-pending subscription is tombstoned: a late register disposes the
+        // incoming disposable immediately, matching disposeAllForInstance's behavior.
+        store.register("sC", "iC", pendingDisposable)
+
+        assertEquals(1, pendingDisposable.disposeCount)
+        assertTrue(pendingDisposable.isDisposed)
+    }
+
+    @Test
     fun teardown_unknownSubscription_isNoOp() {
         val store = SubscriptionStore()
         val disposable = FakeDisposable()

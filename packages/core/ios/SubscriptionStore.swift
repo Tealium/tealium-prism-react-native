@@ -110,4 +110,29 @@ final class SubscriptionStore {
         }
         doomed.forEach { $0.dispose() }
     }
+
+    /// Disposes every tracked subscription across all instances, for JS runtime teardown
+    /// (dev reload, host recreating the React instance). Same atomicity and dispose-outside-
+    /// lock pattern as [`SubscriptionStore.disposeAll(for:)`](doc:SubscriptionStore/disposeAll(for:)),
+    /// widened to every instance instead of one: still-`pending` entries are tombstoned
+    /// (rather than dropped) so a late `register` disposes the incoming `Disposable`.
+    func disposeAll() {
+        let doomed: [any Disposable] = queue.sync {
+            var result: [any Disposable] = []
+            for id in Array(states.keys) {
+                switch states[id] {
+                case .active(_, let disposable):
+                    states.removeValue(forKey: id)
+                    result.append(disposable)
+                case .pending:
+                    states[id] = .tombstoned
+                default:
+                    break
+                }
+            }
+            byInstance.removeAll()
+            return result
+        }
+        doomed.forEach { $0.dispose() }
+    }
 }

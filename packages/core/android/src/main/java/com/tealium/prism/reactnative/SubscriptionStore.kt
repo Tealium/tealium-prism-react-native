@@ -120,4 +120,30 @@ internal class SubscriptionStore {
         }
         doomed.forEach { it.dispose() }
     }
+
+    /**
+     * Disposes every tracked subscription across all instances, for JS runtime teardown
+     * (dev reload, host recreating the React instance). Same atomicity and dispose-outside-
+     * lock pattern as [disposeAllForInstance], widened to every instance instead of one:
+     * still-[Pending] entries are tombstoned (rather than dropped) so a later [register]
+     * disposes the incoming [Disposable].
+     */
+    fun disposeAll() {
+        val doomed = synchronized(lock) {
+            val result = ArrayList<Disposable>()
+            for (id in states.keys.toList()) {
+                when (val current = states[id]) {
+                    is Active -> {
+                        states.remove(id)
+                        result.add(current.disposable)
+                    }
+                    is Pending -> states[id] = Tombstoned
+                    else -> {}
+                }
+            }
+            byInstance.clear()
+            result
+        }
+        doomed.forEach { it.dispose() }
+    }
 }

@@ -198,4 +198,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         Tealium.shutdown(instanceId)
         promise.resolve(null)
     }
+
+    // Releases SDK subscriptions (and the module they capture) when the React context is
+    // destroyed (dev full reload, or a brownfield host recreating the React instance).
+    override fun invalidate() {
+        super.invalidate()
+        subscriptions.disposeAll()
+    }
 }

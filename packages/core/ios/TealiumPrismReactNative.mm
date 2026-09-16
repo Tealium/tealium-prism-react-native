@@ -98,6 +98,16 @@
     [TealiumPrismBridge disposeSubscriptionWithSubscriptionId:subscriptionId];
 }
 
+#pragma mark - RCTInvalidating
+
+// Called by RCTTurboModuleManager on JS runtime teardown (dev full reload, or a
+// brownfield host recreating the React instance); disposes every tracked native
+// subscription so they don't outlive the JS listeners that would have received them.
+- (void)invalidate
+{
+    [TealiumPrismBridge invalidate];
+}
+
 #pragma mark - Trace
 
 - (void)joinTrace:(NSString *)instanceId
