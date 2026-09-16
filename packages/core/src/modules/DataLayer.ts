@@ -14,9 +14,10 @@ export class DataLayer {
   /**
    * Subscribes to data-layer updates. `listener` is called with the delta —
    * only the keys that changed — each time the SDK's `onDataUpdated` stream
-   * fires. Returns a {@link Disposable}: call `dispose()` to stop listening.
-   * Disposing is idempotent, and every active subscription for an instance is
-   * disposed automatically when that instance is shut down.
+   * fires. Returns a {@link Disposable}: call `dispose()` to stop listening;
+   * disposing is idempotent. The caller owns the returned handle and should
+   * dispose it when done. Shutting down the instance stops its updates but does
+   * not dispose the handle.
    *
    * @throws if the instance has been shut down (`INSTANCE_SHUT_DOWN`) or the
    *   native module is not registered (`NATIVE_MODULE_NOT_REGISTERED`).
