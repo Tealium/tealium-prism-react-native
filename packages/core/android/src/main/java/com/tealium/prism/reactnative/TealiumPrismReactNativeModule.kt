@@ -70,11 +70,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             modules = emptyList()
         )
 
-        // TODO: add a conditional check like on Swift when converter will return null for invalid log level string
+        // An unrecognized log level string converts to null; mirror Swift and leave
+        // the setting unconfigured rather than forcing a fallback level.
         logLevel?.let { level ->
-            val parsedLevel = LogLevel.Converter.convert(DataItem.string(level))
-            configBuilder.configureCoreSettings { settings ->
-                settings.setLogLevel(parsedLevel)
+            LogLevel.Converter.convert(DataItem.string(level))?.let { parsedLevel ->
+                configBuilder.configureCoreSettings { settings ->
+                    settings.setLogLevel(parsedLevel)
+                }
             }
         }
 
