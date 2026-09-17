@@ -2,8 +2,9 @@
 // mocked: we capture the single handler the router registers on the native
 // `onDataUpdated` emitter and drive it directly, so these cover the JS-side
 // contract (id minting, routing, idempotent dispose, event-after-dispose,
-// unknown-id) without a native build. Native-side ordering (unsubscribe- and
-// shutdown-before-register) is covered by the native SubscriptionStore tests.
+// unknown-id, failed registration) without a native build. Native-side ordering
+// (unsubscribe- and shutdown-before-register) is covered by the native
+// SubscriptionStore tests.
 import { ErrorCode } from "../ErrorCode";
 import type { Tealium as TealiumType } from "../Tealium";
 
@@ -34,7 +35,11 @@ async function setup(): Promise<Harness> {
   const native = {
     create: jest.fn(() => `inst-${++nextInstanceNumber}`),
     shutdown: jest.fn(() => Promise.resolve()),
-    dataLayerSubscribeUpdated: jest.fn(),
+    // Native resolves once the SDK subscription is registered. Parameters are
+    // declared (though unused) so `mock.calls` stays typed for the assertions.
+    dataLayerSubscribeUpdated: jest.fn(
+      (_instanceId: string, _subscriptionId: string) => Promise.resolve()
+    ),
     disposeSubscription: jest.fn(),
     onDataUpdated: jest.fn((handler: (event: NativeEvent) => void) => {
       capturedHandler = handler;
@@ -55,7 +60,11 @@ async function setup(): Promise<Harness> {
     emit: (event) => capturedHandler?.(event),
     lastSubscriptionId: () => {
       const calls = native.dataLayerSubscribeUpdated.mock.calls;
-      return calls[calls.length - 1][1] as string;
+      const lastCall = calls[calls.length - 1];
+      if (!lastCall) {
+        throw new Error("native.dataLayerSubscribeUpdated was never called");
+      }
+      return lastCall[1];
     },
   };
 }
@@ -65,7 +74,7 @@ describe("DataLayer.onDataUpdated", () => {
     const { Tealium, native } = await setup();
     const instance = Tealium.create("acct", "prof", "dev");
 
-    instance.dataLayer.onDataUpdated(jest.fn());
+    await instance.dataLayer.onDataUpdated(jest.fn());
 
     expect(native.dataLayerSubscribeUpdated).toHaveBeenCalledTimes(1);
     const [instanceId, subscriptionId] =
@@ -78,8 +87,8 @@ describe("DataLayer.onDataUpdated", () => {
     const { Tealium, native } = await setup();
     const instance = Tealium.create("acct", "prof", "dev");
 
-    instance.dataLayer.onDataUpdated(jest.fn());
-    instance.dataLayer.onDataUpdated(jest.fn());
+    await instance.dataLayer.onDataUpdated(jest.fn());
+    await instance.dataLayer.onDataUpdated(jest.fn());
 
     expect(native.onDataUpdated).toHaveBeenCalledTimes(1);
     expect(native.dataLayerSubscribeUpdated).toHaveBeenCalledTimes(2);
@@ -91,9 +100,9 @@ describe("DataLayer.onDataUpdated", () => {
 
     const listenerA = jest.fn();
     const listenerB = jest.fn();
-    instance.dataLayer.onDataUpdated(listenerA);
+    await instance.dataLayer.onDataUpdated(listenerA);
     const idA = native.dataLayerSubscribeUpdated.mock.calls[0][1] as string;
-    instance.dataLayer.onDataUpdated(listenerB);
+    await instance.dataLayer.onDataUpdated(listenerB);
 
     emit({ subscriptionId: idA, payloadJson: '{"user_id":"42","seen":true}' });
 
@@ -102,11 +111,34 @@ describe("DataLayer.onDataUpdated", () => {
     expect(listenerB).not.toHaveBeenCalled();
   });
 
+  it("delivers an event that arrives before the register promise resolves", async () => {
+    const { Tealium, native, emit, lastSubscriptionId } = await setup();
+    let resolveRegister: (() => void) | undefined;
+    native.dataLayerSubscribeUpdated.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRegister = resolve;
+        })
+    );
+    const instance = Tealium.create("acct", "prof", "dev");
+
+    const listener = jest.fn();
+    const pending = instance.dataLayer.onDataUpdated(listener);
+    // Native has been asked to subscribe but has not confirmed yet.
+    emit({ subscriptionId: lastSubscriptionId(), payloadJson: '{"early":1}' });
+
+    expect(listener).toHaveBeenCalledWith({ early: 1 });
+
+    resolveRegister?.();
+    const subscription = await pending;
+    expect(subscription.isDisposed).toBe(false);
+  });
+
   it("is idempotent on dispose: unsubscribes native at most once and flips isDisposed", async () => {
     const { Tealium, native, lastSubscriptionId } = await setup();
     const instance = Tealium.create("acct", "prof", "dev");
 
-    const subscription = instance.dataLayer.onDataUpdated(jest.fn());
+    const subscription = await instance.dataLayer.onDataUpdated(jest.fn());
     const subscriptionId = lastSubscriptionId();
     expect(subscription.isDisposed).toBe(false);
 
@@ -123,7 +155,7 @@ describe("DataLayer.onDataUpdated", () => {
     const instance = Tealium.create("acct", "prof", "dev");
 
     const listener = jest.fn();
-    const subscription = instance.dataLayer.onDataUpdated(listener);
+    const subscription = await instance.dataLayer.onDataUpdated(listener);
     const subscriptionId = native.dataLayerSubscribeUpdated.mock
       .calls[0][1] as string;
 
@@ -138,7 +170,7 @@ describe("DataLayer.onDataUpdated", () => {
     const instance = Tealium.create("acct", "prof", "dev");
 
     const listener = jest.fn();
-    instance.dataLayer.onDataUpdated(listener);
+    await instance.dataLayer.onDataUpdated(listener);
 
     expect(() =>
       emit({ subscriptionId: "sub_999_inst_other", payloadJson: "{}" })
@@ -151,7 +183,7 @@ describe("DataLayer.onDataUpdated", () => {
     const instance = Tealium.create("acct", "prof", "dev");
 
     const listener = jest.fn();
-    const subscription = instance.dataLayer.onDataUpdated(listener);
+    const subscription = await instance.dataLayer.onDataUpdated(listener);
     const subscriptionId = lastSubscriptionId();
     expect(subscription.isDisposed).toBe(false);
 
@@ -174,9 +206,9 @@ describe("DataLayer.onDataUpdated", () => {
 
     const listenerA = jest.fn();
     const listenerB = jest.fn();
-    const subscriptionA = instanceA.dataLayer.onDataUpdated(listenerA);
+    const subscriptionA = await instanceA.dataLayer.onDataUpdated(listenerA);
     const idA = native.dataLayerSubscribeUpdated.mock.calls[0][1] as string;
-    const subscriptionB = instanceB.dataLayer.onDataUpdated(listenerB);
+    const subscriptionB = await instanceB.dataLayer.onDataUpdated(listenerB);
     const idB = native.dataLayerSubscribeUpdated.mock.calls[1][1] as string;
 
     await instanceA.shutdown();
@@ -191,14 +223,79 @@ describe("DataLayer.onDataUpdated", () => {
     expect(listenerB).toHaveBeenCalledWith({ ok: true });
   });
 
-  it("throws INSTANCE_SHUT_DOWN when subscribing after shutdown", async () => {
-    const { Tealium } = await setup();
+  it("resolves with an already-disposed handle when shutdown races the registration", async () => {
+    const { Tealium, native } = await setup();
+    let resolveRegister: (() => void) | undefined;
+    native.dataLayerSubscribeUpdated.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRegister = resolve;
+        })
+    );
+    const instance = Tealium.create("acct", "prof", "dev");
+
+    const pending = instance.dataLayer.onDataUpdated(jest.fn());
+    await instance.shutdown();
+    resolveRegister?.();
+
+    const subscription = await pending;
+    expect(subscription.isDisposed).toBe(true);
+    // Shutdown relies on native's own disposeAll, so no per-subscription
+    // unregister is issued for the handle it purged.
+    expect(native.disposeSubscription).not.toHaveBeenCalled();
+  });
+
+  it("rejects with INSTANCE_SHUT_DOWN when subscribing after shutdown", async () => {
+    const { Tealium, native } = await setup();
     const instance = Tealium.create("acct", "prof", "dev");
 
     await instance.shutdown();
 
-    expect(() => instance.dataLayer.onDataUpdated(jest.fn())).toThrow(
+    await expect(instance.dataLayer.onDataUpdated(jest.fn())).rejects.toEqual(
       expect.objectContaining({ code: ErrorCode.INSTANCE_SHUT_DOWN })
     );
+    // The guard runs before any routing state or native call.
+    expect(native.dataLayerSubscribeUpdated).not.toHaveBeenCalled();
+  });
+
+  it("propagates a native registration failure and leaves no listener behind", async () => {
+    const { Tealium, native, emit, lastSubscriptionId } = await setup();
+    const notFound = Object.assign(new Error("No Tealium instance"), {
+      code: ErrorCode.INSTANCE_NOT_FOUND,
+    });
+    native.dataLayerSubscribeUpdated.mockRejectedValueOnce(notFound);
+    const instance = Tealium.create("acct", "prof", "dev");
+
+    const listener = jest.fn();
+    // The handle is never handed out on this path, so the router's teardown is
+    // asserted through its observable effects: no native unregister for a
+    // subscription native never opened, and no routing left for the id.
+    await expect(instance.dataLayer.onDataUpdated(listener)).rejects.toBe(
+      notFound
+    );
+
+    const subscriptionId = lastSubscriptionId();
+    expect(native.disposeSubscription).not.toHaveBeenCalled();
+    emit({ subscriptionId, payloadJson: '{"orphan":true}' });
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("keeps a later subscription working after a failed registration", async () => {
+    const { Tealium, native, emit, lastSubscriptionId } = await setup();
+    native.dataLayerSubscribeUpdated.mockRejectedValueOnce(
+      new Error("INSTANCE_NOT_FOUND")
+    );
+    const instance = Tealium.create("acct", "prof", "dev");
+
+    await expect(instance.dataLayer.onDataUpdated(jest.fn())).rejects.toThrow(
+      "INSTANCE_NOT_FOUND"
+    );
+
+    const listener = jest.fn();
+    const subscription = await instance.dataLayer.onDataUpdated(listener);
+    emit({ subscriptionId: lastSubscriptionId(), payloadJson: '{"ok":true}' });
+
+    expect(subscription.isDisposed).toBe(false);
+    expect(listener).toHaveBeenCalledWith({ ok: true });
   });
 });

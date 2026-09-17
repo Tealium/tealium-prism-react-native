@@ -75,14 +75,15 @@ class RoutedSubscription implements Disposable {
   }
 
   /**
-   * Drops this handle's JS routing state — its `listeners` entry and its slot
-   * in {@link handlesByInstance} — and flips `isDisposed`, at most once.
-   * Returns whether this call performed the teardown (`false` if already
+   * @internal Drops this handle's JS routing state — its `listeners` entry and
+   * its slot in {@link handlesByInstance} — and flips `isDisposed`, at most
+   * once. Returns whether this call performed the teardown (`false` if already
    * disposed). Deliberately does not touch native: callers that need the native
    * subscription torn down do that themselves ({@link dispose}), while shutdown
-   * relies on native having already disposed it.
+   * relies on native having already disposed it and a failed registration (see
+   * {@link subscribe}) has no native subscription to release in the first place.
    */
-  private forget(): boolean {
+  forget(): boolean {
     if (this._isDisposed) {
       return false;
     }
@@ -125,8 +126,12 @@ export interface SubscribeParams {
    * key used to attach the stream exactly once (see {@link subscribe}).
    */
   emitter: CodegenTypes.EventEmitter<SubscriptionEmission>;
-  /** Tells native to open the SDK subscription tagged with `subscriptionId`. */
-  register: (subscriptionId: string) => void;
+  /**
+   * Tells native to open the SDK subscription tagged with `subscriptionId`.
+   * Resolves once native has registered it and rejects when it could not (e.g.
+   * `INSTANCE_NOT_FOUND`); {@link subscribe} propagates that rejection.
+   */
+  register: (subscriptionId: string) => Promise<void>;
   /** Tells native to tear down the SDK subscription for `subscriptionId`. */
   unregister: (subscriptionId: string) => void;
   /** Invoked with the raw `payloadJson` for each routed event. */
@@ -135,11 +140,17 @@ export interface SubscribeParams {
 
 /**
  * Opens a routed subscription: mints an opaque `subscriptionId`, registers the
- * listener before asking native to subscribe (so no early event is missed), and
- * returns a {@link Disposable}. The `subscriptionId` is the correlation token
+ * listener and its handle before asking native to subscribe (so an event that
+ * arrives before the returned Promise settles is still routed), and resolves
+ * with a {@link Disposable}. The `subscriptionId` is the correlation token
  * native echoes back on every event and the key `unregister` uses.
+ *
+ * If `register` fails — synchronously or by rejecting — the subscription never
+ * opened natively, so the routing state added above is dropped again, the handle
+ * is marked disposed without a native `unregister`, and the original error is
+ * re-thrown to the caller.
  */
-export function subscribe(params: SubscribeParams): Disposable {
+export function subscribe(params: SubscribeParams): Promise<Disposable> {
   const { instanceId, emitter, register, unregister, onPayload } = params;
 
   attachEmitterOnce(emitter);
@@ -159,9 +170,18 @@ export function subscribe(params: SubscribeParams): Disposable {
     handlesByInstance.set(instanceId, new Set([subscription]));
   }
 
-  register(subscriptionId);
-
-  return subscription;
+  try {
+    return register(subscriptionId).then(
+      () => subscription,
+      (error: unknown) => {
+        subscription.forget();
+        throw error;
+      }
+    );
+  } catch (error) {
+    subscription.forget();
+    return Promise.reject(error);
+  }
 }
 
 /**

@@ -45,11 +45,16 @@ export interface Spec extends TurboModule {
   leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
 
-  // DataLayer subscriptions. Fire-and-forget: JS mints the opaque
-  // `subscriptionId` (see subscriptionRouter), native tags the SDK
-  // subscription with it and echoes it back on every emitted event so JS routes
-  // each event to exactly one listener.
-  dataLayerSubscribeUpdated(instanceId: string, subscriptionId: string): void;
+  // DataLayer subscriptions. JS mints the opaque `subscriptionId` (see
+  // subscriptionRouter), native tags the SDK subscription with it and echoes it
+  // back on every emitted event so JS routes each event to exactly one
+  // listener. Resolves once the SDK subscription is registered; rejects with
+  // `INSTANCE_NOT_FOUND` when no native instance exists for `instanceId`, so a
+  // failed registration is reported to JS instead of being swallowed natively.
+  dataLayerSubscribeUpdated(
+    instanceId: string,
+    subscriptionId: string
+  ): Promise<void>;
   // Tears down the SDK subscription tagged with `subscriptionId`. Keyed only by
   // `subscriptionId` — no `instanceId` or stream discriminator — because the id
   // is globally unique and native already tracks its subscription→instance

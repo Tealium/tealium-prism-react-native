@@ -47,7 +47,6 @@ export class Tealium {
       withNative: <T>(
         action: (native: NativeModule) => Promise<T>
       ): Promise<T> => this.withNative(action),
-      getNative: (): NativeModule => this.getNativeModule(),
     };
   }
 

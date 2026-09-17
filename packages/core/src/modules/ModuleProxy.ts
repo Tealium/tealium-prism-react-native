@@ -12,11 +12,4 @@ export type NativeModule = NonNullable<typeof NativeTealiumPrismReactNative>;
 export interface ModuleProxy {
   readonly instanceId: string;
   withNative<T>(action: (native: NativeModule) => Promise<T>): Promise<T>;
-  /**
-   * Returns the native module synchronously, applying the same shutdown /
-   * registration guard as {@link withNative} (throws `INSTANCE_SHUT_DOWN` or
-   * `NATIVE_MODULE_NOT_REGISTERED`). For synchronous, non-Promise entry points
-   * such as event subscriptions, where a rejected Promise is not an option.
-   */
-  getNative(): NativeModule;
 }

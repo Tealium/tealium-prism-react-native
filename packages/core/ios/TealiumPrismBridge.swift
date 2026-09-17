@@ -137,23 +137,32 @@ public final class TealiumPrismBridge: NSObject {
     /// Subscribes to the instance's `onDataUpdated` stream, tagging each emitted
     /// delta with `subscriptionId` so JS routes it to a single listener. The
     /// registration is async: `markPending` records intent, and once the SDK
-    /// hands back a `Disposable` it is stored via `SubscriptionStore.register`
+    /// hands back a `Disposable` it is stored via
+    /// [`SubscriptionStore.register(subscriptionId:instanceId:disposable:)`](doc:SubscriptionStore/register(subscriptionId:instanceId:disposable:))
     /// (or disposed immediately if the subscription was torn down while
-    /// registering). The stream's completion is wired to `teardown` so an
-    /// upstream `onComplete` releases the entry without leaking.
+    /// registering), and `completion` resolves the JS promise. The stream's
+    /// completion is wired to `teardown` so an upstream `onComplete` releases
+    /// the entry without leaking.
+    ///
+    /// The lookup's `onNotFound` hook releases the entry `markPending` recorded — see
+    /// [`SubscriptionStore.cancelPending(subscriptionId:instanceId:)`](doc:SubscriptionStore/cancelPending(subscriptionId:instanceId:))
+    /// — before the `INSTANCE_NOT_FOUND` rejection reaches JS.
     ///
     /// `emit` forwards each event to the module's generated `emitOnDataUpdated:`.
     @objc public static func dataLayerSubscribeUpdated(
         instanceId: String,
         subscriptionId: String,
-        emit: @escaping ([String: Any]) -> Void
+        emit: @escaping ([String: Any]) -> Void,
+        completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         subscriptions.markPending(subscriptionId: subscriptionId, instanceId: instanceId)
-        TealiumInstanceManager.shared.get(instanceId) { instance in
-            guard let instance else {
+        TealiumInstanceManager.shared.withInstance(
+            instanceId,
+            completion: completion,
+            onNotFound: {
                 subscriptions.cancelPending(subscriptionId: subscriptionId, instanceId: instanceId)
-                return
             }
+        ) { instance in
             let disposable = instance.dataLayer.onDataUpdated.subscribe(
                 { dataObject in
                     // DataObject.serialize() is the SDK's public JSON serialization.
@@ -172,6 +181,7 @@ public final class TealiumPrismBridge: NSObject {
                 instanceId: instanceId,
                 disposable: disposable
             )
+            completion(nil, nil)
         }
     }
 

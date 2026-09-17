@@ -159,17 +159,24 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
      * registration is async: [markPending] records intent, and once the SDK
      * hands back a [com.tealium.prism.core.api.pubsub.Disposable] it is stored
      * via [SubscriptionStore.register] (or disposed immediately if the
-     * subscription was torn down while registering). The stream's completion is
-     * wired to [SubscriptionStore.teardown] so an upstream `onComplete` releases
-     * the entry without leaking.
+     * subscription was torn down while registering) and [promise] resolves. The
+     * stream's completion is wired to [SubscriptionStore.teardown] so an
+     * upstream `onComplete` releases the entry without leaking.
+     *
+     * The lookup's `onNotFound` hook releases the entry [SubscriptionStore.markPending] recorded
+     * (see [SubscriptionStore.cancelPending]) before the `INSTANCE_NOT_FOUND` rejection reaches JS.
      */
-    override fun dataLayerSubscribeUpdated(instanceId: String, subscriptionId: String) {
+    override fun dataLayerSubscribeUpdated(
+        instanceId: String,
+        subscriptionId: String,
+        promise: Promise
+    ) {
         subscriptions.markPending(subscriptionId, instanceId)
-        Tealium.get(instanceId) { instance ->
-            if (instance == null) {
-                subscriptions.cancelPending(subscriptionId, instanceId)
-                return@get
-            }
+        Tealium.withInstance(
+            instanceId,
+            promise,
+            onNotFound = { subscriptions.cancelPending(subscriptionId, instanceId) }
+        ) { instance ->
             val disposable = instance.dataLayer.onDataUpdated.subscribe(
                 { data ->
                     emitOnDataUpdated(
@@ -183,6 +190,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 { subscriptions.teardown(subscriptionId) }
             )
             subscriptions.register(subscriptionId, instanceId, disposable)
+            promise.resolve(null)
         }
     }
 

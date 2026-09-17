@@ -93,6 +93,12 @@ export function DataLayerSubscriptionProvider({
   // state); render-visible facts live in the state maps below, keyed by the
   // same instance id.
   const subscriptions = useRef<Map<string, Disposable>>(new Map());
+  // Instance ids with an `onDataUpdated` registration in flight. The handle only
+  // exists once that Promise resolves, so this is what marks an instance as
+  // "still wanted": `unsubscribe`, shutdown pruning and provider teardown clear
+  // the id, and a registration that resolves for a cleared id disposes its
+  // handle instead of storing it.
+  const pendingIds = useRef<Set<string>>(new Set());
   const [subscribedIds, setSubscribedIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -115,6 +121,11 @@ export function DataLayerSubscriptionProvider({
         subscriptions.current.delete(id);
       }
     });
+    pendingIds.current.forEach((id) => {
+      if (!liveIds.has(id)) {
+        pendingIds.current.delete(id);
+      }
+    });
     setSubscribedIds((prev) => pruneSet(prev, liveIds));
     setUpdatesByInstance((prev) => pruneRecord(prev, liveIds));
     setErrorByInstance((prev) => pruneRecord(prev, liveIds));
@@ -123,31 +134,41 @@ export function DataLayerSubscriptionProvider({
   // Dispose everything if the provider itself is torn down (app teardown).
   useEffect(() => {
     const registry = subscriptions.current;
+    const pending = pendingIds.current;
     return () => {
       registry.forEach((sub) => sub.dispose());
       registry.clear();
+      pending.clear();
     };
   }, []);
 
-  const subscribe = useCallback(() => {
+  const subscribe = useCallback(async () => {
     if (!activeInstance) {
       return;
     }
     const id = activeInstance.instanceId;
     setErrorByInstance((prev) => ({ ...prev, [id]: null }));
-    if (subscriptions.current.has(id)) {
+    if (subscriptions.current.has(id) || pendingIds.current.has(id)) {
       return;
     }
+    pendingIds.current.add(id);
     try {
-      const sub = activeInstance.dataLayer.onDataUpdated((data) => {
+      const sub = await activeInstance.dataLayer.onDataUpdated((data) => {
         setUpdatesByInstance((prev) => ({
           ...prev,
           [id]: [data, ...(prev[id] ?? [])],
         }));
       });
+      // The instance may have been unsubscribed or shut down while the
+      // registration was in flight; nothing owns the handle then, so drop it.
+      if (!pendingIds.current.delete(id)) {
+        sub.dispose();
+        return;
+      }
       subscriptions.current.set(id, sub);
       setSubscribedIds((prev) => new Set(prev).add(id));
     } catch (e) {
+      pendingIds.current.delete(id);
       setErrorByInstance((prev) => ({ ...prev, [id]: String(e) }));
     }
   }, [activeInstance]);
@@ -159,6 +180,8 @@ export function DataLayerSubscriptionProvider({
     const id = activeInstance.instanceId;
     subscriptions.current.get(id)?.dispose();
     subscriptions.current.delete(id);
+    // Cancels an in-flight registration too: its handle is disposed on arrival.
+    pendingIds.current.delete(id);
     setSubscribedIds((prev) => {
       if (!prev.has(id)) {
         return prev;

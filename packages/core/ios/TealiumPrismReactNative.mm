@@ -84,12 +84,21 @@
 
 - (void)dataLayerSubscribeUpdated:(NSString *)instanceId
                    subscriptionId:(NSString *)subscriptionId
+                          resolve:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
 {
     __weak __typeof(self) weakSelf = self;
     [TealiumPrismBridge dataLayerSubscribeUpdatedWithInstanceId:instanceId
                                                 subscriptionId:subscriptionId
                                                           emit:^(NSDictionary *value) {
         [weakSelf emitOnDataUpdated:value];
+    }
+                                                    completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
     }];
 }
 
