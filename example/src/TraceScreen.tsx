@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "./TealiumProvider";
+import JsonPayload from "./JsonPayload";
 
 // Trace demo: join/leave a trace and force end-of-visit on the active app
 // instance selected on the Instances screen. Track an event in between to
@@ -134,9 +135,7 @@ export default function TraceScreen() {
           <Text style={styles.resultTitle}>
             Last dispatch: {lastResult.status}
           </Text>
-          <Text style={styles.payloadText}>
-            {JSON.stringify(lastResult.payload, null, 2)}
-          </Text>
+          <JsonPayload value={lastResult.payload} boxed={false} />
         </View>
       )}
 
@@ -220,11 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 6,
-  },
-  payloadText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#333",
   },
   error: {
     backgroundColor: "#ffebee",

@@ -203,9 +203,9 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Disposes every tracked DataLayer subscription across all instances. Called from
-    /// `TealiumPrismReactNative.invalidate()` when RN tears down the JS runtime (dev full
-    /// reload, or a brownfield host recreating the React instance), so native subscriptions
-    /// don't outlive the JS listeners that would have received their events.
+    /// [`TealiumPrismReactNative.invalidate()`](doc:TealiumPrismReactNative/invalidate()) when RN
+    /// tears down the JS runtime (dev full reload, or a brownfield host recreating the React instance),
+    /// so native subscriptions don't outlive the JS listeners that would have received their events.
     @objc public static func invalidate() {
         subscriptions.disposeAll()
     }

@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useTealium } from "./TealiumProvider";
 import { useDataLayerSubscription } from "./DataLayerSubscriptionProvider";
+import JsonPayload from "./JsonPayload";
 
 // DataLayer demo: subscribe to the active instance's `onDataUpdated` stream and
 // show each delta as it arrives. Track an event to induce data-layer changes.
@@ -73,11 +74,11 @@ export default function DataLayerScreen() {
             <Text style={styles.hint}>No updates yet.</Text>
           ) : (
             updates.map((delta, index) => (
-              <View key={updates.length - index} style={styles.resultBox}>
-                <Text style={styles.payloadText}>
-                  {JSON.stringify(delta, null, 2)}
-                </Text>
-              </View>
+              <JsonPayload
+                key={updates.length - index}
+                value={delta}
+                style={styles.resultItemSpacing}
+              />
             ))
           )}
         </>
@@ -134,16 +135,8 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     marginBottom: 8,
   },
-  resultBox: {
-    backgroundColor: "#f5f5f5",
-    padding: 12,
-    borderRadius: 6,
+  resultItemSpacing: {
     marginBottom: 8,
-  },
-  payloadText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#333",
   },
   error: {
     backgroundColor: "#ffebee",

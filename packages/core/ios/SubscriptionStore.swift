@@ -89,7 +89,7 @@ final class SubscriptionStore {
     // TODO: should we unify Tealium.shutdown behavior between 2 platforms?
     /// Disposes every subscription for `instanceId` on shutdown, so their teardown is
     /// deterministic and synchronous rather than waiting on the SDK's asynchronous
-    /// shutdown `onComplete`. Mirrors Android, where `Tealium.shutdown` emits no
+    /// shutdown `onComplete`. Mirrors Android, where the Kotlin SDK's shutdown emits no
     /// `onComplete` at all.
     func disposeAll(for instanceId: String) {
         let doomed: [any Disposable] = queue.sync {

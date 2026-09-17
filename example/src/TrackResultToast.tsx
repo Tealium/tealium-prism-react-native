@@ -9,6 +9,7 @@ import {
   Modal,
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
+import JsonPayload from "./JsonPayload";
 
 type Props = {
   /** The most recent track result to surface, or null to show nothing. */
@@ -167,9 +168,7 @@ export default function TrackResultToast({
               </Text>
             </View>
             <ScrollView contentContainerStyle={styles.modalBody}>
-              <Text style={styles.payloadText}>
-                {JSON.stringify(result.payload, null, 2)}
-              </Text>
+              <JsonPayload value={result.payload} boxed={false} />
             </ScrollView>
           </View>
         </View>
@@ -271,10 +270,5 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: 16,
-  },
-  payloadText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#333",
   },
 });
