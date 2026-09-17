@@ -69,23 +69,24 @@ class RoutedSubscription implements Disposable {
   }
 
   dispose(): void {
-    if (this.forget()) {
-      this.unregister(this.subscriptionId);
+    if (this._isDisposed) {
+      return;
     }
+    this.forget();
+    this.unregister(this.subscriptionId);
   }
 
   /**
    * @internal Drops this handle's JS routing state — its `listeners` entry and
    * its slot in {@link handlesByInstance} — and flips `isDisposed`, at most
-   * once. Returns whether this call performed the teardown (`false` if already
-   * disposed). Deliberately does not touch native: callers that need the native
+   * once. Deliberately does not touch native: callers that need the native
    * subscription torn down do that themselves ({@link dispose}), while shutdown
    * relies on native having already disposed it and a failed registration (see
    * {@link subscribe}) has no native subscription to release in the first place.
    */
-  forget(): boolean {
+  forget(): void {
     if (this._isDisposed) {
-      return false;
+      return;
     }
     this._isDisposed = true;
     listeners.delete(this.subscriptionId);
@@ -95,24 +96,6 @@ class RoutedSubscription implements Disposable {
       if (siblings.size === 0) {
         handlesByInstance.delete(this.instanceId);
       }
-    }
-    return true;
-  }
-
-  /**
-   * Purges every live handle for `instanceId` without a native unregister:
-   * `Tealium.shutdown()` has already asked native to dispose the instance's SDK
-   * subscriptions, and native sends no completion back, so this only drops the
-   * JS routing state native left dangling (see {@link handlesByInstance}).
-   */
-  static disposeInstance(instanceId: string): void {
-    const handles = handlesByInstance.get(instanceId);
-    if (!handles) {
-      return;
-    }
-    // Copy first: forget() removes each handle from this set as it runs.
-    for (const handle of [...handles]) {
-      handle.forget();
     }
   }
 }
@@ -186,11 +169,21 @@ export function subscribe(params: SubscribeParams): Promise<Disposable> {
 
 /**
  * Disposes every routed subscription still open for `instanceId`, dropping its
- * JS routing state and flipping each handle's `isDisposed`. Called from
- * {@link Tealium.shutdown} so a caller that never disposed its handles does not
- * leak their listener closures once the instance — and its native subscriptions
- * — are gone. Idempotent and a no-op for an instance with no open subscriptions.
+ * JS routing state and flipping each handle's `isDisposed`, without a native
+ * unregister: {@link Tealium.shutdown} has already asked native to dispose the
+ * instance's SDK subscriptions, and native sends no completion back, so this
+ * only drops the JS routing state native left dangling (see
+ * {@link handlesByInstance}). Ensures a caller that never disposed its handles
+ * does not leak their listener closures once the instance is gone. Idempotent
+ * and a no-op for an instance with no open subscriptions.
  */
 export function disposeInstanceSubscriptions(instanceId: string): void {
-  RoutedSubscription.disposeInstance(instanceId);
+  const handles = handlesByInstance.get(instanceId);
+  if (!handles) {
+    return;
+  }
+  // Copy first: forget() removes each handle from this set as it runs.
+  for (const handle of [...handles]) {
+    handle.forget();
+  }
 }
