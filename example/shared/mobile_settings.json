@@ -76,7 +76,7 @@
               "key": "tealium_event"
             },
             "destination": {
-              "path": "new_values.copied_event"
+              "path": "copied_event"
             }
           }
         ]
@@ -103,7 +103,7 @@
           "value": "persisted forever (but can be updated)"
         },
         "destination": {
-          "path": "persistent.value"
+          "path": "persisted_value"
         }
       },
       "conditions": {

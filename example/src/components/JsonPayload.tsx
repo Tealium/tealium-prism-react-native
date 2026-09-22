@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   },
   payloadText: {
     fontFamily: "monospace",
-    fontSize: 12,
+    fontSize: 13,
     color: "#333",
   },
 });
