@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,13 +7,20 @@ import {
   View,
 } from "react-native";
 import { _echoJsonValue } from "@tealium/prism-react-native";
-import type { JsonValue } from "@tealium/prism-react-native";
+import type {
+  DataLayer,
+  JsonValue,
+  JsonValueObject,
+} from "@tealium/prism-react-native";
+import { useTealium } from "../TealiumProvider";
 
 interface TestCase {
   name: string;
-  input: JsonValue;
+  /** Produces the actual value to compare against `expected`. */
+  run: () => Promise<JsonValue | undefined>;
+  expected?: JsonValue;
   /** Custom validator — returns failure message or undefined on success. */
-  check?: (echoed: JsonValue) => string | undefined;
+  check?: (actual: JsonValue | undefined) => string | undefined;
 }
 
 interface TestResult {
@@ -22,7 +29,12 @@ interface TestResult {
   mismatch?: string;
 }
 
-const TEST_CASES: TestCase[] = [
+const ECHO_TEST_CASES: {
+  name: string;
+  input: JsonValue;
+  /** Custom validator — returns failure message or undefined on success. */
+  check?: (echoed: JsonValue) => string | undefined;
+}[] = [
   {
     name: "Primitives",
     input: { s: "hello", n: 42, b: true, nil: null },
@@ -149,6 +161,40 @@ const TEST_CASES: TestCase[] = [
   },
 ];
 
+// JSON-safe values (no Infinity/NaN) used to drive the DataLayer round-trip
+// cases below — each one is put through both the single-key and bulk `put`
+// overloads and read back with `get`.
+const DATALAYER_VALUE_CASES: { name: string; value: JsonValue }[] = [
+  { name: "Primitives", value: { s: "hello", n: 42, b: true, nil: null } },
+  { name: "Fractional number", value: { pi: 3.14159 } },
+  { name: "Nested object", value: { outer: { inner: "deep" } } },
+  { name: "Nested array with null", value: { items: [1, "two", null, true] } },
+  { name: "Empty containers", value: { o: {}, a: [] } },
+  {
+    name: "Deep nesting with null leaf",
+    value: { l1: { l2: { l3: { leaf: null } } } },
+  },
+  { name: "Unicode", value: { emoji: "🎯", cjk: "日本語" } },
+  { name: "MAX_SAFE_INTEGER", value: Number.MAX_SAFE_INTEGER },
+  { name: "MIN_SAFE_INTEGER", value: Number.MIN_SAFE_INTEGER },
+  { name: "Bare string", value: "hello world" },
+  { name: "Bare integer", value: 42 },
+  { name: "Bare fractional", value: 3.14159 },
+  { name: "Bare true", value: true },
+  { name: "Bare false", value: false },
+  { name: "Bare null", value: null },
+  { name: "Flat array with null", value: [1, "two", true, null] },
+  { name: "Array with objects", value: [{ a: 1 }, { b: [2, 3] }] },
+];
+
+const DATALAYER_SINGLE_KEY = "bridge_test_single";
+const DATALAYER_BULK_KEY = "bridge_test_bulk";
+const DATALAYER_MULTI_KEYS = [
+  "bridge_test_a",
+  "bridge_test_b",
+  "bridge_test_c",
+] as const;
+
 function sortedStringify(value: unknown): string {
   return JSON.stringify(value, (_, v) => {
     if (v !== null && typeof v === "object" && !Array.isArray(v)) {
@@ -163,36 +209,121 @@ function sortedStringify(value: unknown): string {
   });
 }
 
+function buildEchoTestCases(): TestCase[] {
+  return ECHO_TEST_CASES.map((tc) => ({
+    name: tc.name,
+    run: () => _echoJsonValue(tc.input),
+    expected: tc.input,
+    check: tc.check as
+      | ((actual: JsonValue | undefined) => string | undefined)
+      | undefined,
+  }));
+}
+
+// TODO: update the comment when Kotlin null drops are fixed
+// Builds the on-device DataLayer round-trip cases against `dl`. Every value
+// must round-trip exactly on both platforms, including a top-level JSON null
+// inside a bulk put. The Kotlin SDK data layer currently drops top-level null
+// values in bulk puts, so the bulk "Bare null" and "multiple keys with null"
+// cases are expected to fail on Android until the SDK is aligned with Swift.
+function buildDataLayerTestCases(dl: DataLayer): TestCase[] {
+  const cases: TestCase[] = [];
+
+  for (const { name, value } of DATALAYER_VALUE_CASES) {
+    cases.push({
+      name: `DataLayer single put: ${name}`,
+      expected: value,
+      run: async () => {
+        try {
+          await dl.remove(DATALAYER_SINGLE_KEY);
+          await dl.put(DATALAYER_SINGLE_KEY, value);
+          return await dl.get(DATALAYER_SINGLE_KEY);
+        } finally {
+          await dl.remove(DATALAYER_SINGLE_KEY);
+        }
+      },
+    });
+    cases.push({
+      name: `DataLayer bulk put: ${name}`,
+      expected: value,
+      run: async () => {
+        try {
+          await dl.remove(DATALAYER_BULK_KEY);
+          await dl.put({ [DATALAYER_BULK_KEY]: value });
+          return await dl.get(DATALAYER_BULK_KEY);
+        } finally {
+          await dl.remove(DATALAYER_BULK_KEY);
+        }
+      },
+    });
+  }
+
+  const multiValues: JsonValueObject = {
+    bridge_test_a: "x",
+    bridge_test_b: null,
+    bridge_test_c: 1,
+  };
+
+  cases.push({
+    name: "DataLayer bulk put: multiple keys with null",
+    expected: multiValues,
+    run: async () => {
+      try {
+        await dl.put(multiValues);
+        const all = await dl.getAll();
+        return DATALAYER_MULTI_KEYS.reduce<JsonValueObject>((acc, key) => {
+          if (key in all) {
+            acc[key] = all[key];
+          }
+          return acc;
+        }, {});
+      } finally {
+        await dl.remove([...DATALAYER_MULTI_KEYS]);
+      }
+    },
+  });
+
+  return cases;
+}
+
 export default function BridgeTestScreen() {
+  const { activeInstance } = useTealium();
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [running, setRunning] = useState(false);
 
-  async function runTests() {
+  const testCases = useMemo<TestCase[]>(() => {
+    const echoCases = buildEchoTestCases();
+    return activeInstance
+      ? [...echoCases, ...buildDataLayerTestCases(activeInstance.dataLayer)]
+      : echoCases;
+  }, [activeInstance]);
+
+  const runTests = useCallback(async () => {
     setRunning(true);
     setResults(null);
 
     const out: TestResult[] = [];
 
-    for (const tc of TEST_CASES) {
+    for (const tc of testCases) {
       try {
-        const echoed = await _echoJsonValue(tc.input);
+        const actual = await tc.run();
         if (tc.check) {
-          const failure = tc.check(echoed);
+          const failure = tc.check(actual);
           out.push({
             name: tc.name,
             passed: failure === undefined,
             mismatch: failure,
           });
         } else {
-          const inputStr = sortedStringify(tc.input);
-          const outputStr = sortedStringify(echoed);
-          const passed = inputStr === outputStr;
+          const expectedStr = sortedStringify(tc.expected);
+          const actualStr = sortedStringify(actual);
+          const passed = expectedStr === actualStr;
           out.push({
             name: tc.name,
             passed,
             mismatch: passed
               ? undefined
-              : `expected ${inputStr}\ngot      ${outputStr}`,
+              : `expected ${expectedStr}\ngot      ${actualStr}`,
           });
         }
       } catch (e) {
@@ -214,7 +345,7 @@ export default function BridgeTestScreen() {
 
     setResults(out);
     setRunning(false);
-  }
+  }, [testCases]);
 
   const passedCount = results?.filter((r) => r.passed).length ?? 0;
   const totalCount = results?.length ?? 0;
@@ -222,6 +353,12 @@ export default function BridgeTestScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Bridge Round-Trip Tests</Text>
+
+      {!activeInstance && (
+        <Text style={styles.hint}>
+          Create an instance on the Instances screen to include DataLayer tests.
+        </Text>
+      )}
 
       <TouchableOpacity
         style={[styles.button, running && styles.buttonDisabled]}
@@ -271,6 +408,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 8,
   },
+  hint: {
+    color: "#666",
+    fontSize: 14,
+    fontWeight: 500,
+    marginBottom: 8,
+  },
   button: {
     backgroundColor: "#007AFF",
     paddingVertical: 12,
@@ -306,7 +449,7 @@ const styles = StyleSheet.create({
   },
   mismatch: {
     fontFamily: "monospace",
-    fontSize: 11,
+    fontSize: 12,
     color: "#555",
     marginTop: 2,
   },

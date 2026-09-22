@@ -8,9 +8,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { type ExpiryPolicy } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
-import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
-import Toast, { type ToastNotice } from "./Toast";
+import { useTealium } from "../TealiumProvider";
+import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
+import Toast, { type ToastNotice } from "../components/Toast";
 
 type ExpiryPreset = "forever" | "session" | "untilRestart" | "afterSeconds";
 
@@ -25,6 +25,13 @@ const EXPIRY_PRESETS: { preset: ExpiryPreset; label: string }[] = [
 // put(data, expiry?) storing several keys (including nested/array/null
 // values) in one call.
 const SAMPLE_OBJECT = {
+  // TODO: update comment when Kotlin null drops are fixed
+  // Flat keys are visible in Tealium Trace; nested objects may be dropped
+  // server-side, and the Kotlin SDK data layer ignores null values in bulk
+  // puts (the Swift SDK stores them).
+  sample_string: "hello from data layer",
+  sample_number: 42,
+  sample_tags: ["a", "b"],
   user: { id: 42, tags: ["a", "b"] },
   flag: true,
   nothing: null,

@@ -9,9 +9,9 @@ import {
   Modal,
 } from "react-native";
 import { type LogLevel, type TrackResult } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
-import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
-import TrackResultToast from "./TrackResultToast";
+import { useTealium } from "../TealiumProvider";
+import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
+import TrackResultToast from "../components/TrackResultToast";
 
 const LOG_LEVELS: LogLevel[] = [
   "trace",

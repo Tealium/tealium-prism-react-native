@@ -8,8 +8,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
-import JsonPayload from "./JsonPayload";
+import { useTealium } from "../TealiumProvider";
+import JsonPayload from "../components/JsonPayload";
 
 // Trace demo: join/leave a trace and force end-of-visit on the active app
 // instance selected on the Instances screen. Track an event in between to

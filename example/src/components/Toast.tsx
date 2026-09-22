@@ -248,6 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontStyle: "italic",
+    fontWeight: 600,
   },
   toastDismiss: {
     marginLeft: 12,

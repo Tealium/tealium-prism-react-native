@@ -1,13 +1,13 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { getSdkVersion } from "@tealium/prism-react-native";
-import BridgeTestScreen from "./BridgeTestScreen";
-import InstancesScreen from "./InstancesScreen";
-import TraceScreen from "./TraceScreen";
-import LifecycleScreen from "./LifecycleScreen";
-import TransformationsScreen from "./TransformationsScreen";
-import DataLayerScreen from "./DataLayerScreen";
-import ScreenWithBack from "./ScreenWithBack";
+import BridgeTestScreen from "./screens/BridgeTestScreen";
+import InstancesScreen from "./screens/InstancesScreen";
+import TraceScreen from "./screens/TraceScreen";
+import LifecycleScreen from "./screens/LifecycleScreen";
+import TransformationsScreen from "./screens/TransformationsScreen";
+import DataLayerScreen from "./screens/DataLayerScreen";
+import ScreenWithBack from "./components/ScreenWithBack";
 import { TealiumProvider } from "./TealiumProvider";
 
 type Screen =
