@@ -1,15 +1,18 @@
 import { getSdkVersion, _echoJsonValue, Tealium, ErrorCode } from "../index";
 import { Trace } from "../modules/Trace";
+import { DataLayer } from "../modules/DataLayer";
 
 // Builds a Tealium mock without running the (native-touching) constructor, then
-// wires a real Trace exactly as the constructor would. This keeps trace.* driven
-// by the same withNative/_isShutdown guard as track(), so the guard-contract
-// table below exercises the genuine shutdown-aware path, not a test-local fake.
+// wires a real Trace/DataLayer exactly as the constructor would. This keeps
+// trace.*/dataLayer.* driven by the same withNative/_isShutdown guard as
+// track(), so the guard-contract table below exercises the genuine
+// shutdown-aware path, not a test-local fake.
 function makeMockTealium(isShutdown: boolean): Tealium {
   const mock = Object.create(Tealium.prototype);
   mock.instanceId = "test-instance";
   mock._isShutdown = isShutdown; // Set before creating the proxy.
   mock.trace = new Trace(mock.createModuleProxy());
+  mock.dataLayer = new DataLayer(mock.createModuleProxy());
   return mock as Tealium;
 }
 
@@ -69,15 +72,23 @@ describe("Tealium", () => {
     });
   });
 
-  // track and the trace API (trace.join / trace.leave / trace.forceEndOfVisit)
-  // share the same guard contract: reject with INSTANCE_SHUT_DOWN when shut down
-  // and NATIVE_MODULE_NOT_REGISTERED when the native binding is missing.
-  // End-to-end behavior is verified in native tests and the example app.
+  // track, the trace API (trace.join / trace.leave / trace.forceEndOfVisit),
+  // and the dataLayer API share the same guard contract: reject with
+  // INSTANCE_SHUT_DOWN when shut down and NATIVE_MODULE_NOT_REGISTERED when
+  // the native binding is missing. End-to-end behavior is verified in native
+  // tests and the example app.
   const tealiumMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
     ["track", (i) => i.track("event_name")],
     ["trace.join", (i) => i.trace.join("trace-123")],
     ["trace.leave", (i) => i.trace.leave()],
     ["trace.forceEndOfVisit", (i) => i.trace.forceEndOfVisit()],
+    ["dataLayer.put (bulk)", (i) => i.dataLayer.put({ a: 1 })],
+    ["dataLayer.put (single)", (i) => i.dataLayer.put("key", "value")],
+    ["dataLayer.get", (i) => i.dataLayer.get("key")],
+    ["dataLayer.getAll", (i) => i.dataLayer.getAll()],
+    ["dataLayer.remove (key)", (i) => i.dataLayer.remove("key")],
+    ["dataLayer.remove (keys)", (i) => i.dataLayer.remove(["a", "b"])],
+    ["dataLayer.clear", (i) => i.dataLayer.clear()],
   ];
 
   describe.each(tealiumMethods)("%s", (_name, call) => {

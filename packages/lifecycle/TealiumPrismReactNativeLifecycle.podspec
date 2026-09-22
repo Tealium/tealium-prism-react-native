@@ -16,5 +16,5 @@ Pod::Spec.new do |s|
   # No wrapper source of its own: pulling in the Lifecycle subspec is enough.
   # Its ObjC `+load` loader (LifecycleClassesLoader) registers the Lifecycle
   # module factory with every Tealium instance at launch — no app code required.
-  s.dependency "tealium-prism/Lifecycle", "~> 0.5"
+  s.dependency "tealium-prism/Lifecycle", "~> 0.6"
 end

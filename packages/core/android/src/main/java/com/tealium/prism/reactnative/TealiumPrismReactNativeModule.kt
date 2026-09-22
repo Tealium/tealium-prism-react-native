@@ -62,11 +62,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             modules = emptyList()
         )
 
-        // TODO: add a conditional check like on Swift when converter will return null for invalid log level string
+        // An unrecognized log level string converts to null; mirror Swift and leave
+        // the setting unconfigured rather than forcing a fallback level.
         logLevel?.let { level ->
-            val parsedLevel = LogLevel.Converter.convert(DataItem.string(level))
-            configBuilder.configureCoreSettings { settings ->
-                settings.setLogLevel(parsedLevel)
+            LogLevel.Converter.convert(DataItem.string(level))?.let { parsedLevel ->
+                configBuilder.configureCoreSettings { settings ->
+                    settings.setLogLevel(parsedLevel)
+                }
             }
         }
 
@@ -142,6 +144,117 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             put("info", result.info)
             put("payload", result.dispatch.payload())
         }.asDataItem()
+
+    /**
+     * Stores every key-value pair of [dataJson] in the instance's data layer, expiring them
+     * according to [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's
+     * converter cannot decode falls back to the SDK's no-expiry overload (forever), the same as
+     * an omitted value. DataLayer.put emits [Unit]; the payload-less result is converted to
+     * [DataItem.NULL] so the promise resolves with a JSON `null`.
+     */
+    override fun dataLayerPutData(
+        instanceId: String,
+        dataJson: String,
+        expiryEncoded: Double?,
+        promise: Promise
+    ) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            val data = DataObject.fromString(dataJson) ?: run {
+                promise.reject(ErrorCode.DATA_PARSE_ERROR, "Failed to parse data JSON")
+                return@withInstance
+            }
+
+            val expiry = resolveExpiry(expiryEncoded)
+            val put = if (expiry == null) {
+                instance.dataLayer.put(data)
+            } else {
+                instance.dataLayer.put(data, expiry)
+            }
+            put.subscribe(promise) { DataItem.NULL }
+        }
+    }
+
+    /**
+     * Stores [valueJson] under [key] in the instance's data layer, expiring it according to
+     * [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's converter cannot
+     * decode falls back to the SDK's no-expiry overload (forever), the same as an omitted value.
+     * DataLayer.put emits [Unit]; the payload-less result is converted to [DataItem.NULL] so the
+     * promise resolves with a JSON `null`.
+     */
+    override fun dataLayerPutValue(
+        instanceId: String,
+        key: String,
+        valueJson: String,
+        expiryEncoded: Double?,
+        promise: Promise
+    ) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            // DataItem.parse yields DataItem.NULL for unparseable JSON rather than throwing; the
+            // catch covers values the SDK rejects as unsupported.
+            val value = try {
+                dataItem(valueJson)
+            } catch (e: Exception) {
+                promise.reject(ErrorCode.DATA_PARSE_ERROR, "Failed to parse value JSON", e)
+                return@withInstance
+            }
+
+            val expiry = resolveExpiry(expiryEncoded)
+            val put = if (expiry == null) {
+                instance.dataLayer.put(key, value)
+            } else {
+                instance.dataLayer.put(key, value, expiry)
+            }
+            put.subscribe(promise) { DataItem.NULL }
+        }
+    }
+
+    /**
+     * Reads the value stored under [key]. The SDK emits `null` only for an absent key (a stored
+     * JSON `null` comes back as [DataItem.NULL]), so the promise resolves with a real `null` for an
+     * absent key and with the value's JSON string — `"null"` for a stored null — otherwise.
+     */
+    override fun dataLayerGet(instanceId: String, key: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.dataLayer.get(key).subscribeNullable(promise) { it }
+        }
+    }
+
+    /** Reads every entry of the instance's data layer as a single JSON object. */
+    override fun dataLayerGetAll(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.dataLayer.getAll().subscribe(promise)
+        }
+    }
+
+    /**
+     * Removes the keys listed in [keysJson] (always a JSON array of strings) from the instance's
+     * data layer. DataLayer.remove emits [Unit]; the payload-less result is converted to
+     * [DataItem.NULL] so the promise resolves with a JSON `null`.
+     */
+    override fun dataLayerRemove(instanceId: String, keysJson: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            val keys = parseKeys(keysJson) ?: run {
+                promise.reject(
+                    ErrorCode.DATA_PARSE_ERROR,
+                    "Failed to parse keys JSON: expected a JSON array of strings"
+                )
+                return@withInstance
+            }
+
+            instance.dataLayer.remove(keys).subscribe(promise) { DataItem.NULL }
+        }
+    }
+
+    /**
+     * Removes every entry from the instance's data layer. DataLayer.clear emits [Unit]; the
+     * payload-less result is converted to [DataItem.NULL] so the promise resolves with a JSON
+     * `null`.
+     */
+    override fun dataLayerClear(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.dataLayer.clear().subscribe(promise) { DataItem.NULL }
+        }
+    }
 
     override fun shutdown(instanceId: String, promise: Promise) {
         Tealium.shutdown(instanceId)

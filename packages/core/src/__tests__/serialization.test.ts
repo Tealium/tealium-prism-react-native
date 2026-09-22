@@ -1,4 +1,5 @@
-import { serialize } from "../serialization";
+import { encodeExpiryPolicy, serialize } from "../serialization";
+import type { ExpiryPolicy } from "../types";
 
 describe("serialize", () => {
   it("passes through a string", () => {
@@ -78,5 +79,21 @@ describe("serialize", () => {
     expect(() => serialize(Symbol("s"))).toThrow(
       "serialize: value is not JSON-serializable (type: symbol)"
     );
+  });
+});
+
+describe("encodeExpiryPolicy", () => {
+  const cases: Array<[ExpiryPolicy | undefined, number | null]> = [
+    ["forever", -1],
+    ["session", -2],
+    ["untilRestart", -3],
+    [{ afterSeconds: 90 }, 90],
+    [{ afterSeconds: 1.5 }, 1.5],
+    [{ afterSeconds: -7 }, -7],
+    [undefined, null],
+  ];
+
+  it.each(cases)("encodes %j to %s", (expiry, encoded) => {
+    expect(encodeExpiryPolicy(expiry)).toBe(encoded);
   });
 });

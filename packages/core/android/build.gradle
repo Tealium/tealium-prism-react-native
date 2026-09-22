@@ -53,9 +53,21 @@ android {
       minifyEnabled false
     }
   }
+
+  // Prism's DataItem/DataObject rely on Android's org.json, so unit tests run under Robolectric.
+  // Mirrors the Prism Kotlin SDK's core module test setup.
+  testOptions {
+    unitTests {
+      returnDefaultValues = true
+      includeAndroidResources = true
+    }
+  }
 }
 
 dependencies {
   implementation "com.facebook.react:react-android"
-  implementation "com.tealium.prism:prism-core:0.5.0"
+  implementation "com.tealium.prism:prism-core:0.6.0"
+
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.robolectric:robolectric:4.13"
 }

@@ -43,5 +43,5 @@ dependencies {
   implementation "com.facebook.react:react-android"
   // The Lifecycle module auto-registers its factory via its AndroidManifest
   // ComponentDiscoveryService entry, merged in by adding this dependency.
-  implementation "com.tealium.prism:prism-lifecycle:0.3.0"
+  implementation "com.tealium.prism:prism-lifecycle:0.3.1"
 }
