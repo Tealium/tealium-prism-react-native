@@ -126,4 +126,113 @@
     }];
 }
 
+#pragma mark - DataLayer
+
+// `expiryEncoded` is optional on the JS side. Codegen represents a nullable `number`
+// param as a boxed `NSNumber *` without a `_Nullable` annotation (unlike nullable
+// strings), so the generated protocol declares it nonnull even though RN still forwards
+// nil for a JS `null`. These signatures have to match the generated protocol exactly;
+// the Swift bridge takes the parameter as `NSNumber?` and reads nil as "no expiry".
+
+- (void)dataLayerPutData:(NSString *)instanceId
+                dataJson:(NSString *)dataJson
+           expiryEncoded:(NSNumber *)expiryEncoded
+                 resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerPutDataWithInstanceId:instanceId
+                                             dataJson:dataJson
+                                        expiryEncoded:expiryEncoded
+                                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)dataLayerPutValue:(NSString *)instanceId
+                      key:(NSString *)key
+                valueJson:(NSString *)valueJson
+            expiryEncoded:(NSNumber *)expiryEncoded
+                  resolve:(RCTPromiseResolveBlock)resolve
+                   reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerPutValueWithInstanceId:instanceId
+                                                   key:key
+                                             valueJson:valueJson
+                                         expiryEncoded:expiryEncoded
+                                            completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)dataLayerGet:(NSString *)instanceId
+                 key:(NSString *)key
+             resolve:(RCTPromiseResolveBlock)resolve
+              reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerGetWithInstanceId:instanceId
+                                              key:key
+                                       completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            // The spec resolves `string | null`. RN maps an ObjC nil to JS
+            // `undefined` and only NSNull to JS `null`, so an absent key must
+            // resolve NSNull to match Android's `promise.resolve(null)`.
+            resolve(result ?: [NSNull null]);
+        }
+    }];
+}
+
+- (void)dataLayerGetAll:(NSString *)instanceId
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerGetAllWithInstanceId:instanceId
+                                          completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)dataLayerRemove:(NSString *)instanceId
+               keysJson:(NSString *)keysJson
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerRemoveWithInstanceId:instanceId
+                                            keysJson:keysJson
+                                          completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)dataLayerClear:(NSString *)instanceId
+               resolve:(RCTPromiseResolveBlock)resolve
+                reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge dataLayerClearWithInstanceId:instanceId
+                                         completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
 @end

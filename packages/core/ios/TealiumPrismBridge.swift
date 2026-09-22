@@ -51,8 +51,9 @@ public final class TealiumPrismBridge: NSObject {
         )
 
         // The SDK reuses the existing instance (and logs a warning) for a duplicate key.
-        let instance = Tealium.create(config: config)
-        instance.strongCapture = instance
+        // TealiumInstanceManager retains the instance until it is shut down, so we hold
+        // no reference of our own.
+        _ = Tealium.create(config: config)
         return config.key
     }
 
@@ -128,14 +129,139 @@ public final class TealiumPrismBridge: NSObject {
         return DataItem(converting: payload)
     }
 
+    // MARK: - DataLayer
+
+    /// Stores every key/value pair of the JSON object `dataJson` in the data layer.
+    ///
+    /// `expiryEncoded` carries the JS-encoded expiry policy; `nil`, or a value the SDK's converter
+    /// cannot decode, selects the SDK's no-expiry overload, which stores forever. `put` emits
+    /// `Void`, so the payload-less result is converted to `DataItem.null` and the promise
+    /// completes with a JSON `null`.
+    @objc public static func dataLayerPutData(
+        instanceId: String,
+        dataJson: String,
+        expiryEncoded: NSNumber?,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            let data: DataObject
+            do {
+                data = try DataObject(jsonString: dataJson)
+            } catch {
+                completion(nil, PromiseRejection(
+                    code: .dataParseError,
+                    error: error
+                ))
+                return
+            }
+
+            let single: SingleResult<Void, ModuleError<Error>>
+            if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
+                single = instance.dataLayer.put(data: data, expiry: expiry)
+            } else {
+                single = instance.dataLayer.put(data: data)
+            }
+            single.subscribe(completion) { _ in DataItem.null }
+        }
+    }
+
+    /// Stores the single JSON value `valueJson` under `key`.
+    ///
+    /// `expiryEncoded` uses the same encoding as
+    /// [`TealiumPrismBridge.dataLayerPutData(instanceId:dataJson:expiryEncoded:completion:)`](doc:TealiumPrismBridge/dataLayerPutData(instanceId:dataJson:expiryEncoded:completion:)).
+    /// The parsed `DataItem` is handed to the SDK's `put(key:converting:)` overloads, since
+    /// `DataItem` is `DataInputConvertible`.
+    @objc public static func dataLayerPutValue(
+        instanceId: String,
+        key: String,
+        valueJson: String,
+        expiryEncoded: NSNumber?,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            let value: DataItem
+            do {
+                value = try JsonValueConversions.dataItem(fromJSONString: valueJson)
+            } catch {
+                completion(nil, PromiseRejection(
+                    code: .dataParseError,
+                    error: error
+                ))
+                return
+            }
+
+            let single: SingleResult<Void, ModuleError<Error>>
+            if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
+                single = instance.dataLayer.put(key: key, converting: value, expiry: expiry)
+            } else {
+                single = instance.dataLayer.put(key: key, converting: value)
+            }
+            single.subscribe(completion) { _ in DataItem.null }
+        }
+    }
+
+    /// Reads the value stored under `key`.
+    ///
+    /// The SDK returns `nil` only for an absent key, so the nullable converter completes with a
+    /// `nil` result — a JS `null` — while a stored JSON `null` completes with the string `"null"`.
+    @objc public static func dataLayerGet(
+        instanceId: String,
+        key: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.dataLayer.getDataItem(key: key).subscribe(completion) { $0 }
+        }
+    }
+
+    /// Reads every stored key/value pair, completing with the whole `DataObject` as one JSON object.
+    @objc public static func dataLayerGetAll(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.dataLayer.getAll().subscribe(completion) { DataItem(converting: $0) }
+        }
+    }
+
+    /// Removes every key listed in `keysJson`, a JSON array of strings.
+    ///
+    /// `remove` emits `Void`; the payload-less result is converted to `DataItem.null` so the
+    /// promise completes with a JSON `null`.
+    @objc public static func dataLayerRemove(
+        instanceId: String,
+        keysJson: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            do {
+                let keys = try DataLayerConversions.keys(fromJSONString: keysJson)
+                instance.dataLayer.remove(keys: keys).subscribe(completion) { _ in DataItem.null }
+            } catch {
+                completion(nil, PromiseRejection(
+                    code: .dataParseError,
+                    error: error
+                ))
+            }
+        }
+    }
+
+    /// Clears the whole data layer. `clear` emits `Void`; the payload-less result is converted to
+    /// `DataItem.null` so the promise completes with a JSON `null`.
+    @objc public static func dataLayerClear(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.dataLayer.clear().subscribe(completion) { _ in DataItem.null }
+        }
+    }
+
     @objc public static func shutdown(
         instanceId: String,
         completion: @escaping () -> Void
     ) {
-        TealiumInstanceManager.shared.get(instanceId) { instance in
-            // Dropping the last strong reference triggers deinit, which shuts the instance down.
-            instance?.strongCapture = nil
-            completion()
-        }
+        TealiumInstanceManager.shared.shutdown(instanceId)
+        completion()
     }
 }

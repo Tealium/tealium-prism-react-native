@@ -68,3 +68,16 @@ export interface TrackResult {
   info: string;
   payload: JsonValueObject;
 }
+
+/**
+ * Expiry policy for a data layer entry, mirroring the native Prism
+ * `ExpiryPolicy` type. `"forever"` never expires, `"session"` expires with
+ * the current session, `"untilRestart"` expires when the app restarts, and
+ * `{ afterSeconds }` expires after the given number of seconds from when the
+ * entry is stored.
+ */
+export type ExpiryPolicy =
+  | "session"
+  | "untilRestart"
+  | "forever"
+  | { afterSeconds: number };

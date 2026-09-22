@@ -38,3 +38,34 @@ internal inline fun <T> SingleResult<T>.subscribe(
         }
     )
 }
+
+/**
+ * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via [converter].
+ * Resolves [promise] with a real `null` when [converter] returns `null` (the absent-key case of
+ * `DataLayer.get`) and with the [DataItem]'s JSON string otherwise, or rejects [promise] with the
+ * error on failure.
+ */
+internal inline fun <T> SingleResult<T>.subscribeNullable(
+    promise: Promise,
+    crossinline converter: (T) -> DataItem?
+) {
+    // One-shot subscription: it completes on first emission and the returned Disposable
+    // deallocates on its own, so we don't retain it.
+    var emitted = false
+    subscribe(
+        { result ->
+            emitted = true
+            result
+                .onSuccess { value ->
+                    val item = converter(value)
+                    promise.resolve(item?.let(::jsonString))
+                }
+                .onFailure { t -> promise.reject(ErrorCode.PRISM_NATIVE_ERROR, t.message, t) }
+        },
+        {
+            if (!emitted) {
+                promise.reject(ErrorCode.TEALIUM_CANCELLED, "Single completed without emitting a value")
+            }
+        }
+    )
+}
