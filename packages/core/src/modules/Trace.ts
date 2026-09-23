@@ -16,14 +16,14 @@ export class Trace {
    * dispatch until {@link leave} is called or the session expires.
    */
   join(id: string): Promise<void> {
-    return this.proxy.withNative((native) =>
+    return this.proxy.withNativeVoid((native) =>
       native.joinTrace(this.proxy.instanceId, id)
     );
   }
 
   /** Leaves the current trace, if one has been joined. */
   leave(): Promise<void> {
-    return this.proxy.withNative((native) =>
+    return this.proxy.withNativeVoid((native) =>
       native.leaveTrace(this.proxy.instanceId)
     );
   }

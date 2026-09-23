@@ -33,7 +33,7 @@ export class DataLayer {
     if (typeof dataOrKey === "string") {
       const value = valueOrExpiry as JsonValue;
       const expiryEncoded = encodeExpiryPolicy(maybeExpiry);
-      return this.proxy.withNative((native) =>
+      return this.proxy.withNativeVoid((native) =>
         native.dataLayerPutValue(
           this.proxy.instanceId,
           dataOrKey,
@@ -44,7 +44,7 @@ export class DataLayer {
     }
 
     const expiryEncoded = encodeExpiryPolicy(valueOrExpiry as ExpiryPolicy);
-    return this.proxy.withNative((native) =>
+    return this.proxy.withNativeVoid((native) =>
       native.dataLayerPutData(
         this.proxy.instanceId,
         serialize(dataOrKey),
@@ -85,14 +85,14 @@ export class DataLayer {
   remove(keys: string[]): Promise<void>;
   remove(keyOrKeys: string | string[]): Promise<void> {
     const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
-    return this.proxy.withNative((native) =>
+    return this.proxy.withNativeVoid((native) =>
       native.dataLayerRemove(this.proxy.instanceId, serialize(keys))
     );
   }
 
   /** Removes every key from the data layer. */
   clear(): Promise<void> {
-    return this.proxy.withNative((native) =>
+    return this.proxy.withNativeVoid((native) =>
       native.dataLayerClear(this.proxy.instanceId)
     );
   }

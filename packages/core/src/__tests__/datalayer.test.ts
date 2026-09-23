@@ -1,6 +1,9 @@
 // Verifies DataLayer.put/get/getAll/remove/clear marshal to the six native
-// dataLayer* bridge methods: expiry encoding, JSON serialization, and the
-// null (absent key) vs "null" (stored null) distinction on get().
+// dataLayer* bridge methods: expiry encoding, JSON serialization, the
+// null (absent key) vs "null" (stored null) distinction on get(), and that
+// the void-returning methods normalize the "null" JSON string result (the
+// native bridge's promise adapters encode the SDK's Void as a null DataItem)
+// to undefined.
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
@@ -54,6 +57,13 @@ describe("DataLayer", () => {
       );
     });
 
+    it('resolves undefined when native resolves the "null" JSON string', async () => {
+      const instance = Tealium.create("account", "put-bulk-void", "dev");
+      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce("null");
+
+      await expect(instance.dataLayer.put({ a: 1 })).resolves.toBeUndefined();
+    });
+
     it.each(expiryCases)("encodes expiry %j to %d", async (expiry, encoded) => {
       const instance = Tealium.create(
         "account",
@@ -83,6 +93,15 @@ describe("DataLayer", () => {
         '"value"',
         null
       );
+    });
+
+    it('resolves undefined when native resolves the "null" JSON string', async () => {
+      const instance = Tealium.create("account", "put-single-void", "dev");
+      (native.dataLayerPutValue as jest.Mock).mockResolvedValueOnce("null");
+
+      await expect(
+        instance.dataLayer.put("key", "value")
+      ).resolves.toBeUndefined();
     });
 
     it.each(expiryCases)("encodes expiry %j to %d", async (expiry, encoded) => {
@@ -159,6 +178,13 @@ describe("DataLayer", () => {
       );
     });
 
+    it('resolves undefined for a single key when native resolves the "null" JSON string', async () => {
+      const instance = Tealium.create("account", "remove-key-void", "dev");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce("null");
+
+      await expect(instance.dataLayer.remove("k")).resolves.toBeUndefined();
+    });
+
     it("encodes an array of keys as a JSON array", async () => {
       const instance = Tealium.create("account", "remove-keys", "dev");
 
@@ -169,6 +195,15 @@ describe("DataLayer", () => {
         '["a","b"]'
       );
     });
+
+    it('resolves undefined for an array of keys when native resolves the "null" JSON string', async () => {
+      const instance = Tealium.create("account", "remove-keys-void", "dev");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce("null");
+
+      await expect(
+        instance.dataLayer.remove(["a", "b"])
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe("clear", () => {
@@ -178,6 +213,13 @@ describe("DataLayer", () => {
       await instance.dataLayer.clear();
 
       expect(native.dataLayerClear).toHaveBeenCalledWith(instance.instanceId);
+    });
+
+    it('resolves undefined when native resolves the "null" JSON string', async () => {
+      const instance = Tealium.create("account", "clear-void", "dev");
+      (native.dataLayerClear as jest.Mock).mockResolvedValueOnce("null");
+
+      await expect(instance.dataLayer.clear()).resolves.toBeUndefined();
     });
   });
 });
