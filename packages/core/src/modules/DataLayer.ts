@@ -60,8 +60,9 @@ export class DataLayer {
   get(key: string): Promise<JsonValue | undefined> {
     return this.proxy.withNative((native) =>
       native.dataLayerGet(this.proxy.instanceId, key).then((json) =>
-        // Absent key. Android delivers null; iOS delivers undefined when the
-        // native side resolves nil, so accept both.
+        // Absent key: the native bridge resolves null on both platforms
+        // (Android `promise.resolve(null)`, iOS `NSNull`). The loose check also
+        // tolerates undefined in case a bridge ever resolves nil.
         json == null ? undefined : parseJsonValue(json, "Tealium.dataLayer.get")
       )
     );

@@ -83,7 +83,8 @@ public final class TealiumPrismBridge: NSObject {
 
     /// Joins the trace `id` on the instance, adding the id to every subsequent dispatch until
     /// `leaveTrace` is called or the session expires. Trace.join emits `Void`; the payload-less
-    /// result is converted to `DataItem.null` so the promise completes with a JSON `null`.
+    /// result is converted to [`DataItem.null`](doc:DataItem/null) so the promise completes with
+    /// a JSON `null`.
     @objc public static func joinTrace(
         instanceId: String,
         id: String,
@@ -95,8 +96,8 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
-    /// emits `Void`; the payload-less result is converted to `DataItem.null` so the promise
-    /// completes with a JSON `null`.
+    /// emits `Void`; the payload-less result is converted to [`DataItem.null`](doc:DataItem/null)
+    /// so the promise completes with a JSON `null`.
     @objc public static func leaveTrace(
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
@@ -135,8 +136,8 @@ public final class TealiumPrismBridge: NSObject {
     ///
     /// `expiryEncoded` carries the JS-encoded expiry policy; `nil`, or a value the SDK's converter
     /// cannot decode, selects the SDK's no-expiry overload, which stores forever. `put` emits
-    /// `Void`, so the payload-less result is converted to `DataItem.null` and the promise
-    /// completes with a JSON `null`.
+    /// `Void`, so the payload-less result is converted to [`DataItem.null`](doc:DataItem/null)
+    /// and the promise completes with a JSON `null`.
     @objc public static func dataLayerPutData(
         instanceId: String,
         dataJson: String,
@@ -155,13 +156,13 @@ public final class TealiumPrismBridge: NSObject {
                 return
             }
 
-            let single: SingleResult<Void, ModuleError<Error>>
+            let pendingPut: SingleResult<Void, ModuleError<Error>>
             if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
-                single = instance.dataLayer.put(data: data, expiry: expiry)
+                pendingPut = instance.dataLayer.put(data: data, expiry: expiry)
             } else {
-                single = instance.dataLayer.put(data: data)
+                pendingPut = instance.dataLayer.put(data: data)
             }
-            single.subscribe(completion) { _ in DataItem.null }
+            pendingPut.subscribe(completion) { _ in DataItem.null }
         }
     }
 
@@ -190,13 +191,13 @@ public final class TealiumPrismBridge: NSObject {
                 return
             }
 
-            let single: SingleResult<Void, ModuleError<Error>>
+            let pendingPut: SingleResult<Void, ModuleError<Error>>
             if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
-                single = instance.dataLayer.put(key: key, converting: value, expiry: expiry)
+                pendingPut = instance.dataLayer.put(key: key, converting: value, expiry: expiry)
             } else {
-                single = instance.dataLayer.put(key: key, converting: value)
+                pendingPut = instance.dataLayer.put(key: key, converting: value)
             }
-            single.subscribe(completion) { _ in DataItem.null }
+            pendingPut.subscribe(completion) { _ in DataItem.null }
         }
     }
 
@@ -226,8 +227,8 @@ public final class TealiumPrismBridge: NSObject {
 
     /// Removes every key listed in `keysJson`, a JSON array of strings.
     ///
-    /// `remove` emits `Void`; the payload-less result is converted to `DataItem.null` so the
-    /// promise completes with a JSON `null`.
+    /// `remove` emits `Void`; the payload-less result is converted to
+    /// [`DataItem.null`](doc:DataItem/null) so the promise completes with a JSON `null`.
     @objc public static func dataLayerRemove(
         instanceId: String,
         keysJson: String,
@@ -247,7 +248,7 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Clears the whole data layer. `clear` emits `Void`; the payload-less result is converted to
-    /// `DataItem.null` so the promise completes with a JSON `null`.
+    /// [`DataItem.null`](doc:DataItem/null) so the promise completes with a JSON `null`.
     @objc public static func dataLayerClear(
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
