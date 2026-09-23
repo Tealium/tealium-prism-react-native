@@ -15,29 +15,13 @@ internal fun <T : DataItemConvertible> SingleResult<T>.subscribe(promise: Promis
 /**
  * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via
  * [converter] and resolving [promise] with its JSON string on success, or rejecting
- * [promise] with the error on failure.
+ * [promise] with the error on failure. Delegates to [subscribeNullable]; a non-null
+ * converter never hits its `null` branch.
  */
 internal inline fun <T> SingleResult<T>.subscribe(
     promise: Promise,
     crossinline converter: (T) -> DataItem
-) {
-    // One-shot subscription: it completes on first emission and the returned Disposable
-    // deallocates on its own, so we don't retain it.
-    var emitted = false
-    subscribe(
-        { result ->
-            emitted = true
-            result
-                .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
-                .onFailure { t -> promise.reject(ErrorCode.PRISM_NATIVE_ERROR, t.message, t) }
-        },
-        {
-            if (!emitted) {
-                promise.reject(ErrorCode.TEALIUM_CANCELLED, "Single completed without emitting a value")
-            }
-        }
-    )
-}
+) = subscribeNullable(promise, converter)
 
 /**
  * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via [converter].

@@ -18,9 +18,11 @@ extension Single {
     /// Variant of [`Single.subscribe(_:converter:)`](doc:Single/subscribe(_:converter:)) whose
     /// converter may yield no `DataItem` at all.
     ///
-    /// A `nil` from the converter completes with a `nil` result rather than a JSON string, which
-    /// the `.mm` layer forwards as `resolve(nil)` — a JS `null`. Used for lookups where "absent"
-    /// has to stay distinguishable from a stored JSON `null`.
+    /// A `nil` from the converter completes with a `nil` result rather than a JSON string. The
+    /// native bridge's `.mm` layer resolves that as `NSNull` (a JS `null`, matching Android's
+    /// `promise.resolve(null)`) rather than `resolve(nil)`, which RN would surface as JS
+    /// `undefined`. Used for lookups where "absent" has to stay distinguishable from a stored
+    /// JSON `null`, which arrives as the JSON string `"null"`.
     func subscribe<T, E: Error>(
         _ completion: @escaping (String?, PromiseRejection?) -> Void,
         converter: @escaping (T) -> DataItem?

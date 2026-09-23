@@ -165,12 +165,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             }
 
             val expiry = resolveExpiry(expiryEncoded)
-            val put = if (expiry == null) {
+            val pendingPut = if (expiry == null) {
                 instance.dataLayer.put(data)
             } else {
                 instance.dataLayer.put(data, expiry)
             }
-            put.subscribe(promise) { DataItem.NULL }
+            pendingPut.subscribe(promise) { DataItem.NULL }
         }
     }
 
@@ -199,12 +199,12 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             }
 
             val expiry = resolveExpiry(expiryEncoded)
-            val put = if (expiry == null) {
+            val pendingPut = if (expiry == null) {
                 instance.dataLayer.put(key, value)
             } else {
                 instance.dataLayer.put(key, value, expiry)
             }
-            put.subscribe(promise) { DataItem.NULL }
+            pendingPut.subscribe(promise) { DataItem.NULL }
         }
     }
 
