@@ -3,16 +3,16 @@ import TealiumPrism
 
 extension TealiumInstanceManager {
     /// Looks up the `Tealium` instance identified by `key` and invokes `found` with it once
-    /// resolved. If no instance exists for `key`, calls `completion(nil, error)` with an
-    /// "INSTANCE_NOT_FOUND" error instead of invoking `found`.
+    /// resolved. If no instance exists for `key`, calls `rejection` with a `PromiseRejection`
+    /// whose code is `.instanceNotFound` instead of invoking `found`.
     func withInstance(
         _ key: String,
-        completion: @escaping (String?, PromiseRejection?) -> Void,
+        rejection: @escaping (PromiseRejection) -> Void,
         found: @escaping (Tealium) -> Void
     ) {
         get(key) { instance in
             guard let instance else {
-                completion(nil, PromiseRejection(
+                rejection(PromiseRejection(
                     code: .instanceNotFound,
                     message: "No Tealium instance with key '\(key)'")
                 )
@@ -20,5 +20,14 @@ extension TealiumInstanceManager {
             }
             found(instance)
         }
+    }
+
+    /// For bridge methods resolving to a JSON string: rejects with `(nil, error)`.
+    func withInstance(
+        _ key: String,
+        rejection: @escaping (String?, PromiseRejection?) -> Void,
+        found: @escaping (Tealium) -> Void
+    ) {
+        withInstance(key, rejection: { rejection(nil, $0) }, found: found)
     }
 }

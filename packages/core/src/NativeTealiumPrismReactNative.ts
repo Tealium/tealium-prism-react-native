@@ -36,45 +36,37 @@ export interface Spec extends TurboModule {
    */
   shutdown(instanceId: string): Promise<void>;
   /**
-   * Joins a trace for `id`. Resolves the JSON string `"null"`: the SDK emits
-   * `Void`, which the native bridge (this repo's promise adapters) encodes as a
-   * null `DataItem`; the JS wrapper normalizes that to `undefined`.
+   * Joins a trace for `id`. Resolves with no value: the SDK emits `Void`.
    */
-  joinTrace(instanceId: string, id: string): Promise<string>;
+  joinTrace(instanceId: string, id: string): Promise<void>;
   /**
-   * Leaves the current trace, if any. Resolves the JSON string `"null"`: the
-   * SDK emits `Void`, which the native bridge (this repo's promise adapters)
-   * encodes as a null `DataItem`; the JS wrapper normalizes that to
-   * `undefined`.
+   * Leaves the current trace, if any. Resolves with no value: the SDK emits
+   * `Void`.
    */
-  leaveTrace(instanceId: string): Promise<string>;
+  leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
    * expiry policy: `-1` forever, `-2` session, `-3` untilRestart, `>= 0` a
    * duration in seconds; `null` omits the policy, which the native SDK
-   * defaults to forever. Resolves the JSON string `"null"`: the SDK emits
-   * `Void`, which the native bridge (this repo's promise adapters) encodes as a
-   * null `DataItem`; the JS wrapper normalizes that to `undefined`.
+   * defaults to forever. Resolves with no value: the SDK emits `Void`.
    */
   dataLayerPutData(
     instanceId: string,
     dataJson: string,
     expiryEncoded: number | null
-  ): Promise<string>;
+  ): Promise<void>;
   /**
    * Stores a single key/value pair in the data layer. `expiryEncoded` uses the
-   * same sentinel encoding as `dataLayerPutData`. Resolves the JSON string
-   * `"null"`: the SDK emits `Void`, which the native bridge (this repo's
-   * promise adapters) encodes as a null `DataItem`; the JS wrapper normalizes
-   * that to `undefined`.
+   * same sentinel encoding as `dataLayerPutData`. Resolves with no value: the
+   * SDK emits `Void`.
    */
   dataLayerPutValue(
     instanceId: string,
     key: string,
     valueJson: string,
     expiryEncoded: number | null
-  ): Promise<string>;
+  ): Promise<void>;
   /**
    * Resolves the JSON-encoded value stored under `key`, or `null` if the key
    * is absent (a stored JSON `null` resolves the string `"null"`, not the
@@ -85,18 +77,14 @@ export interface Spec extends TurboModule {
   dataLayerGetAll(instanceId: string): Promise<string>;
   /**
    * Removes the keys in `keysJson`, always a JSON array of strings. Resolves
-   * the JSON string `"null"`: the SDK emits `Void`, which the native bridge
-   * (this repo's promise adapters) encodes as a null `DataItem`; the JS
-   * wrapper normalizes that to `undefined`.
+   * with no value: the SDK emits `Void`.
    */
-  dataLayerRemove(instanceId: string, keysJson: string): Promise<string>;
+  dataLayerRemove(instanceId: string, keysJson: string): Promise<void>;
   /**
-   * Removes every key from the data layer. Resolves the JSON string `"null"`:
-   * the SDK emits `Void`, which the native bridge (this repo's promise
-   * adapters) encodes as a null `DataItem`; the JS wrapper normalizes that to
-   * `undefined`.
+   * Removes every key from the data layer. Resolves with no value: the SDK
+   * emits `Void`.
    */
-  dataLayerClear(instanceId: string): Promise<string>;
+  dataLayerClear(instanceId: string): Promise<void>;
 }
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)

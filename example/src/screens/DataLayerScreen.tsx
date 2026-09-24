@@ -295,6 +295,9 @@ export default function DataLayerScreen() {
           autoCapitalize="none"
         />
         <TextInput
+          keyboardType="ascii-capable"
+          autoCorrect={false}
+          spellCheck={false}
           style={styles.input}
           placeholder="Value (JSON)"
           value={valueJson}

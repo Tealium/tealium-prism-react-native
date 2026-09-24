@@ -64,7 +64,7 @@ public final class TealiumPrismBridge: NSObject {
         dataJson: String?,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             let dispatchType: DispatchType = (type == "view") ? .view : .event
 
             do {
@@ -82,28 +82,27 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Joins the trace `id` on the instance, adding the id to every subsequent dispatch until
-    /// `leaveTrace` is called or the session expires. Trace.join emits `Void`; the payload-less
-    /// result is converted to [`DataItem.null`](doc:DataItem/null) so the promise completes with
-    /// a JSON `null`.
+    /// `leaveTrace` is called or the session expires. Trace.join emits `Void`, so the completion
+    /// carries no payload and the promise resolves with no value (JS `undefined`).
     @objc public static func joinTrace(
         instanceId: String,
         id: String,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.trace.join(id: id).subscribe(completion) { _ in DataItem.null }
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
+            instance.trace.join(id: id).subscribeVoid(completion)
         }
     }
 
     /// Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
-    /// emits `Void`; the payload-less result is converted to [`DataItem.null`](doc:DataItem/null)
-    /// so the promise completes with a JSON `null`.
+    /// emits `Void`, so the completion carries no payload and the promise resolves with no value
+    /// (JS `undefined`).
     @objc public static func leaveTrace(
         instanceId: String,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.trace.leave().subscribe(completion) { _ in DataItem.null }
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
+            instance.trace.leave().subscribeVoid(completion)
         }
     }
 
@@ -114,7 +113,7 @@ public final class TealiumPrismBridge: NSObject {
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             instance.trace.forceEndOfVisit().subscribe(completion, converter: trackResultAsDataItem)
         }
     }
@@ -136,20 +135,20 @@ public final class TealiumPrismBridge: NSObject {
     ///
     /// `expiryEncoded` carries the JS-encoded expiry policy; `nil`, or a value the SDK's converter
     /// cannot decode, selects the SDK's no-expiry overload, which stores forever. `put` emits
-    /// `Void`, so the payload-less result is converted to [`DataItem.null`](doc:DataItem/null)
-    /// and the promise completes with a JSON `null`.
+    /// `Void`, so the completion carries no payload and the promise resolves with no value (JS
+    /// `undefined`).
     @objc public static func dataLayerPutData(
         instanceId: String,
         dataJson: String,
         expiryEncoded: NSNumber?,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             let data: DataObject
             do {
                 data = try DataObject(jsonString: dataJson)
             } catch {
-                completion(nil, PromiseRejection(
+                completion(PromiseRejection(
                     code: .dataParseError,
                     error: error
                 ))
@@ -162,7 +161,7 @@ public final class TealiumPrismBridge: NSObject {
             } else {
                 pendingPut = instance.dataLayer.put(data: data)
             }
-            pendingPut.subscribe(completion) { _ in DataItem.null }
+            pendingPut.subscribeVoid(completion)
         }
     }
 
@@ -177,14 +176,14 @@ public final class TealiumPrismBridge: NSObject {
         key: String,
         valueJson: String,
         expiryEncoded: NSNumber?,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             let value: DataItem
             do {
                 value = try JsonValueConversions.dataItem(fromJSONString: valueJson)
             } catch {
-                completion(nil, PromiseRejection(
+                completion(PromiseRejection(
                     code: .dataParseError,
                     error: error
                 ))
@@ -197,7 +196,7 @@ public final class TealiumPrismBridge: NSObject {
             } else {
                 pendingPut = instance.dataLayer.put(key: key, converting: value)
             }
-            pendingPut.subscribe(completion) { _ in DataItem.null }
+            pendingPut.subscribeVoid(completion)
         }
     }
 
@@ -210,7 +209,7 @@ public final class TealiumPrismBridge: NSObject {
         key: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             instance.dataLayer.getDataItem(key: key).subscribe(completion) { $0 }
         }
     }
@@ -220,26 +219,26 @@ public final class TealiumPrismBridge: NSObject {
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             instance.dataLayer.getAll().subscribe(completion) { DataItem(converting: $0) }
         }
     }
 
     /// Removes every key listed in `keysJson`, a JSON array of strings.
     ///
-    /// `remove` emits `Void`; the payload-less result is converted to
-    /// [`DataItem.null`](doc:DataItem/null) so the promise completes with a JSON `null`.
+    /// `remove` emits `Void`, so the completion carries no payload and the promise resolves with
+    /// no value (JS `undefined`).
     @objc public static func dataLayerRemove(
         instanceId: String,
         keysJson: String,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
             do {
                 let keys = try DataLayerConversions.keys(fromJSONString: keysJson)
-                instance.dataLayer.remove(keys: keys).subscribe(completion) { _ in DataItem.null }
+                instance.dataLayer.remove(keys: keys).subscribeVoid(completion)
             } catch {
-                completion(nil, PromiseRejection(
+                completion(PromiseRejection(
                     code: .dataParseError,
                     error: error
                 ))
@@ -247,14 +246,14 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Clears the whole data layer. `clear` emits `Void`; the payload-less result is converted to
-    /// [`DataItem.null`](doc:DataItem/null) so the promise completes with a JSON `null`.
+    /// Clears the whole data layer. `clear` emits `Void`, so the completion carries no payload and
+    /// the promise resolves with no value (JS `undefined`).
     @objc public static func dataLayerClear(
         instanceId: String,
-        completion: @escaping (String?, PromiseRejection?) -> Void
+        completion: @escaping (PromiseRejection?) -> Void
     ) {
-        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.dataLayer.clear().subscribe(completion) { _ in DataItem.null }
+        TealiumInstanceManager.shared.withInstance(instanceId, rejection: completion) { instance in
+            instance.dataLayer.clear().subscribeVoid(completion)
         }
     }
 

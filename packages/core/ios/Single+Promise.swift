@@ -30,6 +30,15 @@ extension Single {
         subscribe(completion, nullableConverter: converter)
     }
 
+    /// Subscribes to a `SingleResult<Void, E>`, completing with `nil` on success or the
+    /// `PromiseRejection` on failure. The `.mm` layer resolves the promise with `nil`, so JS
+    /// receives `undefined`. Used for bridge methods declared `Promise<void>` in the TS spec.
+    func subscribeVoid<E: Error>(
+        _ completion: @escaping (PromiseRejection?) -> Void
+    ) where Element == Result<Void, E> {
+        subscribe({ _, rejection in completion(rejection) }, nullableConverter: { _ in nil })
+    }
+
     /// Shared implementation of the two `subscribe(_:converter:)` overloads.
     private func subscribe<T, E: Error>(
         _ completion: @escaping (String?, PromiseRejection?) -> Void,
