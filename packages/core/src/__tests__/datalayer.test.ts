@@ -22,7 +22,7 @@ jest.mock("../NativeTealiumPrismReactNative", () => ({
 
 import NativeTealiumPrismReactNative from "../NativeTealiumPrismReactNative";
 import { Tealium } from "../index";
-import type { ExpiryPolicy } from "../types";
+import type { Expiry } from "../types";
 
 const native = NativeTealiumPrismReactNative!;
 
@@ -31,16 +31,11 @@ describe("DataLayer", () => {
     jest.clearAllMocks();
   });
 
-  const expiryCases: Array<[ExpiryPolicy, number]> = [
+  const expiryCases: Array<[Expiry, number]> = [
     ["forever", -1],
     ["session", -2],
     ["untilRestart", -3],
-    [{ afterSeconds: 90 }, 90],
-    [{ afterSeconds: 1.5 }, 1.5],
-    // Invalid (unknown negative sentinel): passed through unchanged; native
-    // falls back to the SDK default, forever, when the converter cannot
-    // decode it.
-    [{ afterSeconds: -99 }, -99],
+    [new Date(1_700_000_000_123), 1_700_000_000_123],
   ];
 
   describe("putAll (bulk)", () => {
@@ -74,10 +69,10 @@ describe("DataLayer", () => {
       ).resolves.toBeUndefined();
     });
 
-    it.each(expiryCases)("encodes expiry %j to %d", async (expiry, encoded) => {
+    it.each(expiryCases)("encodes expiry %s to %s", async (expiry, encoded) => {
       const instance = Tealium.create(
         "account",
-        `putall-bulk-${JSON.stringify(expiry)}`,
+        `putall-bulk-${expiry}`,
         "dev"
       );
 
@@ -88,6 +83,19 @@ describe("DataLayer", () => {
         '{"a":1}',
         encoded
       );
+    });
+
+    it("rejects an invalid date expiry without calling native", async () => {
+      const instance = Tealium.create(
+        "account",
+        "putall-bulk-invalid-date",
+        "dev"
+      );
+
+      await expect(
+        instance.dataLayer.putAll({ a: 1 }, new Date(Number.NaN))
+      ).rejects.toThrow("encodeExpiry: invalid Date (NaN time)");
+      expect(native.dataLayerPutAll).not.toHaveBeenCalled();
     });
   });
 
@@ -123,12 +131,8 @@ describe("DataLayer", () => {
       ).resolves.toBeUndefined();
     });
 
-    it.each(expiryCases)("encodes expiry %j to %d", async (expiry, encoded) => {
-      const instance = Tealium.create(
-        "account",
-        `put-single-${JSON.stringify(expiry)}`,
-        "dev"
-      );
+    it.each(expiryCases)("encodes expiry %s to %s", async (expiry, encoded) => {
+      const instance = Tealium.create("account", `put-single-${expiry}`, "dev");
 
       await instance.dataLayer.put("key", 42, expiry);
 
@@ -138,6 +142,19 @@ describe("DataLayer", () => {
         "42",
         encoded
       );
+    });
+
+    it("rejects an invalid date expiry without calling native", async () => {
+      const instance = Tealium.create(
+        "account",
+        "put-single-invalid-date",
+        "dev"
+      );
+
+      await expect(
+        instance.dataLayer.put("key", 42, new Date(Number.NaN))
+      ).rejects.toThrow("encodeExpiry: invalid Date (NaN time)");
+      expect(native.dataLayerPutValue).not.toHaveBeenCalled();
     });
   });
 

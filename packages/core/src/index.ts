@@ -13,7 +13,7 @@ export type {
   DispatchType,
   TrackResult,
   LogLevel,
-  ExpiryPolicy,
+  Expiry,
 } from "./types";
 export { Environment } from "./types";
 export { Tealium } from "./Tealium";

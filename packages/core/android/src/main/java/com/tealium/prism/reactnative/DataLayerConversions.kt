@@ -2,23 +2,26 @@ package com.tealium.prism.reactnative
 
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableType
-import com.tealium.prism.core.api.data.DataItem
-import com.tealium.prism.core.api.misc.ExpiryPolicy
 import com.tealium.prism.core.api.persistence.Expiry
 
 /**
- * Resolves the wire representation of an expiry policy into an [Expiry].
+ * Resolves the wire representation of an expiry into an [Expiry].
  *
- * [encoded] is handed straight to the SDK: the meaning of the value — the negative sentinels,
- * non-negative durations in seconds, and how a fractional value like `1.5` truncates — belongs to
- * [ExpiryPolicy.Converter] and is not reimplemented here.
+ * The sentinels `-1`/`-2`/`-3` map to [Expiry.FOREVER]/[Expiry.SESSION]/[Expiry.UNTIL_RESTART]
+ * via the SDK's [Expiry.fromLongValue]. Any other value is a Unix timestamp in milliseconds.
  *
- * @param encoded The encoded policy as received from JS, or `null` when JS omitted it.
- * @return The resolved [Expiry], or `null` when [encoded] is `null` or is not a value the SDK
- *      converter recognizes.
+ * @param encoded The encoded expiry as received from JS, or `null` when JS omitted it.
+ * @return The resolved [Expiry], or `null` when [encoded] is `null`.
  */
 internal fun resolveExpiry(encoded: Double?): Expiry? {
-    return encoded?.let { ExpiryPolicy.Converter.convert(DataItem.double(it)) }?.resolve()
+    val value = encoded?.toLong() ?: return null
+    return when (value) {
+        -1L, -2L, -3L -> Expiry.fromLongValue(value)
+        // This bridge converts milliseconds to seconds: the wire format carries milliseconds to
+        // match the Swift SDK's `Expiry(timestamp:)`, while the Kotlin SDK's Expiry is accurate to
+        // the second, so any sub-second part is truncated.
+        else -> Expiry.afterEpochTime(value / 1000)
+    }
 }
 
 /**

@@ -6,17 +6,16 @@ enum DataLayerConversions {
 
     /// Resolves the JS-encoded expiry number into an `Expiry`.
     ///
-    /// `encoded` is handed straight to the SDK: the meaning of the value — the negative sentinels,
-    /// non-negative durations in seconds, and how a fractional value like `1.5` truncates — belongs
-    /// to [`ExpiryPolicy.converter`](doc:ExpiryPolicy/converter), not to this wrapper.
+    /// `encoded` is handed straight to the SDK: the meaning of the value — the negative sentinels
+    /// and the Unix millisecond timestamp otherwise — belongs to
+    /// [`Expiry.init(timestamp:)`](doc:Expiry/init(timestamp:)), not to this wrapper.
     ///
-    /// - Parameter encoded: The encoded policy as it arrived from JS, or `nil` when JS omitted it.
-    /// - Returns: The resolved `Expiry`, or `nil` when `encoded` is `nil` or is not a value the SDK
-    ///   converter recognises.
+    /// - Parameter encoded: The encoded expiry as it arrived from JS, or `nil` when JS omitted it.
+    /// - Returns: The resolved `Expiry`, or `nil` when `encoded` is `nil`.
     static func expiry(fromEncoded encoded: NSNumber?) -> Expiry? {
-        guard let encoded, let policy = ExpiryPolicy.converter.convert(dataItem: DataItem(value: encoded)) else {
+        guard let encoded else {
             return nil
         }
-        return policy.resolve()
+        return Expiry(timestamp: encoded.int64Value)
     }
 }

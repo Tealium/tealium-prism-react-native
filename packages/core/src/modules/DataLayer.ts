@@ -1,10 +1,6 @@
 import type { ModuleProxy } from "./ModuleProxy";
-import type { ExpiryPolicy, JsonValue, JsonValueObject } from "../types";
-import {
-  encodeExpiryPolicy,
-  parseJsonValue,
-  serialize,
-} from "../serialization";
+import type { Expiry, JsonValue, JsonValueObject } from "../types";
+import { encodeExpiry, parseJsonValue, serialize } from "../serialization";
 
 /**
  * DataLayer facade bound to a Tealium instance. Mirrors the native Prism
@@ -17,16 +13,17 @@ export class DataLayer {
 
   /**
    * Stores every key/value pair in `data`, replacing any existing value for
-   * each key. An omitted `expiry` stores forever.
+   * each key. An omitted `expiry` stores forever; a `Date` expires the entries
+   * at that time. Rejects without calling native if `expiry` is an invalid
+   * `Date`.
    */
-  putAll(data: JsonValueObject, expiry?: ExpiryPolicy): Promise<void> {
-    const expiryEncoded = encodeExpiryPolicy(expiry);
+  putAll(data: JsonValueObject, expiry?: Expiry): Promise<void> {
     return this.proxy
       .withNative((native) =>
         native.dataLayerPutAll(
           this.proxy.instanceId,
           serialize(data),
-          expiryEncoded
+          encodeExpiry(expiry)
         )
       )
       .then(() => undefined);
@@ -34,17 +31,17 @@ export class DataLayer {
 
   /**
    * Stores a single `key`/`value` pair, replacing any existing value for that
-   * key. An omitted `expiry` stores forever.
+   * key. An omitted `expiry` stores forever; a `Date` expires the entry at that
+   * time. Rejects without calling native if `expiry` is an invalid `Date`.
    */
-  put(key: string, value: JsonValue, expiry?: ExpiryPolicy): Promise<void> {
-    const expiryEncoded = encodeExpiryPolicy(expiry);
+  put(key: string, value: JsonValue, expiry?: Expiry): Promise<void> {
     return this.proxy
       .withNative((native) =>
         native.dataLayerPutValue(
           this.proxy.instanceId,
           key,
           serialize(value),
-          expiryEncoded
+          encodeExpiry(expiry)
         )
       )
       .then(() => undefined);

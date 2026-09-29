@@ -1,4 +1,4 @@
-import type { ExpiryPolicy, JsonValue, TrackResult } from "./types";
+import type { Expiry, JsonValue, TrackResult } from "./types";
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
 
@@ -53,18 +53,20 @@ export function parseTrackResult(
 }
 
 /**
- * Encodes an {@link ExpiryPolicy} to the integer sentinel the native bridge
- * expects: `"forever"` → `-1`, `"session"` → `-2`, `"untilRestart"` → `-3`,
- * `{ afterSeconds }` → the seconds value unchanged (no validation or
- * coercion — an unconvertible value falls back to the native side's default,
- * forever), and `undefined` → `null` (native defaults to forever).
+ * Encodes an {@link Expiry} to the number the native bridge expects:
+ * `"forever"` → `-1`, `"session"` → `-2`, `"untilRestart"` → `-3`, a `Date` →
+ * its Unix timestamp in milliseconds (`getTime()`), and `undefined` → `null`
+ * (native uses the SDK's no-expiry overload, which stores forever). Throws if
+ * the `Date` is invalid (`NaN` time).
  */
-export function encodeExpiryPolicy(
-  expiry: ExpiryPolicy | undefined
-): number | null {
+export function encodeExpiry(expiry: Expiry | undefined): number | null {
   if (expiry === undefined) return null;
   if (expiry === "forever") return -1;
   if (expiry === "session") return -2;
   if (expiry === "untilRestart") return -3;
-  return expiry.afterSeconds;
+  const timestamp = expiry.getTime();
+  if (Number.isNaN(timestamp)) {
+    throw new Error("encodeExpiry: invalid Date (NaN time)");
+  }
+  return timestamp;
 }

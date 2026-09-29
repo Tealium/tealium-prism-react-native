@@ -6,19 +6,19 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { type ExpiryPolicy } from "@tealium/prism-react-native";
+import { type Expiry } from "@tealium/prism-react-native";
 import { useTealium } from "../TealiumProvider";
 import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
 import PlainTextInput from "../components/PlainTextInput";
 import Toast, { type ToastNotice } from "../components/Toast";
 
-type ExpiryPreset = "forever" | "session" | "untilRestart" | "afterSeconds";
+type ExpiryPreset = "forever" | "session" | "untilRestart" | "afterDate";
 
 const EXPIRY_PRESETS: { preset: ExpiryPreset; label: string }[] = [
   { preset: "forever", label: "Forever" },
   { preset: "session", label: "Session" },
   { preset: "untilRestart", label: "Until Restart" },
-  { preset: "afterSeconds", label: "After Seconds" },
+  { preset: "afterDate", label: "After (s from now)" },
 ];
 
 // A fixed nested sample used by the "Put sample object" bulk button, to show
@@ -50,7 +50,7 @@ export default function DataLayerScreen() {
   const [removeKey, setRemoveKey] = useState("demo_key");
   const [valueJson, setValueJson] = useState('"hello"');
   const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("forever");
-  const [afterSeconds, setAfterSeconds] = useState("60");
+  const [secondsFromNow, setSecondsFromNow] = useState("60");
 
   const [notice, setNotice] = useState<ToastNotice | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
@@ -63,9 +63,11 @@ export default function DataLayerScreen() {
     setRemoveKey("demo_key");
   }, [activeInstance?.instanceId]);
 
-  const buildExpiry = (): ExpiryPolicy => {
-    if (expiryPreset === "afterSeconds") {
-      return { afterSeconds: Number(afterSeconds) };
+  // Called at put time, so the "after" preset's Date is relative to the
+  // moment of the put rather than to when the seconds were typed.
+  const buildExpiry = (): Expiry => {
+    if (expiryPreset === "afterDate") {
+      return new Date(Date.now() + Number(secondsFromNow) * 1000);
     }
     return expiryPreset;
   };
@@ -277,12 +279,12 @@ export default function DataLayerScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        {expiryPreset === "afterSeconds" && (
+        {expiryPreset === "afterDate" && (
           <PlainTextInput
             style={styles.input}
-            placeholder="Seconds"
-            value={afterSeconds}
-            onChangeText={setAfterSeconds}
+            placeholder="Seconds from now"
+            value={secondsFromNow}
+            onChangeText={setSecondsFromNow}
             keyboardType="numeric"
           />
         )}

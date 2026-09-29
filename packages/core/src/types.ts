@@ -70,14 +70,9 @@ export interface TrackResult {
 }
 
 /**
- * Expiry policy for a data layer entry, mirroring the native Prism
- * `ExpiryPolicy` type. `"forever"` never expires, `"session"` expires with
- * the current session, `"untilRestart"` expires when the app restarts, and
- * `{ afterSeconds }` expires after the given number of seconds from when the
- * entry is stored.
+ * Expiry of a data layer entry, mirroring the native Prism `Expiry` accepted
+ * by `DataLayer.put`. `"forever"` never expires, `"session"` expires when the
+ * session ends, `"untilRestart"` expires when the app restarts, and a `Date`
+ * expires at that absolute point in time.
  */
-export type ExpiryPolicy =
-  | "session"
-  | "untilRestart"
-  | "forever"
-  | { afterSeconds: number };
+export type Expiry = "session" | "untilRestart" | "forever" | Date;

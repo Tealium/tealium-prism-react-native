@@ -34,26 +34,67 @@ final class DataLayerConversionsTests: XCTestCase {
         XCTAssertEqual(expiry, .untilRestart)
     }
 
-    func test_expiry_with_positive_seconds_resolves_to_date_ninety_seconds_from_now() {
-        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: 90)),
+    func test_expiry_with_millisecond_timestamp_resolves_to_date_at_that_timestamp() {
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: 1_700_000_000_000)),
               case .after(let date) = expiry else {
-            XCTFail("90 should resolve to a date-based expiry")
+            XCTFail("A millisecond timestamp should resolve to a date-based expiry")
             return
         }
-        XCTAssertEqual(date.timeIntervalSinceNow, 90, accuracy: 5)
+        XCTAssertEqual(date.timeIntervalSince1970, 1_700_000_000, accuracy: 0.001)
     }
 
-    func test_expiry_with_fractional_number_resolves_to_date_about_one_second_from_now() {
-        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: 1.5)),
+    func test_expiry_with_sub_second_timestamp_preserves_milliseconds() {
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: 1_700_000_000_123)),
               case .after(let date) = expiry else {
-            XCTFail("1.5 should resolve to a date-based expiry, truncated by the SDK to 1 second")
+            XCTFail("A sub-second timestamp should resolve to a date-based expiry")
             return
         }
-        XCTAssertEqual(date.timeIntervalSinceNow, 1, accuracy: 5)
+        // The Prism Swift SDK's `Expiry.init(timestamp:)` is millisecond-accurate, unlike the
+        // Kotlin bridge, which truncates to the epoch second (see resolveExpiry in
+        // DataLayerConversions.kt).
+        XCTAssertEqual(date.timeIntervalSince1970, 1_700_000_000.123, accuracy: 0.001)
     }
 
-    func test_expiry_with_unknown_negative_sentinel_returns_nil() {
-        XCTAssertNil(DataLayerConversions.expiry(fromEncoded: NSNumber(value: -99)))
+    func test_expiry_with_zero_resolves_to_unix_epoch_date() {
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: 0)),
+              case .after(let date) = expiry else {
+            XCTFail("0 should resolve to a date-based expiry")
+            return
+        }
+        XCTAssertEqual(date.timeIntervalSince1970, 0, accuracy: 0.001)
+    }
+
+    func test_expiry_with_future_timestamp_is_not_expired() {
+        let inOneHourMilliseconds = Int64((Date().timeIntervalSince1970 + 3_600) * 1000)
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: inOneHourMilliseconds)),
+              case .after(let date) = expiry else {
+            XCTFail("A future timestamp should resolve to a date-based expiry")
+            return
+        }
+        // TODO: should we add one in Swift?
+        // The Prism Swift SDK's `Expiry` has no `isExpired` accessible to this wrapper, so
+        // expiration is asserted by comparing the decoded `Date` to now.
+        XCTAssertTrue(date > Date())
+    }
+
+    func test_expiry_with_past_timestamp_is_expired() {
+        let oneHourAgoMilliseconds = Int64((Date().timeIntervalSince1970 - 3_600) * 1000)
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: oneHourAgoMilliseconds)),
+              case .after(let date) = expiry else {
+            XCTFail("A past timestamp should resolve to a date-based expiry")
+            return
+        }
+        XCTAssertTrue(date < Date())
+    }
+
+    func test_expiry_with_unknown_negative_value_resolves_to_past_timestamp() {
+        guard let expiry = DataLayerConversions.expiry(fromEncoded: NSNumber(value: -99)),
+              case .after(let date) = expiry else {
+            XCTFail("An unknown negative value should resolve to a date-based expiry, not a sentinel")
+            return
+        }
+        XCTAssertEqual(date.timeIntervalSince1970, -0.099, accuracy: 0.001)
+        XCTAssertTrue(date < Date())
     }
 
     // MARK: - JSON <-> DataObject round trip

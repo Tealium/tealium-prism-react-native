@@ -148,10 +148,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     // TODO: update native call when API changed in SDK
     /**
      * Stores every key-value pair of [dataJson] in the instance's data layer, expiring them
-     * according to [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's
-     * converter cannot decode falls back to the SDK's no-expiry overload (forever), the same as
-     * an omitted value. The Prism SDK's DataLayer.put (still named `put`, not `putAll`) emits
-     * [Unit]; the promise resolves with no value.
+     * according to [expiryEncoded] (see [resolveExpiry]). An omitted [expiryEncoded] selects the
+     * SDK's no-expiry overload, which stores forever. The Prism SDK's DataLayer.put (still named
+     * `put`, not `putAll`) emits [Unit]; the promise resolves with no value.
      */
     override fun dataLayerPutAll(
         instanceId: String,
@@ -177,9 +176,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Stores [valueJson] under [key] in the instance's data layer, expiring it according to
-     * [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's converter cannot
-     * decode falls back to the SDK's no-expiry overload (forever), the same as an omitted value.
-     * DataLayer.put emits [Unit]; the promise resolves with no value.
+     * [expiryEncoded] (see [resolveExpiry]). An omitted [expiryEncoded] selects the SDK's
+     * no-expiry overload, which stores forever. DataLayer.put emits [Unit]; the promise resolves
+     * with no value.
      */
     override fun dataLayerPutValue(
         instanceId: String,

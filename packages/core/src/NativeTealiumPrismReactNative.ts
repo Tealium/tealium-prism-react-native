@@ -40,9 +40,9 @@ export interface Spec extends TurboModule {
   forceEndOfVisit(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
-   * expiry policy: `-1` forever, `-2` session, `-3` untilRestart, `>= 0` a
-   * duration in seconds; `null` omits the policy, which the native SDK
-   * defaults to forever. Payload-less; see {@link shutdown}.
+   * expiry: `-1` forever, `-2` session, `-3` untilRestart, otherwise a Unix
+   * timestamp in milliseconds; `null` omits the expiry, which the native SDK
+   * stores forever. Payload-less; see {@link shutdown}.
    */
   dataLayerPutAll(
     instanceId: string,
@@ -51,7 +51,7 @@ export interface Spec extends TurboModule {
   ): Promise<void>;
   /**
    * Stores a single key/value pair in the data layer. `expiryEncoded` uses the
-   * same sentinel encoding as `dataLayerPutAll`. Payload-less; see
+   * same encoding as `dataLayerPutAll`. Payload-less; see
    * {@link shutdown}.
    */
   dataLayerPutValue(

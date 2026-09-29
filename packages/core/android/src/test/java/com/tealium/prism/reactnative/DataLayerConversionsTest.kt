@@ -4,6 +4,7 @@ import com.facebook.react.bridge.JavaOnlyArray
 import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.persistence.Expiry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,32 +44,56 @@ class DataLayerConversionsTest {
     }
 
     @Test
-    fun test_resolveExpiry_with_duration_resolves_to_expiry_that_many_seconds_from_now() {
-        val expiry = requireNotNull(resolveExpiry(90.0)) { "90 should resolve to an expiry" }
-        val expectedExpiryTime = System.currentTimeMillis() / 1000 + 90
-
-        val expiryTime = expiry.expiryTime()
-        assertTrue(
-            "expiryTime $expiryTime should be within 2s of $expectedExpiryTime",
-            Math.abs(expiryTime - expectedExpiryTime) <= 2
-        )
+    fun test_resolveExpiry_with_millisecond_timestamp_resolves_to_that_epoch_second() {
+        val expiry = requireNotNull(resolveExpiry(1_700_000_000_000.0)) {
+            "a millisecond timestamp should resolve to an expiry"
+        }
+        assertEquals(1_700_000_000L, expiry.expiryTime())
     }
 
     @Test
-    fun test_resolveExpiry_with_fractional_seconds_resolves_to_expiry_about_one_second_from_now() {
-        val expiry = requireNotNull(resolveExpiry(1.5)) { "1.5 should resolve to an expiry" }
-        val expectedExpiryTime = System.currentTimeMillis() / 1000 + 1
-
-        val expiryTime = expiry.expiryTime()
-        assertTrue(
-            "expiryTime $expiryTime should be within 2s of $expectedExpiryTime",
-            Math.abs(expiryTime - expectedExpiryTime) <= 2
-        )
+    fun test_resolveExpiry_with_sub_second_timestamp_truncates_to_the_epoch_second() {
+        val expiry = requireNotNull(resolveExpiry(1_700_000_000_999.0)) {
+            "a millisecond timestamp should resolve to an expiry"
+        }
+        assertEquals(1_700_000_000L, expiry.expiryTime())
     }
 
     @Test
-    fun test_resolveExpiry_with_unknown_negative_sentinel_returns_null() {
-        assertNull(resolveExpiry(-99.0))
+    fun test_resolveExpiry_with_zero_resolves_to_unix_epoch() {
+        val expiry = requireNotNull(resolveExpiry(0.0)) {
+            "0 should resolve to an expiry"
+        }
+        assertEquals(0L, expiry.expiryTime())
+    }
+
+    @Test
+    fun test_resolveExpiry_with_future_timestamp_is_not_expired() {
+        val inOneHour = System.currentTimeMillis() + 3_600_000
+        val expiry = requireNotNull(resolveExpiry(inOneHour.toDouble())) {
+            "a future timestamp should resolve to an expiry"
+        }
+        assertFalse(Expiry.isExpired(expiry))
+    }
+
+    @Test
+    fun test_resolveExpiry_with_past_timestamp_is_expired() {
+        val oneHourAgo = System.currentTimeMillis() - 3_600_000
+        val expiry = requireNotNull(resolveExpiry(oneHourAgo.toDouble())) {
+            "a past timestamp should resolve to an expiry"
+        }
+        assertTrue(Expiry.isExpired(expiry))
+    }
+
+    @Test
+    fun test_resolveExpiry_with_unknown_negative_value_resolves_to_past_timestamp() {
+        // -99 is not one of the -1/-2/-3 sentinels, so it is treated as a millisecond timestamp;
+        // -99 / 1000 truncates to epoch second 0, i.e. a pre-1970 (already expired) instant.
+        val expiry = requireNotNull(resolveExpiry(-99.0)) {
+            "an unknown negative value should resolve to an expiry, not a sentinel"
+        }
+        assertEquals(0L, expiry.expiryTime())
+        assertTrue(Expiry.isExpired(expiry))
     }
 
     @Test
