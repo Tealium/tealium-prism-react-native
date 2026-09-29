@@ -27,54 +27,39 @@ export interface Spec extends TurboModule {
     dataJson: string | null
   ): Promise<string>;
   /**
-   * Shuts the instance down. Unlike the other payload-less methods this is
-   * `Promise<void>`, not `Promise<string>`: both SDKs expose shutdown as a
-   * synchronous call with no `Single`, so it never passes through the native
-   * bridge's promise adapters and their `"null"` encoding. The bridge resolves
-   * `nil` on iOS (JS `undefined`) and `null` on Android (JS `null`);
-   * `Tealium.shutdown` normalizes both to `undefined`.
+   * Shuts the instance down. This and every other payload-less method below
+   * resolve with no value: `nil` on iOS surfaces as JS `undefined`, `null` on
+   * Android surfaces as JS `null` (per this repo's native bridge), and the JS
+   * wrapper normalizes both to `undefined`.
    */
   shutdown(instanceId: string): Promise<void>;
-  /**
-   * Joins a trace for `id`. Resolves the JSON string `"null"`: the SDK emits
-   * `Void`, which the native bridge (this repo's promise adapters) encodes as a
-   * null `DataItem`; the JS wrapper normalizes that to `undefined`.
-   */
-  joinTrace(instanceId: string, id: string): Promise<string>;
-  /**
-   * Leaves the current trace, if any. Resolves the JSON string `"null"`: the
-   * SDK emits `Void`, which the native bridge (this repo's promise adapters)
-   * encodes as a null `DataItem`; the JS wrapper normalizes that to
-   * `undefined`.
-   */
-  leaveTrace(instanceId: string): Promise<string>;
+  /** Joins a trace for `id`. Payload-less; see {@link shutdown}. */
+  joinTrace(instanceId: string, id: string): Promise<void>;
+  /** Leaves the current trace, if any. Payload-less; see {@link shutdown}. */
+  leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
    * expiry policy: `-1` forever, `-2` session, `-3` untilRestart, `>= 0` a
    * duration in seconds; `null` omits the policy, which the native SDK
-   * defaults to forever. Resolves the JSON string `"null"`: the SDK emits
-   * `Void`, which the native bridge (this repo's promise adapters) encodes as a
-   * null `DataItem`; the JS wrapper normalizes that to `undefined`.
+   * defaults to forever. Payload-less; see {@link shutdown}.
    */
   dataLayerPutData(
     instanceId: string,
     dataJson: string,
     expiryEncoded: number | null
-  ): Promise<string>;
+  ): Promise<void>;
   /**
    * Stores a single key/value pair in the data layer. `expiryEncoded` uses the
-   * same sentinel encoding as `dataLayerPutData`. Resolves the JSON string
-   * `"null"`: the SDK emits `Void`, which the native bridge (this repo's
-   * promise adapters) encodes as a null `DataItem`; the JS wrapper normalizes
-   * that to `undefined`.
+   * same sentinel encoding as `dataLayerPutData`. Payload-less; see
+   * {@link shutdown}.
    */
   dataLayerPutValue(
     instanceId: string,
     key: string,
     valueJson: string,
     expiryEncoded: number | null
-  ): Promise<string>;
+  ): Promise<void>;
   /**
    * Resolves the JSON-encoded value stored under `key`, or `null` if the key
    * is absent (a stored JSON `null` resolves the string `"null"`, not the
@@ -83,23 +68,13 @@ export interface Spec extends TurboModule {
   dataLayerGet(instanceId: string, key: string): Promise<string | null>;
   /** Resolves every stored key/value pair as a single JSON object string. */
   dataLayerGetAll(instanceId: string): Promise<string>;
-  /**
-   * Removes every key in `keys`. Resolves the JSON string `"null"`: the SDK
-   * emits `Void`, which the native bridge (this repo's promise adapters)
-   * encodes as a null `DataItem`; the JS wrapper normalizes that to
-   * `undefined`.
-   */
+  /** Removes every key in `keys`. Payload-less; see {@link shutdown}. */
   dataLayerRemove(
     instanceId: string,
     keys: ReadonlyArray<string>
-  ): Promise<string>;
-  /**
-   * Removes every key from the data layer. Resolves the JSON string `"null"`:
-   * the SDK emits `Void`, which the native bridge (this repo's promise
-   * adapters) encodes as a null `DataItem`; the JS wrapper normalizes that to
-   * `undefined`.
-   */
-  dataLayerClear(instanceId: string): Promise<string>;
+  ): Promise<void>;
+  /** Removes every key from the data layer. Payload-less; see {@link shutdown}. */
+  dataLayerClear(instanceId: string): Promise<void>;
 }
 
 // Use the non-throwing getter so JS-only environments (web fallback, Jest)

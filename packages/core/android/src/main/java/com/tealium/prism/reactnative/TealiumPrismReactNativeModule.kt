@@ -104,23 +104,22 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Joins the trace [id] on the instance, adding the id to every subsequent dispatch until
-     * [leaveTrace] is called or the session expires. Trace.join emits [Unit]; the payload-less
-     * result is converted to [DataItem.NULL] so the promise resolves with a JSON `null`.
+     * [leaveTrace] is called or the session expires. Trace.join emits [Unit]; the promise
+     * resolves with no value.
      */
     override fun joinTrace(instanceId: String, id: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            instance.trace.join(id).subscribe(promise) { DataItem.NULL }
+            instance.trace.join(id).subscribeVoid(promise)
         }
     }
 
     /**
      * Leaves the current trace on the instance. A no-op natively if no trace is joined. Trace.leave
-     * emits [Unit]; the payload-less result is converted to [DataItem.NULL] so the promise resolves
-     * with a JSON `null`.
+     * emits [Unit]; the promise resolves with no value.
      */
     override fun leaveTrace(instanceId: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            instance.trace.leave().subscribe(promise) { DataItem.NULL }
+            instance.trace.leave().subscribeVoid(promise)
         }
     }
 
@@ -150,8 +149,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
      * Stores every key-value pair of [dataJson] in the instance's data layer, expiring them
      * according to [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's
      * converter cannot decode falls back to the SDK's no-expiry overload (forever), the same as
-     * an omitted value. DataLayer.put emits [Unit]; the payload-less result is converted to
-     * [DataItem.NULL] so the promise resolves with a JSON `null`.
+     * an omitted value. DataLayer.put emits [Unit]; the promise resolves with no value.
      */
     override fun dataLayerPutData(
         instanceId: String,
@@ -171,7 +169,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             } else {
                 instance.dataLayer.put(data, expiry)
             }
-            pendingPut.subscribe(promise) { DataItem.NULL }
+            pendingPut.subscribeVoid(promise)
         }
     }
 
@@ -179,8 +177,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
      * Stores [valueJson] under [key] in the instance's data layer, expiring it according to
      * [expiryEncoded] (see [resolveExpiry]). An [expiryEncoded] value the SDK's converter cannot
      * decode falls back to the SDK's no-expiry overload (forever), the same as an omitted value.
-     * DataLayer.put emits [Unit]; the payload-less result is converted to [DataItem.NULL] so the
-     * promise resolves with a JSON `null`.
+     * DataLayer.put emits [Unit]; the promise resolves with no value.
      */
     override fun dataLayerPutValue(
         instanceId: String,
@@ -205,7 +202,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             } else {
                 instance.dataLayer.put(key, value, expiry)
             }
-            pendingPut.subscribe(promise) { DataItem.NULL }
+            pendingPut.subscribeVoid(promise)
         }
     }
 
@@ -229,8 +226,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Removes every key in [keys] from the instance's data layer. DataLayer.remove emits [Unit];
-     * the payload-less result is converted to [DataItem.NULL] so the promise resolves with a
-     * JSON `null`.
+     * the promise resolves with no value.
      */
     override fun dataLayerRemove(instanceId: String, keys: ReadableArray, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
@@ -242,18 +238,17 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
                 return@withInstance
             }
 
-            instance.dataLayer.remove(keyList).subscribe(promise) { DataItem.NULL }
+            instance.dataLayer.remove(keyList).subscribeVoid(promise)
         }
     }
 
     /**
      * Removes every entry from the instance's data layer. DataLayer.clear emits [Unit]; the
-     * payload-less result is converted to [DataItem.NULL] so the promise resolves with a JSON
-     * `null`.
+     * promise resolves with no value.
      */
     override fun dataLayerClear(instanceId: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            instance.dataLayer.clear().subscribe(promise) { DataItem.NULL }
+            instance.dataLayer.clear().subscribeVoid(promise)
         }
     }
 

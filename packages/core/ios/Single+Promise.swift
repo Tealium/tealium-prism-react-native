@@ -30,7 +30,16 @@ extension Single {
         subscribe(completion, nullableConverter: converter)
     }
 
-    /// Shared implementation of the two `subscribe(_:converter:)` overloads.
+    /// Subscribes to this `SingleResult` for a payload-less result (the SDK's `Void`),
+    /// completing with `nil` on success or a `PromiseRejection` on failure. Delegates to the
+    /// shared implementation with a converter that always yields no `DataItem`.
+    func subscribeVoid<T, E: Error>(
+        _ completion: @escaping (PromiseRejection?) -> Void
+    ) where Element == Result<T, E> {
+        subscribe({ _, rejection in completion(rejection) }, nullableConverter: { _ in nil })
+    }
+
+    /// Shared implementation of the two `subscribe(_:converter:)` overloads and `subscribeVoid`.
     private func subscribe<T, E: Error>(
         _ completion: @escaping (String?, PromiseRejection?) -> Void,
         nullableConverter: @escaping (T) -> DataItem?

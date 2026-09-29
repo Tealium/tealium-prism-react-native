@@ -46,9 +46,6 @@ export class Tealium {
       withNative: <T>(
         action: (native: NativeModule) => Promise<T>
       ): Promise<T> => this.withNative(action),
-      withNativeVoid: (
-        action: (native: NativeModule) => Promise<unknown>
-      ): Promise<void> => this.withNativeVoid(action),
     };
   }
 
@@ -82,20 +79,6 @@ export class Tealium {
     } catch (error) {
       return Promise.reject(error);
     }
-  }
-
-  /**
-   * {@link withNative} for payload-less native methods. They resolve the JSON
-   * string `"null"`: the SDK emits `Void`, which the native bridge (this repo's
-   * promise adapters) encodes as a null `DataItem`. The result is discarded so
-   * the returned Promise resolves `undefined`.
-   */
-  private withNativeVoid(
-    action: (
-      native: NonNullable<typeof NativeTealiumPrismReactNative>
-    ) => Promise<unknown>
-  ): Promise<void> {
-    return this.withNative(action).then(() => undefined);
   }
 
   /**

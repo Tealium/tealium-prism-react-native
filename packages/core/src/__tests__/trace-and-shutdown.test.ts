@@ -1,8 +1,6 @@
 // Verifies the void-returning Trace methods and shutdown() normalize the
-// native result to undefined: joinTrace/leaveTrace resolve the JSON string
-// "null" (the SDK emits Void, which the native bridge's promise adapters encode
-// as a null DataItem); shutdown bypasses those adapters and resolves with no
-// payload (nil on iOS, null on Android).
+// native result to undefined: both resolve with no payload (nil on iOS,
+// surfacing as JS undefined; null on Android, surfacing as JS null).
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
@@ -11,8 +9,8 @@ jest.mock("../NativeTealiumPrismReactNative", () => ({
     echoJsonValue: () => Promise.resolve("{}"),
     shutdown: jest.fn(() => Promise.resolve(null)),
     getSdkVersion: () => Promise.resolve("1.0.0"),
-    joinTrace: jest.fn(() => Promise.resolve("null")),
-    leaveTrace: jest.fn(() => Promise.resolve("null")),
+    joinTrace: jest.fn(() => Promise.resolve(null)),
+    leaveTrace: jest.fn(() => Promise.resolve(null)),
     forceEndOfVisit: jest.fn(() => Promise.resolve("{}")),
   },
 }));
@@ -39,9 +37,16 @@ describe("Trace", () => {
       );
     });
 
-    it('resolves undefined when native resolves the "null" JSON string', async () => {
+    it("resolves undefined when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "trace-join-void", "dev");
-      (native.joinTrace as jest.Mock).mockResolvedValueOnce("null");
+      (native.joinTrace as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(instance.trace.join("trace-123")).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "trace-join-void-ios", "dev");
+      (native.joinTrace as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(instance.trace.join("trace-123")).resolves.toBeUndefined();
     });
@@ -56,9 +61,16 @@ describe("Trace", () => {
       expect(native.leaveTrace).toHaveBeenCalledWith(instance.instanceId);
     });
 
-    it('resolves undefined when native resolves the "null" JSON string', async () => {
+    it("resolves undefined when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "trace-leave-void", "dev");
-      (native.leaveTrace as jest.Mock).mockResolvedValueOnce("null");
+      (native.leaveTrace as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(instance.trace.leave()).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "trace-leave-void-ios", "dev");
+      (native.leaveTrace as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(instance.trace.leave()).resolves.toBeUndefined();
     });

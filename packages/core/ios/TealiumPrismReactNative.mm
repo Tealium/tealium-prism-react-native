@@ -89,11 +89,11 @@
 {
     [TealiumPrismBridge joinTraceWithInstanceId:instanceId
                                              id:traceId
-                                     completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                     completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }
@@ -103,11 +103,11 @@
             reject:(RCTPromiseRejectBlock)reject
 {
     [TealiumPrismBridge leaveTraceWithInstanceId:instanceId
-                                      completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                      completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }
@@ -143,11 +143,11 @@
     [TealiumPrismBridge dataLayerPutDataWithInstanceId:instanceId
                                              dataJson:dataJson
                                         expiryEncoded:expiryEncoded
-                                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                           completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }
@@ -163,11 +163,11 @@
                                                    key:key
                                              valueJson:valueJson
                                          expiryEncoded:expiryEncoded
-                                            completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                            completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }
@@ -212,11 +212,11 @@
 {
     [TealiumPrismBridge dataLayerRemoveWithInstanceId:instanceId
                                                  keys:keys
-                                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                           completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }
@@ -226,11 +226,11 @@
                 reject:(RCTPromiseRejectBlock)reject
 {
     [TealiumPrismBridge dataLayerClearWithInstanceId:instanceId
-                                         completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                         completion:^(PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {
-            resolve(result);
+            resolve(nil);
         }
     }];
 }

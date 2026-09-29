@@ -24,6 +24,14 @@ internal inline fun <T> SingleResult<T>.subscribe(
 ) = subscribeNullable(promise, converter)
 
 /**
+ * Subscribes to this [SingleResult] for a payload-less result (the SDK's `Unit`), resolving
+ * [promise] with `null` on success and rejecting it with the error on failure. Delegates to
+ * [subscribeNullable] with a converter that always yields `null`.
+ */
+internal fun <T> SingleResult<T>.subscribeVoid(promise: Promise) =
+    subscribeNullable(promise) { null }
+
+/**
  * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via [converter].
  * Resolves [promise] with a real `null` when [converter] returns `null` (the absent-key case of
  * `DataLayer.get`) and with the [DataItem]'s JSON string otherwise, or rejects [promise] with the

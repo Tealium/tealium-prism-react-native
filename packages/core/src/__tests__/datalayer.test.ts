@@ -1,9 +1,8 @@
 // Verifies DataLayer.put/get/getAll/remove/clear marshal to the six native
 // dataLayer* bridge methods: expiry encoding, JSON serialization, the
 // null (absent key) vs "null" (stored null) distinction on get(), and that
-// the void-returning methods normalize the "null" JSON string result (the
-// native bridge's promise adapters encode the SDK's Void as a null DataItem)
-// to undefined.
+// the void-returning methods normalize their no-payload native result (nil on
+// iOS, null on Android) to undefined.
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
@@ -57,9 +56,16 @@ describe("DataLayer", () => {
       );
     });
 
-    it('resolves undefined when native resolves the "null" JSON string', async () => {
+    it("resolves undefined when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "put-bulk-void", "dev");
-      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce("null");
+      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(instance.dataLayer.put({ a: 1 })).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "put-bulk-void-ios", "dev");
+      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(instance.dataLayer.put({ a: 1 })).resolves.toBeUndefined();
     });
@@ -95,9 +101,18 @@ describe("DataLayer", () => {
       );
     });
 
-    it('resolves undefined when native resolves the "null" JSON string', async () => {
+    it("resolves undefined when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "put-single-void", "dev");
-      (native.dataLayerPutValue as jest.Mock).mockResolvedValueOnce("null");
+      (native.dataLayerPutValue as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(
+        instance.dataLayer.put("key", "value")
+      ).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "put-single-void-ios", "dev");
+      (native.dataLayerPutValue as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(
         instance.dataLayer.put("key", "value")
@@ -177,9 +192,16 @@ describe("DataLayer", () => {
       ]);
     });
 
-    it('resolves undefined for a single key when native resolves the "null" JSON string', async () => {
+    it("resolves undefined for a single key when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "remove-key-void", "dev");
-      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce("null");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(instance.dataLayer.remove("k")).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined for a single key when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "remove-key-void-ios", "dev");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(instance.dataLayer.remove("k")).resolves.toBeUndefined();
     });
@@ -195,9 +217,18 @@ describe("DataLayer", () => {
       ]);
     });
 
-    it('resolves undefined for an array of keys when native resolves the "null" JSON string', async () => {
+    it("resolves undefined for an array of keys when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "remove-keys-void", "dev");
-      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce("null");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(
+        instance.dataLayer.remove(["a", "b"])
+      ).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined for an array of keys when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "remove-keys-void-ios", "dev");
+      (native.dataLayerRemove as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(
         instance.dataLayer.remove(["a", "b"])
@@ -214,9 +245,16 @@ describe("DataLayer", () => {
       expect(native.dataLayerClear).toHaveBeenCalledWith(instance.instanceId);
     });
 
-    it('resolves undefined when native resolves the "null" JSON string', async () => {
+    it("resolves undefined when native resolves null (Android payload-less result)", async () => {
       const instance = Tealium.create("account", "clear-void", "dev");
-      (native.dataLayerClear as jest.Mock).mockResolvedValueOnce("null");
+      (native.dataLayerClear as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(instance.dataLayer.clear()).resolves.toBeUndefined();
+    });
+
+    it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
+      const instance = Tealium.create("account", "clear-void-ios", "dev");
+      (native.dataLayerClear as jest.Mock).mockResolvedValueOnce(undefined);
 
       await expect(instance.dataLayer.clear()).resolves.toBeUndefined();
     });
