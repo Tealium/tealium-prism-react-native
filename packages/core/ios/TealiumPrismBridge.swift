@@ -225,25 +225,28 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Removes every key listed in `keysJson`, a JSON array of strings.
+    /// Removes every key in `keys`.
+    ///
+    /// `keys` arrives as `[Any]` because it crosses the TurboModule bridge as an untyped
+    /// `NSArray`; JS callers that bypass the TS types could pass non-string elements, so the
+    /// cast to `[String]` is validated here rather than force-cast.
     ///
     /// `remove` emits `Void`; the payload-less result is converted to
     /// [`DataItem.null`](doc:DataItem/null) so the promise completes with a JSON `null`.
     @objc public static func dataLayerRemove(
         instanceId: String,
-        keysJson: String,
+        keys: [Any],
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            do {
-                let keys = try DataLayerConversions.keys(fromJSONString: keysJson)
-                instance.dataLayer.remove(keys: keys).subscribe(completion) { _ in DataItem.null }
-            } catch {
+            guard let keys = keys as? [String] else {
                 completion(nil, PromiseRejection(
                     code: .dataParseError,
-                    error: error
+                    message: "Expected keys to be an array of strings"
                 ))
+                return
             }
+            instance.dataLayer.remove(keys: keys).subscribe(completion) { _ in DataItem.null }
         }
     }
 

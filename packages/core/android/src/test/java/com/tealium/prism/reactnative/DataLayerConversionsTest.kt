@@ -1,5 +1,6 @@
 package com.tealium.prism.reactnative
 
+import com.facebook.react.bridge.JavaOnlyArray
 import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.persistence.Expiry
 import org.junit.Assert.assertEquals
@@ -71,38 +72,23 @@ class DataLayerConversionsTest {
     }
 
     @Test
-    fun test_parseKeys_with_array_of_strings_returns_keys_in_order() {
-        assertEquals(listOf("alpha", "beta"), parseKeys("""["alpha","beta"]"""))
+    fun test_stringList_with_array_of_strings_returns_keys_in_order() {
+        assertEquals(listOf("alpha", "beta"), stringList(JavaOnlyArray.of("alpha", "beta")))
     }
 
     @Test
-    fun test_parseKeys_with_empty_array_returns_empty_list() {
-        assertEquals(emptyList<String>(), parseKeys("[]"))
+    fun test_stringList_with_empty_array_returns_empty_list() {
+        assertEquals(emptyList<String>(), stringList(JavaOnlyArray()))
     }
 
     @Test
-    fun test_parseKeys_with_json_object_returns_null() {
-        assertNull(parseKeys("""{"key":"alpha"}"""))
+    fun test_stringList_with_non_string_element_returns_null() {
+        assertNull(stringList(JavaOnlyArray.of("alpha", 42.0)))
     }
 
     @Test
-    fun test_parseKeys_with_bare_string_returns_null() {
-        assertNull(parseKeys(""""alpha""""))
-    }
-
-    @Test
-    fun test_parseKeys_with_non_string_element_returns_null() {
-        assertNull(parseKeys("""["alpha",42]"""))
-    }
-
-    @Test
-    fun test_parseKeys_with_null_element_returns_null() {
-        assertNull(parseKeys("""["alpha",null]"""))
-    }
-
-    @Test
-    fun test_parseKeys_with_malformed_json_returns_null() {
-        assertNull(parseKeys("["))
+    fun test_stringList_with_null_element_returns_null() {
+        assertNull(stringList(JavaOnlyArray.of("alpha", null)))
     }
 
     @Test

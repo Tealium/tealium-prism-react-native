@@ -19,29 +19,4 @@ enum DataLayerConversions {
         }
         return policy.resolve()
     }
-
-    /// Parses the JSON array of key names the JS layer sends to `dataLayerRemove`.
-    ///
-    /// - Parameter jsonString: A JSON array whose every element is a string.
-    /// - Returns: The parsed keys.
-    /// - Throws: An error when `jsonString` is not valid JSON, is not an array, or holds a
-    ///   non-string element.
-    static func keys(fromJSONString jsonString: String) throws -> [String] {
-        guard let data = jsonString.data(using: .utf8) else {
-            throw error("Input is not valid UTF-8")
-        }
-        let parsed = try JSONSerialization.jsonObject(with: data)
-        guard let keys = parsed as? [String] else {
-            throw error("Expected a JSON array of strings")
-        }
-        return keys
-    }
-
-    private static func error(_ description: String) -> NSError {
-        NSError(
-            domain: "TealiumPrismBridge",
-            code: 1,
-            userInfo: [NSLocalizedDescriptionKey: description]
-        )
-    }
 }

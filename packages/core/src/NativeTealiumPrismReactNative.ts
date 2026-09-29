@@ -84,12 +84,15 @@ export interface Spec extends TurboModule {
   /** Resolves every stored key/value pair as a single JSON object string. */
   dataLayerGetAll(instanceId: string): Promise<string>;
   /**
-   * Removes the keys in `keysJson`, always a JSON array of strings. Resolves
-   * the JSON string `"null"`: the SDK emits `Void`, which the native bridge
-   * (this repo's promise adapters) encodes as a null `DataItem`; the JS
-   * wrapper normalizes that to `undefined`.
+   * Removes every key in `keys`. Resolves the JSON string `"null"`: the SDK
+   * emits `Void`, which the native bridge (this repo's promise adapters)
+   * encodes as a null `DataItem`; the JS wrapper normalizes that to
+   * `undefined`.
    */
-  dataLayerRemove(instanceId: string, keysJson: string): Promise<string>;
+  dataLayerRemove(
+    instanceId: string,
+    keys: ReadonlyArray<string>
+  ): Promise<string>;
   /**
    * Removes every key from the data layer. Resolves the JSON string `"null"`:
    * the SDK emits `Void`, which the native bridge (this repo's promise

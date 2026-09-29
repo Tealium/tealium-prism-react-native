@@ -172,10 +172,9 @@ describe("DataLayer", () => {
 
       await instance.dataLayer.remove("k");
 
-      expect(native.dataLayerRemove).toHaveBeenCalledWith(
-        instance.instanceId,
-        '["k"]'
-      );
+      expect(native.dataLayerRemove).toHaveBeenCalledWith(instance.instanceId, [
+        "k",
+      ]);
     });
 
     it('resolves undefined for a single key when native resolves the "null" JSON string', async () => {
@@ -190,10 +189,10 @@ describe("DataLayer", () => {
 
       await instance.dataLayer.remove(["a", "b"]);
 
-      expect(native.dataLayerRemove).toHaveBeenCalledWith(
-        instance.instanceId,
-        '["a","b"]'
-      );
+      expect(native.dataLayerRemove).toHaveBeenCalledWith(instance.instanceId, [
+        "a",
+        "b",
+      ]);
     });
 
     it('resolves undefined for an array of keys when native resolves the "null" JSON string', async () => {

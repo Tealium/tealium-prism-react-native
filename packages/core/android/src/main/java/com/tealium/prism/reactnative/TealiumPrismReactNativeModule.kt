@@ -3,6 +3,7 @@ package com.tealium.prism.reactnative
 import android.app.Application
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
 import com.tealium.prism.core.BuildConfig as PrismBuildConfig
 import com.tealium.prism.core.api.Modules
 import com.tealium.prism.core.api.Tealium
@@ -227,21 +228,21 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Removes the keys listed in [keysJson] (always a JSON array of strings) from the instance's
-     * data layer. DataLayer.remove emits [Unit]; the payload-less result is converted to
-     * [DataItem.NULL] so the promise resolves with a JSON `null`.
+     * Removes every key in [keys] from the instance's data layer. DataLayer.remove emits [Unit];
+     * the payload-less result is converted to [DataItem.NULL] so the promise resolves with a
+     * JSON `null`.
      */
-    override fun dataLayerRemove(instanceId: String, keysJson: String, promise: Promise) {
+    override fun dataLayerRemove(instanceId: String, keys: ReadableArray, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
-            val keys = parseKeys(keysJson) ?: run {
+            val keyList = stringList(keys) ?: run {
                 promise.reject(
                     ErrorCode.DATA_PARSE_ERROR,
-                    "Failed to parse keys JSON: expected a JSON array of strings"
+                    "Expected keys to be an array of strings"
                 )
                 return@withInstance
             }
 
-            instance.dataLayer.remove(keys).subscribe(promise) { DataItem.NULL }
+            instance.dataLayer.remove(keyList).subscribe(promise) { DataItem.NULL }
         }
     }
 

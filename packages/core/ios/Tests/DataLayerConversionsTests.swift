@@ -56,28 +56,6 @@ final class DataLayerConversionsTests: XCTestCase {
         XCTAssertNil(DataLayerConversions.expiry(fromEncoded: NSNumber(value: -99)))
     }
 
-    // MARK: - keys(fromJSONString:)
-
-    func test_keys_with_array_of_strings_returns_keys() throws {
-        XCTAssertEqual(try DataLayerConversions.keys(fromJSONString: #"["a","b"]"#), ["a", "b"])
-    }
-
-    func test_keys_with_empty_array_returns_empty_keys() throws {
-        XCTAssertEqual(try DataLayerConversions.keys(fromJSONString: "[]"), [])
-    }
-
-    func test_keys_with_json_object_throws() {
-        XCTAssertThrowsError(try DataLayerConversions.keys(fromJSONString: #"{"a":1}"#))
-    }
-
-    func test_keys_with_non_string_element_throws() {
-        XCTAssertThrowsError(try DataLayerConversions.keys(fromJSONString: #"["a",1]"#))
-    }
-
-    func test_keys_with_invalid_json_throws() {
-        XCTAssertThrowsError(try DataLayerConversions.keys(fromJSONString: "[a]"))
-    }
-
     // MARK: - JSON <-> DataObject round trip
 
     func test_dataObject_roundTrip_preserves_nested_values() throws {

@@ -206,13 +206,13 @@
 }
 
 - (void)dataLayerRemove:(NSString *)instanceId
-               keysJson:(NSString *)keysJson
+                   keys:(NSArray *)keys
                 resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject
 {
     [TealiumPrismBridge dataLayerRemoveWithInstanceId:instanceId
-                                            keysJson:keysJson
-                                          completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+                                                 keys:keys
+                                           completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
         if (rejection) {
             reject(rejection.code, rejection.message, rejection.error);
         } else {

@@ -87,7 +87,7 @@ export class DataLayer {
   remove(keyOrKeys: string | string[]): Promise<void> {
     const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
     return this.proxy.withNativeVoid((native) =>
-      native.dataLayerRemove(this.proxy.instanceId, serialize(keys))
+      native.dataLayerRemove(this.proxy.instanceId, keys)
     );
   }
 
