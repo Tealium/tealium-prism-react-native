@@ -244,6 +244,7 @@ export default function DataLayerScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.sectionTitle}>Instance</Text>
         {activeInstance ? (

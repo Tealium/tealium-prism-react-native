@@ -1,4 +1,9 @@
-import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { type ReactNode } from "react";
 
 export default function ScreenWithBack({
@@ -8,13 +13,16 @@ export default function ScreenWithBack({
   onBack: () => void;
   children: ReactNode;
 }) {
+  // "padding" on both platforms: iOS never resizes for the keyboard, and on
+  // Android the app is edge-to-edge (targetSdk 36), so `adjustResize` can't be
+  // relied on to shrink the window either.
   return (
-    <View style={styles.flex}>
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
       {children}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -99,6 +99,7 @@ export default function InstancesScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.sectionTitle}>Create Instance</Text>
         <PlainTextInput

@@ -78,7 +78,11 @@ export default function TraceScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.sectionTitle}>Instance</Text>
       {activeInstance ? (
         <Text style={styles.instanceKey}>{activeInstance.instanceId}</Text>
