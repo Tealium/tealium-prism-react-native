@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ScrollView,
@@ -10,6 +9,7 @@ import {
 import { type ExpiryPolicy } from "@tealium/prism-react-native";
 import { useTealium } from "../TealiumProvider";
 import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
+import PlainTextInput from "../components/PlainTextInput";
 import Toast, { type ToastNotice } from "../components/Toast";
 
 type ExpiryPreset = "forever" | "session" | "untilRestart" | "afterSeconds";
@@ -277,7 +277,7 @@ export default function DataLayerScreen() {
           ))}
         </View>
         {expiryPreset === "afterSeconds" && (
-          <TextInput
+          <PlainTextInput
             style={styles.input}
             placeholder="Seconds"
             value={afterSeconds}
@@ -287,19 +287,17 @@ export default function DataLayerScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Put</Text>
-        <TextInput
+        <PlainTextInput
           style={styles.input}
           placeholder="Key"
           value={key}
           onChangeText={setKey}
-          autoCapitalize="none"
         />
-        <TextInput
+        <PlainTextInput
           style={styles.input}
           placeholder="Value (JSON)"
           value={valueJson}
           onChangeText={setValueJson}
-          autoCapitalize="none"
         />
         <TouchableOpacity
           style={styles.button}
@@ -318,13 +316,11 @@ export default function DataLayerScreen() {
 
         <Text style={styles.sectionTitle}>Get</Text>
         <View style={styles.row}>
-          <TextInput
+          <PlainTextInput
             style={[styles.input, styles.rowInput]}
             placeholder="key"
             value={getKey}
             onChangeText={setGetKey}
-            autoCapitalize="none"
-            autoCorrect={false}
           />
           <TouchableOpacity
             style={styles.rowButton}
@@ -344,13 +340,11 @@ export default function DataLayerScreen() {
 
         <Text style={styles.sectionTitle}>Remove</Text>
         <View style={styles.row}>
-          <TextInput
+          <PlainTextInput
             style={[styles.input, styles.rowInput]}
             placeholder="key"
             value={removeKey}
             onChangeText={setRemoveKey}
-            autoCapitalize="none"
-            autoCorrect={false}
           />
           <TouchableOpacity
             style={[styles.rowButton, styles.dangerButton]}

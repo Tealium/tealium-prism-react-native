@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ScrollView,
@@ -10,6 +9,7 @@ import {
 import { type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "../TealiumProvider";
 import JsonPayload from "../components/JsonPayload";
+import PlainTextInput from "../components/PlainTextInput";
 
 // Trace demo: join/leave a trace and force end-of-visit on the active app
 // instance selected on the Instances screen. Track an event in between to
@@ -94,12 +94,11 @@ export default function TraceScreen() {
           <Text style={styles.stateText}>
             {joined ? "🟢 In an active trace" : "⚪ Not in a trace"}
           </Text>
-          <TextInput
+          <PlainTextInput
             style={styles.input}
             placeholder="Trace ID"
             value={traceId}
             onChangeText={setTraceId}
-            autoCapitalize="none"
           />
           <TouchableOpacity style={styles.button} onPress={handleJoin}>
             <Text style={styles.buttonText}>Join Trace</Text>
