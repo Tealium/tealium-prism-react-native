@@ -130,12 +130,14 @@ public final class TealiumPrismBridge: NSObject {
 
     // MARK: - DataLayer
 
+    // TODO: update native call when API changed in SDK
     /// Stores every key/value pair of the JSON object `dataJson` in the data layer.
     ///
     /// `expiryEncoded` carries the JS-encoded expiry policy; `nil`, or a value the SDK's converter
-    /// cannot decode, selects the SDK's no-expiry overload, which stores forever. `put` emits
+    /// cannot decode, selects the SDK's no-expiry overload, which stores forever. The Prism SDK's
+    /// [`DataLayer.put(data:)`](doc:DataLayer/put(data:)) (still named `put`, not `putAll`) emits
     /// `Void`; the promise completes with no value.
-    @objc public static func dataLayerPutData(
+    @objc public static func dataLayerPutAll(
         instanceId: String,
         dataJson: String,
         expiryEncoded: NSNumber?,
@@ -166,7 +168,7 @@ public final class TealiumPrismBridge: NSObject {
     /// Stores the single JSON value `valueJson` under `key`.
     ///
     /// `expiryEncoded` uses the same encoding as
-    /// [`TealiumPrismBridge.dataLayerPutData(instanceId:dataJson:expiryEncoded:completion:)`](doc:TealiumPrismBridge/dataLayerPutData(instanceId:dataJson:expiryEncoded:completion:)).
+    /// [`TealiumPrismBridge.dataLayerPutAll(instanceId:dataJson:expiryEncoded:completion:)`](doc:TealiumPrismBridge/dataLayerPutAll(instanceId:dataJson:expiryEncoded:completion:)).
     /// The parsed `DataItem` is handed to the SDK's `put(key:converting:)` overloads, since
     /// `DataItem` is `DataInputConvertible`.
     @objc public static func dataLayerPutValue(

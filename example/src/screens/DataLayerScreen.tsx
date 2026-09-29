@@ -22,7 +22,7 @@ const EXPIRY_PRESETS: { preset: ExpiryPreset; label: string }[] = [
 ];
 
 // A fixed nested sample used by the "Put sample object" bulk button, to show
-// put(data, expiry?) storing several keys (including nested/array/null
+// putAll(data, expiry?) storing several keys (including nested/array/null
 // values) in one call.
 const SAMPLE_OBJECT = {
   // TODO: update comment when Kotlin null drops are fixed
@@ -116,7 +116,7 @@ export default function DataLayerScreen() {
       return;
     }
     activeInstance.dataLayer
-      .put(SAMPLE_OBJECT, buildExpiry())
+      .putAll(SAMPLE_OBJECT, buildExpiry())
       .then(
         guard(() => {
           setNotice({ kind: "success", title: "Put sample object" });

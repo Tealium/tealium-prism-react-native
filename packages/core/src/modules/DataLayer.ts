@@ -19,38 +19,31 @@ export class DataLayer {
    * Stores every key/value pair in `data`, replacing any existing value for
    * each key. An omitted `expiry` stores forever.
    */
-  put(data: JsonValueObject, expiry?: ExpiryPolicy): Promise<void>;
+  putAll(data: JsonValueObject, expiry?: ExpiryPolicy): Promise<void> {
+    const expiryEncoded = encodeExpiryPolicy(expiry);
+    return this.proxy
+      .withNative((native) =>
+        native.dataLayerPutAll(
+          this.proxy.instanceId,
+          serialize(data),
+          expiryEncoded
+        )
+      )
+      .then(() => undefined);
+  }
+
   /**
    * Stores a single `key`/`value` pair, replacing any existing value for that
    * key. An omitted `expiry` stores forever.
    */
-  put(key: string, value: JsonValue, expiry?: ExpiryPolicy): Promise<void>;
-  put(
-    dataOrKey: JsonValueObject | string,
-    valueOrExpiry?: JsonValue | ExpiryPolicy,
-    maybeExpiry?: ExpiryPolicy
-  ): Promise<void> {
-    if (typeof dataOrKey === "string") {
-      const value = valueOrExpiry as JsonValue;
-      const expiryEncoded = encodeExpiryPolicy(maybeExpiry);
-      return this.proxy
-        .withNative((native) =>
-          native.dataLayerPutValue(
-            this.proxy.instanceId,
-            dataOrKey,
-            serialize(value),
-            expiryEncoded
-          )
-        )
-        .then(() => undefined);
-    }
-
-    const expiryEncoded = encodeExpiryPolicy(valueOrExpiry as ExpiryPolicy);
+  put(key: string, value: JsonValue, expiry?: ExpiryPolicy): Promise<void> {
+    const expiryEncoded = encodeExpiryPolicy(expiry);
     return this.proxy
       .withNative((native) =>
-        native.dataLayerPutData(
+        native.dataLayerPutValue(
           this.proxy.instanceId,
-          serialize(dataOrKey),
+          key,
+          serialize(value),
           expiryEncoded
         )
       )

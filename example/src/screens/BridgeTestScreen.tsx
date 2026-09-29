@@ -162,8 +162,8 @@ const ECHO_TEST_CASES: {
 ];
 
 // JSON-safe values (no Infinity/NaN) used to drive the DataLayer round-trip
-// cases below — each one is put through both the single-key and bulk `put`
-// overloads and read back with `get`.
+// cases below — each one is put through both the single-key `put` and bulk
+// `putAll` methods and read back with `get`.
 const DATALAYER_VALUE_CASES: { name: string; value: JsonValue }[] = [
   { name: "Primitives", value: { s: "hello", n: 42, b: true, nil: null } },
   { name: "Fractional number", value: { pi: 3.14159 } },
@@ -249,7 +249,7 @@ function buildDataLayerTestCases(dl: DataLayer): TestCase[] {
       run: async () => {
         try {
           await dl.remove(DATALAYER_BULK_KEY);
-          await dl.put({ [DATALAYER_BULK_KEY]: value });
+          await dl.putAll({ [DATALAYER_BULK_KEY]: value });
           return await dl.get(DATALAYER_BULK_KEY);
         } finally {
           await dl.remove(DATALAYER_BULK_KEY);
@@ -269,7 +269,7 @@ function buildDataLayerTestCases(dl: DataLayer): TestCase[] {
     expected: multiValues,
     run: async () => {
       try {
-        await dl.put(multiValues);
+        await dl.putAll(multiValues);
         const all = await dl.getAll();
         return DATALAYER_MULTI_KEYS.reduce<JsonValueObject>((acc, key) => {
           if (key in all) {

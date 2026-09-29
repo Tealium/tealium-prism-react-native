@@ -134,13 +134,13 @@
 // nil for a JS `null`. These signatures have to match the generated protocol exactly;
 // the Swift bridge takes the parameter as `NSNumber?` and reads nil as "no expiry".
 
-- (void)dataLayerPutData:(NSString *)instanceId
+- (void)dataLayerPutAll:(NSString *)instanceId
                 dataJson:(NSString *)dataJson
            expiryEncoded:(NSNumber *)expiryEncoded
                  resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject
 {
-    [TealiumPrismBridge dataLayerPutDataWithInstanceId:instanceId
+    [TealiumPrismBridge dataLayerPutAllWithInstanceId:instanceId
                                              dataJson:dataJson
                                         expiryEncoded:expiryEncoded
                                            completion:^(PromiseRejection * _Nullable rejection) {

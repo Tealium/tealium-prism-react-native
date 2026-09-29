@@ -44,14 +44,14 @@ export interface Spec extends TurboModule {
    * duration in seconds; `null` omits the policy, which the native SDK
    * defaults to forever. Payload-less; see {@link shutdown}.
    */
-  dataLayerPutData(
+  dataLayerPutAll(
     instanceId: string,
     dataJson: string,
     expiryEncoded: number | null
   ): Promise<void>;
   /**
    * Stores a single key/value pair in the data layer. `expiryEncoded` uses the
-   * same sentinel encoding as `dataLayerPutData`. Payload-less; see
+   * same sentinel encoding as `dataLayerPutAll`. Payload-less; see
    * {@link shutdown}.
    */
   dataLayerPutValue(

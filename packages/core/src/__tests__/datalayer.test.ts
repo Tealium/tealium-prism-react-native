@@ -1,4 +1,4 @@
-// Verifies DataLayer.put/get/getAll/remove/clear marshal to the six native
+// Verifies DataLayer.putAll/put/get/getAll/remove/clear marshal to the six native
 // dataLayer* bridge methods: expiry encoding, JSON serialization, the
 // null (absent key) vs "null" (stored null) distinction on get(), and that
 // the void-returning methods normalize their no-payload native result (nil on
@@ -11,7 +11,7 @@ jest.mock("../NativeTealiumPrismReactNative", () => ({
     echoJsonValue: () => Promise.resolve("{}"),
     shutdown: () => Promise.resolve(),
     getSdkVersion: () => Promise.resolve("1.0.0"),
-    dataLayerPutData: jest.fn(() => Promise.resolve()),
+    dataLayerPutAll: jest.fn(() => Promise.resolve()),
     dataLayerPutValue: jest.fn(() => Promise.resolve()),
     dataLayerGet: jest.fn(() => Promise.resolve(null)),
     dataLayerGetAll: jest.fn(() => Promise.resolve("{}")),
@@ -43,13 +43,13 @@ describe("DataLayer", () => {
     [{ afterSeconds: -99 }, -99],
   ];
 
-  describe("put (bulk)", () => {
+  describe("putAll (bulk)", () => {
     it("serializes the data object and passes null expiry when omitted", async () => {
-      const instance = Tealium.create("account", "put-bulk-omitted", "dev");
+      const instance = Tealium.create("account", "putall-bulk-omitted", "dev");
 
-      await instance.dataLayer.put({ a: 1, b: "two" });
+      await instance.dataLayer.putAll({ a: 1, b: "two" });
 
-      expect(native.dataLayerPutData).toHaveBeenCalledWith(
+      expect(native.dataLayerPutAll).toHaveBeenCalledWith(
         instance.instanceId,
         '{"a":1,"b":"two"}',
         null
@@ -57,29 +57,33 @@ describe("DataLayer", () => {
     });
 
     it("resolves undefined when native resolves null (Android payload-less result)", async () => {
-      const instance = Tealium.create("account", "put-bulk-void", "dev");
-      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce(null);
+      const instance = Tealium.create("account", "putall-bulk-void", "dev");
+      (native.dataLayerPutAll as jest.Mock).mockResolvedValueOnce(null);
 
-      await expect(instance.dataLayer.put({ a: 1 })).resolves.toBeUndefined();
+      await expect(
+        instance.dataLayer.putAll({ a: 1 })
+      ).resolves.toBeUndefined();
     });
 
     it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
-      const instance = Tealium.create("account", "put-bulk-void-ios", "dev");
-      (native.dataLayerPutData as jest.Mock).mockResolvedValueOnce(undefined);
+      const instance = Tealium.create("account", "putall-bulk-void-ios", "dev");
+      (native.dataLayerPutAll as jest.Mock).mockResolvedValueOnce(undefined);
 
-      await expect(instance.dataLayer.put({ a: 1 })).resolves.toBeUndefined();
+      await expect(
+        instance.dataLayer.putAll({ a: 1 })
+      ).resolves.toBeUndefined();
     });
 
     it.each(expiryCases)("encodes expiry %j to %d", async (expiry, encoded) => {
       const instance = Tealium.create(
         "account",
-        `put-bulk-${JSON.stringify(expiry)}`,
+        `putall-bulk-${JSON.stringify(expiry)}`,
         "dev"
       );
 
-      await instance.dataLayer.put({ a: 1 }, expiry);
+      await instance.dataLayer.putAll({ a: 1 }, expiry);
 
-      expect(native.dataLayerPutData).toHaveBeenCalledWith(
+      expect(native.dataLayerPutAll).toHaveBeenCalledWith(
         instance.instanceId,
         '{"a":1}',
         encoded
