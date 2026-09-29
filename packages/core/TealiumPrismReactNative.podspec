@@ -13,12 +13,8 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => min_ios_version_supported }
   s.source       = { :git => "https://github.com/Tealium/tealium-prism-react-native.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,m,mm,swift}"
-  s.private_header_files = "ios/**/*.h"
-  # Unit tests live under ios/Tests and belong to the test_spec target, not the
-  # library. exclude_files keeps them out of the shipped pod; it is not inherited
-  # by test specs, so the test_spec below still picks them up.
-  s.exclude_files = "ios/Tests/**/*"
+  s.source_files = "ios/Sources/**/*.{h,m,mm,swift}"
+  s.private_header_files = "ios/Sources/**/*.h"
 
   install_modules_dependencies(s)
   s.dependency "tealium-prism/Core", "~> 0.6"

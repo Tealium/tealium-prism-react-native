@@ -2133,7 +2133,7 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 869d8c0511fb3918d1be668c2d0117bfe8e6067b
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
   tealium-prism: 8ef59057de8f0ff7f02cbe4225b350e51cbdb070
-  TealiumPrismReactNative: 4a221b1f72bcc64fc503332eeea7fbcce64f1596
+  TealiumPrismReactNative: 9da7a4cf235e70e7bb1b23a0826f57ea01bab050
   TealiumPrismReactNativeExtensions: 0a24045ca24c77e19dcd453c4e73e2ea557d8ca9
   TealiumPrismReactNativeJavaScriptTransformer: 38e5170dbaf4a69bb9ab52074df73528d33a4b27
   TealiumPrismReactNativeLifecycle: 4675b2dbf9cb6386eb7e7eed68700af8f7aa97e1

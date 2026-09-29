@@ -52,7 +52,7 @@ const swiftLines = [
   "",
 ];
 fs.writeFileSync(
-  path.join(root, "packages/core/ios/ErrorCode.swift"),
+  path.join(root, "packages/core/ios/Sources/ErrorCode.swift"),
   swiftLines.join("\n")
 );
 
