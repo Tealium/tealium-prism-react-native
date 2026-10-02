@@ -1,5 +1,10 @@
 import { TurboModuleRegistry, type TurboModule } from "react-native";
 
+/**
+ * Every `Promise<void>` method resolves with no value: `nil` on iOS surfaces as
+ * JS `undefined`, `null` on Android surfaces as JS `null` (per this repo's
+ * native bridge), and the JS wrapper normalizes both to `undefined`.
+ */
 export interface Spec extends TurboModule {
   getSdkVersion(): Promise<string>;
   echoJsonValue(input: string): Promise<string>;
@@ -26,23 +31,18 @@ export interface Spec extends TurboModule {
     type: string,
     dataJson: string | null
   ): Promise<string>;
-  /**
-   * Shuts the instance down. This and every other payload-less method below
-   * resolve with no value: `nil` on iOS surfaces as JS `undefined`, `null` on
-   * Android surfaces as JS `null` (per this repo's native bridge), and the JS
-   * wrapper normalizes both to `undefined`.
-   */
+  /** Shuts the instance down. */
   shutdown(instanceId: string): Promise<void>;
-  /** Joins a trace for `id`. Payload-less; see {@link shutdown}. */
+  /** Joins a trace for `id`. */
   joinTrace(instanceId: string, id: string): Promise<void>;
-  /** Leaves the current trace, if any. Payload-less; see {@link shutdown}. */
+  /** Leaves the current trace, if any. */
   leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
    * expiry: `-1` forever, `-2` session, `-3` untilRestart, otherwise a Unix
    * timestamp in milliseconds; `null` omits the expiry, which the native SDK
-   * stores forever. Payload-less; see {@link shutdown}.
+   * stores forever.
    */
   dataLayerPutAll(
     instanceId: string,
@@ -51,8 +51,7 @@ export interface Spec extends TurboModule {
   ): Promise<void>;
   /**
    * Stores a single key/value pair in the data layer. `expiryEncoded` uses the
-   * same encoding as `dataLayerPutAll`. Payload-less; see
-   * {@link shutdown}.
+   * same encoding as `dataLayerPutAll`.
    */
   dataLayerPutValue(
     instanceId: string,
@@ -68,12 +67,12 @@ export interface Spec extends TurboModule {
   dataLayerGet(instanceId: string, key: string): Promise<string | null>;
   /** Resolves every stored key/value pair as a single JSON object string. */
   dataLayerGetAll(instanceId: string): Promise<string>;
-  /** Removes every key in `keys`. Payload-less; see {@link shutdown}. */
+  /** Removes every key in `keys`. */
   dataLayerRemove(
     instanceId: string,
     keys: ReadonlyArray<string>
   ): Promise<void>;
-  /** Removes every key from the data layer. Payload-less; see {@link shutdown}. */
+  /** Removes every key from the data layer. */
   dataLayerClear(instanceId: string): Promise<void>;
 }
 
