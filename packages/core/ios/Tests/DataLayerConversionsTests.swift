@@ -71,9 +71,6 @@ final class DataLayerConversionsTests: XCTestCase {
             XCTFail("A future timestamp should resolve to a date-based expiry")
             return
         }
-        // TODO: should we add one in Swift?
-        // The Prism Swift SDK's `Expiry` has no `isExpired` accessible to this wrapper, so
-        // expiration is asserted by comparing the decoded `Date` to now.
         XCTAssertTrue(date > Date())
     }
 
