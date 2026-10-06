@@ -1,0 +1,14 @@
+{
+  "entryPoints": ["packages/core/src/index.ts"],
+  "tsconfig": "packages/core/tsconfig.json",
+  "out": "_site",
+  "readme": "README.md",
+  "name": "Tealium Prism React Native",
+  "excludeInternal": true,
+  "gitRevision": "main",
+  "skipErrorChecking": false,
+  "validation": {
+    "notDocumented": true
+  },
+  "treatWarningsAsErrors": true
+}

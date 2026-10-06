@@ -1,8 +1,28 @@
 [
-  { "code": "DATA_PARSE_ERROR" },
-  { "code": "INSTANCE_NOT_FOUND" },
-  { "code": "INSTANCE_SHUT_DOWN", "platforms": ["ts"] },
-  { "code": "NATIVE_MODULE_NOT_REGISTERED", "platforms": ["ts"] },
-  { "code": "PRISM_NATIVE_ERROR" },
-  { "code": "TEALIUM_CANCELLED" }
+  {
+    "code": "DATA_PARSE_ERROR",
+    "description": "A JSON string that crossed the bridge could not be parsed."
+  },
+  {
+    "code": "INSTANCE_NOT_FOUND",
+    "description": "The native module has no instance for the given instance ID."
+  },
+  {
+    "code": "INSTANCE_SHUT_DOWN",
+    "description": "The instance was shut down. Call `Tealium.create` to get a new instance.",
+    "platforms": ["ts"]
+  },
+  {
+    "code": "NATIVE_MODULE_NOT_REGISTERED",
+    "description": "The native module is not available in the running app. Rebuild the native app after installing the package.",
+    "platforms": ["ts"]
+  },
+  {
+    "code": "PRISM_NATIVE_ERROR",
+    "description": "The native Prism SDK reported a failure. The error message comes from the native SDK."
+  },
+  {
+    "code": "TEALIUM_CANCELLED",
+    "description": "The native operation completed without producing a result."
+  }
 ]
