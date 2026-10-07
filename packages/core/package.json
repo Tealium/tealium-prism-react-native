@@ -1,0 +1,128 @@
+{
+  "name": "@tealium/prism-react-native",
+  "version": "0.1.0",
+  "description": "React Native wrapper for the Tealium Prism mobile SDKs",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "react-native.config.js",
+    "!ios/build",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "clean": "del-cli android/build lib",
+    "codegen": "node ../../scripts/generate-error-codes.js",
+    "prepare": "yarn codegen && bob build",
+    "typecheck": "tsc",
+    "test": "jest",
+    "lint": "yarn run -T eslint \"src/**/*.{js,ts,tsx}\""
+  },
+  "keywords": [
+    "tealium-prism",
+    "tealium",
+    "prism",
+    "react-native",
+    "ios",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tealium/tealium-prism-react-native.git"
+  },
+  "author": "Tealium Inc. <dev@tealium.com> (https://github.com/Tealium)",
+  "license": "Commercial",
+  "bugs": {
+    "url": "https://github.com/Tealium/tealium-prism-react-native/issues"
+  },
+  "homepage": "https://github.com/Tealium/tealium-prism-react-native#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@react-native/babel-preset": "0.85.0",
+    "@react-native/jest-preset": "0.85.0",
+    "@types/jest": "^29.5.12",
+    "@types/react": "^19.2.0",
+    "del-cli": "^7.0.0",
+    "jest": "^29.7.0",
+    "react": "19.2.3",
+    "react-native": "0.85.0",
+    "react-native-builder-bob": "^0.42.1",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "codegenConfig": {
+    "name": "TealiumPrismReactNativeSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.tealium.prism.reactnative"
+    }
+  },
+  "prettier": {
+    "quoteProps": "consistent",
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "useTabs": false
+  },
+  "jest": {
+    "preset": "@react-native/jest-preset",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/lib/"
+    ]
+  },
+  "create-react-native-library": {
+    "type": "turbo-module",
+    "languages": "kotlin-objc",
+    "tools": [
+      "eslint",
+      "jest"
+    ],
+    "version": "0.62.1"
+  }
+}

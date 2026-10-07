@@ -1,0 +1,35 @@
+{
+  "name": "tealium-prism-react-native-monorepo",
+  "private": true,
+  "packageManager": "yarn@4.11.0",
+  "workspaces": [
+    "packages/*",
+    "example"
+  ],
+  "scripts": {
+    "example": "yarn workspace @tealium/prism-react-native-example",
+    "clean": "yarn workspaces foreach --all run clean",
+    "test": "yarn workspace @tealium/prism-react-native test",
+    "typecheck": "yarn workspaces foreach --all run typecheck",
+    "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" && yarn typecheck",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@eslint/js": "^9.39.4",
+    "@react-native/eslint-plugin": "0.85.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-jest": "^29.15.2",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-native": "^5.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.3",
+    "turbo": "^2.9.16",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0"
+  }
+}

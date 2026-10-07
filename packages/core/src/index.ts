@@ -1,0 +1,67 @@
+import NativeTealiumPrismReactNative from "./NativeTealiumPrismReactNative";
+import { serialize } from "./serialization";
+import type { JsonValue } from "./types";
+import { ErrorCode } from "./ErrorCode";
+import { tealiumError } from "./errors";
+export { ErrorCode } from "./ErrorCode";
+export type { TealiumError, TealiumErrorCode } from "./errors";
+export { tealiumError } from "./errors";
+
+export type {
+  JsonValue,
+  JsonValueObject,
+  DispatchType,
+  TrackResult,
+  LogLevel,
+} from "./types";
+export { Environment } from "./types";
+export { Tealium } from "./Tealium";
+export type { Trace } from "./modules/Trace";
+export type { VisitorId } from "./modules/VisitorId";
+
+/**
+ * Returns the linked Prism SDK version for the current platform.
+ *
+ * iOS reads from `TealiumConstants.libraryVersion` at runtime.
+ * Android reads from the SDK's `BuildConfig.TEALIUM_LIBRARY_VERSION` at runtime.
+ */
+export function getSdkVersion(): Promise<string> {
+  if (!NativeTealiumPrismReactNative) {
+    return Promise.reject(tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED));
+  }
+  return NativeTealiumPrismReactNative.getSdkVersion();
+}
+
+// TODO: we should probably remove this as an export once the DataLayer arrives
+/**
+ * Passes `input` through the native DataItem conversion layer and returns
+ * the result. The input is converted to a Prism `DataItem` on the native
+ * side and immediately converted back, so the returned value is the JS-visible
+ * representation of whatever the native SDK would store.
+ *
+ * Accepts any JSON value — primitive, array, or object.
+ *
+ * The value is serialized to a JSON string before crossing the bridge so that
+ * `null` values are preserved. The TurboModule bridge drops `null`-valued keys
+ * from plain objects on iOS before the native method body runs.
+ *
+ * Intended for bridge round-trip verification in the example app only.
+ */
+export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
+  if (!NativeTealiumPrismReactNative) {
+    return Promise.reject(tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED));
+  }
+  return NativeTealiumPrismReactNative.echoJsonValue(serialize(input)).then(
+    (result) => {
+      try {
+        return JSON.parse(result) as JsonValue;
+      } catch {
+        throw tealiumError(
+          ErrorCode.DATA_PARSE_ERROR,
+          "_echoJsonValue",
+          result
+        );
+      }
+    }
+  );
+}
