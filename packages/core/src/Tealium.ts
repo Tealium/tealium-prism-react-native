@@ -137,13 +137,13 @@ export class Tealium {
     type: DispatchType = "event",
     data?: JsonValueObject
   ): Promise<TrackResult> {
-    const dataJson = data !== undefined ? serialize(data) : null;
-
-    return this.withNative((native) =>
-      native
+    // serialize runs inside withNative so a serialization throw becomes a rejection.
+    return this.withNative((native) => {
+      const dataJson = data !== undefined ? serialize(data) : null;
+      return native
         .track(this.instanceId, name, type, dataJson)
-        .then((resultJson) => parseTrackResult(resultJson, "Tealium.track"))
-    );
+        .then((resultJson) => parseTrackResult(resultJson, "Tealium.track"));
+    });
   }
 
   shutdown(): Promise<void> {
