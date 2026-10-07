@@ -47,7 +47,7 @@ var utag_data = {
 <nav class="w-100 bg-primary-color-light bb b--light-gray dn-p" role="navigation">
   <div class="flex flex-wrap items-center justify-start mw9">
     <div class="lh-solid ml0-ns mr0 mr4-l mv3 pl15 dib db-ns relative" style="height: 40px;">
-      <a href="/">${logo}</a>
+      <a href="/" aria-label="Tealium">${logo}</a>
     </div>
     <ul class="list ma0 pa0 dn dib-ns">
       <li class="f5 dib mr4">

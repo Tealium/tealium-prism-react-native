@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   build:
+    # Manual runs from other branches must not overwrite the production docs. The deploy job is skipped as well, because it needs this job.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -54,8 +56,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment.
     permissions:
-      pages: write # to deploy to Pages
-      id-token: write # to verify the deployment originates from an appropriate source
+      pages: write # To deploy to Pages.
+      id-token: write # To verify the deployment originates from an appropriate source.
 
     steps:
       - name: Deploy to GitHub Pages

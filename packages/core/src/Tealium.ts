@@ -20,7 +20,8 @@ const instances = new Map<string, Tealium>();
  * Get an instance with {@link Tealium.create}. The constructor is private.
  * Every instance method that talks to the native SDK returns a Promise.
  * {@link Tealium.create} is synchronous. After {@link Tealium.shutdown}, those
- * Promises reject with {@link ErrorCode.INSTANCE_SHUT_DOWN}.
+ * Promises reject with {@link ErrorCode.INSTANCE_SHUT_DOWN}, except that
+ * calling {@link Tealium.shutdown} again resolves.
  *
  * @example
  * ```ts

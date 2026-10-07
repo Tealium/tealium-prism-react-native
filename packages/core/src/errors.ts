@@ -26,16 +26,9 @@ export interface TealiumError extends Error {
   code: TealiumErrorCode;
 }
 
-/**
- * Message arguments of each error code that the JavaScript layer raises, keyed
- * by code. See {@link tealiumError}.
- */
 type TealiumErrorParams = {
-  /** Takes no arguments. */
   NATIVE_MODULE_NOT_REGISTERED: [];
-  /** Takes the ID of the shut-down instance. */
   INSTANCE_SHUT_DOWN: [instanceId: string];
-  /** Takes the name of the failing call and the raw value that did not parse. */
   DATA_PARSE_ERROR: [context: string, rawValue: string];
 };
 
@@ -59,17 +52,6 @@ export function createTealiumError(
   return error;
 }
 
-/**
- * Creates a {@link TealiumError} with the standard message for an error code
- * that the JavaScript layer raises.
- *
- * @param code - One of `NATIVE_MODULE_NOT_REGISTERED`, `INSTANCE_SHUT_DOWN`, or
- *   `DATA_PARSE_ERROR`.
- * @param args - Message arguments of the code. `NATIVE_MODULE_NOT_REGISTERED`
- *   takes none. `INSTANCE_SHUT_DOWN` takes the instance ID. `DATA_PARSE_ERROR`
- *   takes a context string and the raw value.
- * @returns The error, with `code` set.
- */
 export function tealiumError<C extends keyof TealiumErrorParams>(
   code: C,
   ...args: TealiumErrorParams[C]

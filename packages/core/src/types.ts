@@ -29,11 +29,6 @@ export type JsonValue =
 
 /**
  * A JSON object. It maps to the native SDK `DataObject`.
- *
- * @example
- * ```ts
- * const data: JsonValueObject = { customer_id: "1234567890", is_member: true };
- * ```
  */
 export type JsonValueObject = Record<string, JsonValue>;
 

@@ -171,4 +171,4 @@ Read the API reference at [tealium.github.io/tealium-prism-react-native](https:/
 
 ## License
 
-Commercial. See [LICENSE](LICENSE).
+Commercial. See the [license](https://github.com/Tealium/tealium-prism-react-native/blob/main/LICENSE).

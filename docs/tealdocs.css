@@ -14,7 +14,6 @@ body {
     font-family:
         "proxima-nova", "Proxima", "Helvetica Neue", Helvetica, Arial,
         sans-serif;
-    color: #15263b;
 }
 
 /* The Hugo utility classes sit in a lower layer than TypeDoc's styles, so TypeDoc's `a` and

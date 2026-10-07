@@ -6,7 +6,6 @@
   "name": "Tealium Prism React Native",
   "excludeInternal": true,
   "gitRevision": "main",
-  "skipErrorChecking": false,
   "validation": {
     "notDocumented": true
   },
