@@ -192,11 +192,16 @@ export class Tealium {
    *
    * @param name - Name of the event or view.
    * @param type - Dispatch type. Defaults to `"event"`.
-   * @param data - Data to attach to the dispatch. It must be JSON-serializable.
+   * @param data - Data to attach to the dispatch. TypeScript rejects values
+   *   that are not JSON types. At runtime, `track` serializes `data` with
+   *   `JSON.stringify`, so it silently omits object properties whose values
+   *   are functions, symbols, or `undefined`.
    * @returns A Promise that resolves with the {@link TrackResult}. The result
    *   reports whether the SDK accepted or dropped the dispatch.
-   * @throws `Error` if `data` is not JSON-serializable. The error is thrown
-   *   synchronously instead of rejecting the Promise.
+   * @throws `Error` if `data` cannot be serialized, for example if it
+   *   contains a `BigInt` or a circular reference. The error is thrown
+   *   synchronously instead of rejecting the Promise. It has no `code`
+   *   property.
    *
    * @example
    * ```ts

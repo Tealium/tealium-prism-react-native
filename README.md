@@ -142,7 +142,7 @@ The trace stays active after `forceEndOfVisit` until you call `leave`.
 
 ## Error handling
 
-`Tealium.create` throws synchronously only if the native module is missing. `track` also throws synchronously if `data` is not JSON-serializable. All other failures reject the returned Promise. Errors from the package and the native module carry a `code` property. Compare it against `ErrorCode`:
+`Tealium.create` throws synchronously only if the native module is missing. `track` also throws synchronously if `data` cannot be serialized to JSON, for example if it contains a `BigInt` or a circular reference. `track` does not validate the other values. It silently drops object properties whose values are functions, symbols, or `undefined`. All other failures reject the returned Promise. Errors from the package and the native module carry a `code` property, except the synchronous serialization error from `track`. Compare the `code` against `ErrorCode`:
 
 ```ts
 import { ErrorCode, type TealiumError } from "@tealium/prism-react-native";
