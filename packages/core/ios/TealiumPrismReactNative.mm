@@ -80,6 +80,43 @@
     }];
 }
 
+#pragma mark - DataLayer
+
+- (void)dataLayerSubscribeUpdated:(NSString *)instanceId
+                   subscriptionId:(NSString *)subscriptionId
+                          resolve:(RCTPromiseResolveBlock)resolve
+                           reject:(RCTPromiseRejectBlock)reject
+{
+    __weak __typeof(self) weakSelf = self;
+    [TealiumPrismBridge dataLayerSubscribeUpdatedWithInstanceId:instanceId
+                                                subscriptionId:subscriptionId
+                                                          emit:^(NSDictionary *value) {
+        [weakSelf emitOnDataUpdated:value];
+    }
+                                                    completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)disposeSubscription:(NSString *)subscriptionId
+{
+    [TealiumPrismBridge disposeSubscriptionWithSubscriptionId:subscriptionId];
+}
+
+#pragma mark - RCTInvalidating
+
+// Called by RCTTurboModuleManager on JS runtime teardown (dev full reload, or a
+// brownfield host recreating the React instance); disposes every tracked native
+// subscription so they don't outlive the JS listeners that would have received them.
+- (void)invalidate
+{
+    [TealiumPrismBridge invalidate];
+}
+
 #pragma mark - Trace
 
 - (void)joinTrace:(NSString *)instanceId

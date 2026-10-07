@@ -1,6 +1,7 @@
 package com.tealium.prism.reactnative
 
 import android.app.Application
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.tealium.prism.core.BuildConfig as PrismBuildConfig
@@ -19,6 +20,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     companion object {
         const val NAME = NativeTealiumPrismReactNativeSpec.NAME
     }
+
+    /**
+     * Lifecycle tracker for DataLayer subscriptions. Thread-safe because the SDK
+     * delivers `register`/event callbacks on arbitrary Tealium threads while JS
+     * `unsubscribe`/`shutdown` calls arrive on the module's calling thread.
+     */
+    private val subscriptions = SubscriptionStore()
 
     override fun getSdkVersion(promise: Promise) {
         promise.resolve(PrismBuildConfig.TEALIUM_LIBRARY_VERSION)
@@ -62,11 +70,13 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             modules = emptyList()
         )
 
-        // TODO: add a conditional check like on Swift when converter will return null for invalid log level string
+        // An unrecognized log level string converts to null; mirror Swift and leave
+        // the setting unconfigured rather than forcing a fallback level.
         logLevel?.let { level ->
-            val parsedLevel = LogLevel.Converter.convert(DataItem.string(level))
-            configBuilder.configureCoreSettings { settings ->
-                settings.setLogLevel(parsedLevel)
+            LogLevel.Converter.convert(DataItem.string(level))?.let { parsedLevel ->
+                configBuilder.configureCoreSettings { settings ->
+                    settings.setLogLevel(parsedLevel)
+                }
             }
         }
 
@@ -143,8 +153,64 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             put("payload", result.dispatch.payload())
         }.asDataItem()
 
+    /**
+     * Subscribes to the instance's `onDataUpdated` stream, tagging each emitted
+     * delta with [subscriptionId] so JS routes it to a single listener. The
+     * registration is async: [markPending] records intent, and once the SDK
+     * hands back a [com.tealium.prism.core.api.pubsub.Disposable] it is stored
+     * via [SubscriptionStore.register] (or disposed immediately if the
+     * subscription was torn down while registering) and [promise] resolves. The
+     * stream's completion is wired to [SubscriptionStore.teardown] so an
+     * upstream `onComplete` releases the entry without leaking.
+     *
+     * The lookup's `onNotFound` hook releases the entry [SubscriptionStore.markPending] recorded
+     * (see [SubscriptionStore.cancelPending]) before the `INSTANCE_NOT_FOUND` rejection reaches JS.
+     */
+    override fun dataLayerSubscribeUpdated(
+        instanceId: String,
+        subscriptionId: String,
+        promise: Promise
+    ) {
+        subscriptions.markPending(subscriptionId, instanceId)
+        Tealium.withInstance(
+            instanceId,
+            promise,
+            onNotFound = { subscriptions.cancelPending(subscriptionId, instanceId) }
+        ) { instance ->
+            val disposable = instance.dataLayer.onDataUpdated.subscribe(
+                { data ->
+                    emitOnDataUpdated(
+                        Arguments.createMap().apply {
+                            putString("subscriptionId", subscriptionId)
+                            // DataObject.toString() is the SDK's documented JSON serialization.
+                            putString("payloadJson", data.toString())
+                        }
+                    )
+                },
+                { subscriptions.teardown(subscriptionId) }
+            )
+            subscriptions.register(subscriptionId, instanceId, disposable)
+            promise.resolve(null)
+        }
+    }
+
+    /** Tears down the subscription for [subscriptionId]; a no-op if unknown. */
+    override fun disposeSubscription(subscriptionId: String) {
+        subscriptions.teardown(subscriptionId)
+    }
+
     override fun shutdown(instanceId: String, promise: Promise) {
+        // Dispose before Tealium.shutdown: the SDK never emits onComplete on
+        // shutdown, so the store is what prevents the subscriptions from leaking.
+        subscriptions.disposeAllForInstance(instanceId)
         Tealium.shutdown(instanceId)
         promise.resolve(null)
+    }
+
+    // Releases SDK subscriptions (and the module they capture) when the React context is
+    // destroyed (dev full reload, or a brownfield host recreating the React instance).
+    override fun invalidate() {
+        super.invalidate()
+        subscriptions.disposeAll()
     }
 }

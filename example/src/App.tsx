@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./BridgeTestScreen";
@@ -6,7 +6,10 @@ import InstancesScreen from "./InstancesScreen";
 import TraceScreen from "./TraceScreen";
 import LifecycleScreen from "./LifecycleScreen";
 import TransformationsScreen from "./TransformationsScreen";
+import DataLayerScreen from "./DataLayerScreen";
+import ScreenWithBack from "./ScreenWithBack";
 import { TealiumProvider } from "./TealiumProvider";
+import { DataLayerSubscriptionProvider } from "./DataLayerSubscriptionProvider";
 
 type Screen =
   | "home"
@@ -14,12 +17,24 @@ type Screen =
   | "instances"
   | "trace"
   | "lifecycle"
-  | "transformations";
+  | "transformations"
+  | "dataLayer";
+
+const SCREENS: Record<Exclude<Screen, "home">, ComponentType> = {
+  bridgeTests: BridgeTestScreen,
+  instances: InstancesScreen,
+  trace: TraceScreen,
+  lifecycle: LifecycleScreen,
+  transformations: TransformationsScreen,
+  dataLayer: DataLayerScreen,
+};
 
 export default function App() {
   return (
     <TealiumProvider>
-      <AppContent />
+      <DataLayerSubscriptionProvider>
+        <AppContent />
+      </DataLayerSubscriptionProvider>
     </TealiumProvider>
   );
 }
@@ -38,73 +53,12 @@ function AppContent() {
       });
   }, []);
 
-  if (screen === "bridgeTests") {
+  if (screen !== "home") {
+    const ScreenComponent = SCREENS[screen];
     return (
-      <View style={styles.flex}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("home")}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <BridgeTestScreen />
-      </View>
-    );
-  }
-
-  if (screen === "instances") {
-    return (
-      <View style={styles.flex}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("home")}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <InstancesScreen />
-      </View>
-    );
-  }
-
-  if (screen === "trace") {
-    return (
-      <View style={styles.flex}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("home")}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <TraceScreen />
-      </View>
-    );
-  }
-
-  if (screen === "lifecycle") {
-    return (
-      <View style={styles.flex}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("home")}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <LifecycleScreen />
-      </View>
-    );
-  }
-
-  if (screen === "transformations") {
-    return (
-      <View style={styles.flex}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => setScreen("home")}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <TransformationsScreen />
-      </View>
+      <ScreenWithBack onBack={() => setScreen("home")}>
+        <ScreenComponent />
+      </ScreenWithBack>
     );
   }
 
@@ -140,6 +94,12 @@ function AppContent() {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
+        onPress={() => setScreen("dataLayer")}
+      >
+        <Text style={styles.buttonText}>Data Layer</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
         onPress={() => setScreen("bridgeTests")}
       >
         <Text style={styles.buttonText}>Bridge Tests</Text>
@@ -149,9 +109,6 @@ function AppContent() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
   container: {
     flex: 1,
     alignItems: "center",
@@ -176,14 +133,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 15,
-  },
-  backButton: {
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 8,
-  },
-  backText: {
-    fontSize: 16,
-    color: "#007AFF",
   },
 });

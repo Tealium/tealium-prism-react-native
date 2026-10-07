@@ -16,5 +16,5 @@ Pod::Spec.new do |s|
   # No wrapper source of its own: pulling in the Extensions subspec is enough.
   # Its ObjC `+load` loader (ExtensionsClassesLoader) registers the transformer
   # factories with every Tealium instance at launch — no app code required.
-  s.dependency "tealium-prism/Extensions", "~> 0.5"
+  s.dependency "tealium-prism/Extensions", "~> 0.6"
 end

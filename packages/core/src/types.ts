@@ -68,3 +68,23 @@ export interface TrackResult {
   info: string;
   payload: JsonValueObject;
 }
+
+/**
+ * Handle returned by a subscription (e.g. {@link DataLayer.onDataUpdated}).
+ * Call {@link dispose} to stop receiving events; disposing is idempotent. The
+ * caller owns the handle and should dispose it when done. Shutting down the
+ * owning instance also disposes any of its handles still open: the native
+ * subscription is torn down and {@link isDisposed} flips to `true`.
+ *
+ * Mirrors the native Prism `Disposable` (prism-swift `Disposable` protocol,
+ * prism-kotlin `Disposable` interface).
+ */
+export interface Disposable {
+  /** Stops the subscription. Safe to call more than once. */
+  dispose(): void;
+  /**
+   * `true` once the handle has been disposed — by {@link dispose} or by
+   * shutting down the owning instance.
+   */
+  readonly isDisposed: boolean;
+}
