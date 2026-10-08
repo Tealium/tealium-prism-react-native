@@ -21,4 +21,15 @@ extension TealiumInstanceManager {
             found(instance)
         }
     }
+
+    /// Variant of [`TealiumInstanceManager.withInstance(_:completion:found:)`](doc:TealiumInstanceManager/withInstance(_:completion:found:))
+    /// for payload-less bridge methods, whose `completion` carries no result string. Delegates to
+    /// the other overload with a completion that discards the unused result parameter.
+    func withInstance(
+        _ key: String,
+        completion: @escaping (PromiseRejection?) -> Void,
+        found: @escaping (Tealium) -> Void
+    ) {
+        withInstance(key, completion: { _, rejection in completion(rejection) }, found: found)
+    }
 }

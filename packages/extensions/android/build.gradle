@@ -43,5 +43,5 @@ dependencies {
   implementation "com.facebook.react:react-android"
   // The Extensions module auto-registers its transformer factories via its
   // AndroidManifest ComponentDiscoveryService entries, merged in by adding this dependency.
-  implementation "com.tealium.prism:prism-extensions:0.1.0"
+  implementation "com.tealium.prism:prism-extensions:0.1.1"
 }

@@ -9,19 +9,28 @@ import type {
 import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
 import { Trace } from "./modules/Trace";
+import { DataLayer } from "./modules/DataLayer";
 import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
 const instances = new Map<string, Tealium>();
 
 export class Tealium {
+  /**
+   * Stable id addressing this instance in every native call. Equal to the
+   * SDK's `TealiumConfig.key`, the string `"{account}-{profile}"`, so it also
+   * matches the key this class caches instances under (see {@link create}).
+   */
   readonly instanceId: string;
   /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
   readonly trace: Trace;
+  /** DataLayer facade, mirroring the native Prism `DataLayer` module. */
+  readonly dataLayer: DataLayer;
   private _isShutdown = false;
 
   private constructor(instanceId: string) {
     this.instanceId = instanceId;
     this.trace = new Trace(this.createModuleProxy());
+    this.dataLayer = new DataLayer(this.createModuleProxy());
   }
 
   /**
@@ -108,6 +117,10 @@ export class Tealium {
       throw tealiumError(ErrorCode.NATIVE_MODULE_NOT_REGISTERED);
     }
 
+    // Mirrors the SDK's `TealiumConfig.key`, so this is exactly the id
+    // `native.create` returns (see the spec's `create` doc). Caching under it
+    // lets `shutdown` remove the entry by `instanceId` and matches the SDK's
+    // own dedupe of duplicate account/profile pairs.
     const key = `${account}-${profile}`;
 
     const cached = instances.get(key);
@@ -159,6 +172,10 @@ export class Tealium {
     this._isShutdown = true;
     instances.delete(this.instanceId);
 
-    return NativeTealiumPrismReactNative.shutdown(this.instanceId);
+    // Native resolves with no payload (nil on iOS, null on Android); normalize
+    // to undefined so the result is identical on both platforms.
+    return NativeTealiumPrismReactNative.shutdown(this.instanceId).then(
+      () => undefined
+    );
   }
 }

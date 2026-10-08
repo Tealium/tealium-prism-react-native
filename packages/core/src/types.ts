@@ -68,3 +68,11 @@ export interface TrackResult {
   info: string;
   payload: JsonValueObject;
 }
+
+/**
+ * Expiry of a data layer entry, mirroring the native Prism `Expiry` accepted
+ * by `DataLayer.put`. `"forever"` never expires, `"session"` expires when the
+ * session ends, `"untilRestart"` expires when the app restarts, and a `Date`
+ * expires at that absolute point in time.
+ */
+export type Expiry = "session" | "untilRestart" | "forever" | Date;

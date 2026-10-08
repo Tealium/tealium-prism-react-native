@@ -76,7 +76,7 @@
               "key": "tealium_event"
             },
             "destination": {
-              "path": "new_values.copied_event"
+              "path": "copied_event"
             }
           }
         ]
@@ -97,13 +97,13 @@
       "order": 3,
       "scope": "aftercollectors",
       "configuration": {
-        "update_policy": "keepfirstvalue",
+        "update_policy": "allowupdate",
         "duration": -1,
         "input": {
-          "value": "persistence is the key"
+          "value": "persisted forever (but can be updated)"
         },
         "destination": {
-          "path": "persistent.value"
+          "path": "persisted_value"
         }
       },
       "conditions": {

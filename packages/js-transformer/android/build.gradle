@@ -47,5 +47,5 @@ dependencies {
   // engine and registers the transformer factory via its AndroidManifest
   // ComponentDiscoveryService entry. This mirrors iOS (JavaScriptCore) so the
   // single package works on both platforms with no extra install.
-  implementation "com.tealium.prism:prism-js-transformer-rhino:0.1.0"
+  implementation "com.tealium.prism:prism-js-transformer-rhino:0.1.1"
 }

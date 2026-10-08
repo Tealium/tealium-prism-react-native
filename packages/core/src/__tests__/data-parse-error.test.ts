@@ -9,6 +9,8 @@ jest.mock("../NativeTealiumPrismReactNative", () => ({
     echoJsonValue: () => Promise.resolve(INVALID_JSON),
     shutdown: () => Promise.resolve(),
     getSdkVersion: () => Promise.resolve("1.0.0"),
+    dataLayerGet: () => Promise.resolve(INVALID_JSON),
+    dataLayerGetAll: () => Promise.resolve(INVALID_JSON),
   },
 }));
 
@@ -37,6 +39,28 @@ describe("DATA_PARSE_ERROR", () => {
     await expect(_echoJsonValue(42)).rejects.toMatchObject({
       code: ErrorCode.DATA_PARSE_ERROR,
       message: `_echoJsonValue: native returned non-JSON string: ${INVALID_JSON}`,
+    });
+  });
+
+  it("Tealium.dataLayer.get rejects with DATA_PARSE_ERROR when native returns non-JSON", async () => {
+    const instance = Tealium.create("account", "profile-datalayer-get", "dev");
+
+    await expect(instance.dataLayer.get("key")).rejects.toMatchObject({
+      code: ErrorCode.DATA_PARSE_ERROR,
+      message: `Tealium.dataLayer.get: native returned non-JSON string: ${INVALID_JSON}`,
+    });
+  });
+
+  it("Tealium.dataLayer.getAll rejects with DATA_PARSE_ERROR when native returns non-JSON", async () => {
+    const instance = Tealium.create(
+      "account",
+      "profile-datalayer-getall",
+      "dev"
+    );
+
+    await expect(instance.dataLayer.getAll()).rejects.toMatchObject({
+      code: ErrorCode.DATA_PARSE_ERROR,
+      message: `Tealium.dataLayer.getAll: native returned non-JSON string: ${INVALID_JSON}`,
     });
   });
 });

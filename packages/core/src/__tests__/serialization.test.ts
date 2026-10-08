@@ -1,4 +1,5 @@
-import { serialize } from "../serialization";
+import { encodeExpiry, serialize } from "../serialization";
+import type { Expiry } from "../types";
 
 describe("serialize", () => {
   it("passes through a string", () => {
@@ -77,6 +78,29 @@ describe("serialize", () => {
   it("throws for a symbol", () => {
     expect(() => serialize(Symbol("s"))).toThrow(
       "serialize: value is not JSON-serializable (type: symbol)"
+    );
+  });
+});
+
+describe("encodeExpiry", () => {
+  const cases: Array<[string, Expiry | undefined, number | null]> = [
+    ["forever", "forever", -1],
+    ["session", "session", -2],
+    ["untilRestart", "untilRestart", -3],
+    ["a date", new Date(1_700_000_000_123), 1_700_000_000_123],
+    ["the Unix epoch", new Date(0), 0],
+    ["undefined", undefined, null],
+  ];
+
+  cases.forEach(([label, expiry, encoded]) => {
+    it(`encodes ${label} to ${encoded}`, () => {
+      expect(encodeExpiry(expiry)).toBe(encoded);
+    });
+  });
+
+  it("throws for an invalid date", () => {
+    expect(() => encodeExpiry(new Date(Number.NaN))).toThrow(
+      "encodeExpiry: invalid Date (NaN time)"
     );
   });
 });

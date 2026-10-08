@@ -15,6 +15,13 @@ if linkage != nil
 end
 
 target 'TealiumPrismReactNativeExample' do
+  # Declare the wrapper pod explicitly with its unit test_spec so `pod install`
+  # generates a test target in Pods.xcodeproj. This must come before
+  # `use_native_modules!`: RN autolinking skips pods already declared here
+  # (see react-native/scripts/cocoapods/autolinking.rb), so there's no
+  # duplicate declaration and autolinking otherwise links it as usual.
+  pod "TealiumPrismReactNative", :path => "../../packages/core", :testspecs => ["Tests"]
+
   config = use_native_modules!
 
   use_react_native!(

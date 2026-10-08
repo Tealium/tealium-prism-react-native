@@ -15,11 +15,31 @@ internal fun <T : DataItemConvertible> SingleResult<T>.subscribe(promise: Promis
 /**
  * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via
  * [converter] and resolving [promise] with its JSON string on success, or rejecting
- * [promise] with the error on failure.
+ * [promise] with the error on failure. Delegates to [subscribeNullable]; a non-null
+ * converter never hits its `null` branch.
  */
 internal inline fun <T> SingleResult<T>.subscribe(
     promise: Promise,
     crossinline converter: (T) -> DataItem
+) = subscribeNullable(promise, converter)
+
+/**
+ * Subscribes to this [SingleResult] for a payload-less result (the SDK's `Unit`), resolving
+ * [promise] with `null` on success and rejecting it with the error on failure. Delegates to
+ * [subscribeNullable] with a converter that always yields `null`.
+ */
+internal fun <T> SingleResult<T>.subscribeVoid(promise: Promise) =
+    subscribeNullable(promise) { null }
+
+/**
+ * Subscribes to this [SingleResult], converting the emitted value to a [DataItem] via [converter].
+ * Resolves [promise] with a real `null` when [converter] returns `null` (the absent-key case of
+ * `DataLayer.get`) and with the [DataItem]'s JSON string otherwise, or rejects [promise] with the
+ * error on failure.
+ */
+internal inline fun <T> SingleResult<T>.subscribeNullable(
+    promise: Promise,
+    crossinline converter: (T) -> DataItem?
 ) {
     // One-shot subscription: it completes on first emission and the returned Disposable
     // deallocates on its own, so we don't retain it.
@@ -28,7 +48,10 @@ internal inline fun <T> SingleResult<T>.subscribe(
         { result ->
             emitted = true
             result
-                .onSuccess { value -> promise.resolve(jsonString(converter(value))) }
+                .onSuccess { value ->
+                    val item = converter(value)
+                    promise.resolve(item?.let(::jsonString))
+                }
                 .onFailure { t -> promise.reject(ErrorCode.PRISM_NATIVE_ERROR, t.message, t) }
         },
         {

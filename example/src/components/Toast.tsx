@@ -8,28 +8,33 @@ import {
   Animated,
   Modal,
 } from "react-native";
-import { type TrackResult } from "@tealium/prism-react-native";
+import JsonPayload from "./JsonPayload";
+
+export type ToastNotice = {
+  kind: "success" | "error" | "info";
+  title: string;
+  lines?: string[];
+  payload?: unknown;
+  payloadTitle?: string;
+};
 
 type Props = {
-  /** The most recent track result to surface, or null to show nothing. */
-  result: TrackResult | null;
-  /** Called once the toast has faded out so the owner can clear its result. */
+  /** The notice to surface, or null to show nothing. */
+  notice: ToastNotice | null;
+  /** Called once the toast has faded out so the owner can clear its notice. */
   onDismiss: () => void;
   /** Label used when logging the payload to the dev console. */
   logTag?: string;
 };
 
 /**
- * A tappable toast that surfaces a {@link TrackResult}. Tapping it opens a modal
- * with the full dispatch payload (also logged to the dev console); it auto-hides
- * after 5s or can be dismissed manually. Shared by screens that track events so
- * they present results identically.
+ * A tappable toast that surfaces a {@link ToastNotice}. When the notice carries
+ * a payload, tapping the toast opens a modal with the full payload (also
+ * logged to the dev console); it auto-hides after 5s or can be dismissed
+ * manually. Shared by screens that surface a status/result/error so they
+ * present it identically.
  */
-export default function TrackResultToast({
-  result,
-  onDismiss,
-  logTag = "TrackResultToast",
-}: Props) {
+export default function Toast({ notice, onDismiss, logTag = "Toast" }: Props) {
   const [showPayloadModal, setShowPayloadModal] = useState(false);
 
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -46,7 +51,7 @@ export default function TrackResultToast({
       duration: 300,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      // Only the fade that actually ran to completion clears the result; an
+      // Only the fade that actually ran to completion clears the notice; an
       // interrupted animation (e.g. a second hideToast) must not fire a
       // duplicate onDismiss.
       if (finished) {
@@ -56,7 +61,7 @@ export default function TrackResultToast({
   }, [toastOpacity, onDismiss]);
 
   useEffect(() => {
-    if (result) {
+    if (notice) {
       toastOpacity.setValue(0);
       Animated.timing(toastOpacity, {
         toValue: 1,
@@ -72,9 +77,9 @@ export default function TrackResultToast({
         hideToast();
       }, 5000);
     } else {
-      // Result cleared externally (e.g. active instance changed): make sure a
+      // Notice cleared externally (e.g. active instance changed): make sure a
       // previously-open payload modal doesn't linger and reopen on the next
-      // result.
+      // notice.
       setShowPayloadModal(false);
     }
 
@@ -83,7 +88,7 @@ export default function TrackResultToast({
         clearTimeout(toastTimer.current);
       }
     };
-  }, [result, hideToast, toastOpacity]);
+  }, [notice, hideToast, toastOpacity]);
 
   useEffect(() => {
     if (showPayloadModal) {
@@ -91,24 +96,52 @@ export default function TrackResultToast({
         clearTimeout(toastTimer.current);
         toastTimer.current = null;
       }
-      if (result) {
+      if (notice) {
         console.log(
-          `[${logTag}] Dispatch Payload:`,
-          JSON.stringify(result.payload, null, 2),
+          `[${logTag}] ${notice.payloadTitle ?? "Payload"}:`,
+          JSON.stringify(notice.payload, null, 2),
         );
       }
     }
-  }, [showPayloadModal, result, logTag]);
+  }, [showPayloadModal, notice, logTag]);
 
-  if (!result) {
+  if (!notice) {
     return null;
   }
+
+  const hasPayload = notice.payload !== undefined;
+
+  const body = (
+    <View style={styles.toastContent}>
+      <View style={styles.toastTextContainer}>
+        <Text style={styles.toastTitle}>{notice.title}</Text>
+        {notice.lines?.map((line, index) => (
+          <Text key={index} style={styles.toastText}>
+            {line}
+          </Text>
+        ))}
+        {hasPayload && (
+          <Text style={styles.toastHint}>Tap to view payload</Text>
+        )}
+      </View>
+      <TouchableOpacity
+        style={styles.toastDismiss}
+        onPress={(e) => {
+          e.stopPropagation();
+          hideToast();
+        }}
+      >
+        <Text style={styles.toastDismissText}>✕</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <>
       <Animated.View
         style={[
           styles.toast,
+          TOAST_BACKGROUND_BY_KIND[notice.kind],
           {
             opacity: toastOpacity,
             transform: [
@@ -122,29 +155,17 @@ export default function TrackResultToast({
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.toastTouchable}
-          onPress={() => setShowPayloadModal(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.toastContent}>
-            <View style={styles.toastTextContainer}>
-              <Text style={styles.toastTitle}>Track Result</Text>
-              <Text style={styles.toastText}>Status: {result.status}</Text>
-              <Text style={styles.toastText}>Info: {result.info}</Text>
-              <Text style={styles.toastHint}>Tap to view payload</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.toastDismiss}
-              onPress={(e) => {
-                e.stopPropagation();
-                hideToast();
-              }}
-            >
-              <Text style={styles.toastDismissText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+        {hasPayload ? (
+          <TouchableOpacity
+            style={styles.toastTouchable}
+            onPress={() => setShowPayloadModal(true)}
+            activeOpacity={0.8}
+          >
+            {body}
+          </TouchableOpacity>
+        ) : (
+          body
+        )}
       </Animated.View>
 
       <Modal
@@ -156,7 +177,9 @@ export default function TrackResultToast({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Dispatch Payload</Text>
+              <Text style={styles.modalTitle}>
+                {notice.payloadTitle ?? "Payload"}
+              </Text>
               <TouchableOpacity onPress={hideToast}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
@@ -167,9 +190,7 @@ export default function TrackResultToast({
               </Text>
             </View>
             <ScrollView contentContainerStyle={styles.modalBody}>
-              <Text style={styles.payloadText}>
-                {JSON.stringify(result.payload, null, 2)}
-              </Text>
+              <JsonPayload value={notice.payload} boxed={false} />
             </ScrollView>
           </View>
         </View>
@@ -184,13 +205,21 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 16,
     right: 16,
-    backgroundColor: "#28a745",
     borderRadius: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  toastSuccess: {
+    backgroundColor: "#28a745",
+  },
+  toastError: {
+    backgroundColor: "#c62828",
+  },
+  toastInfo: {
+    backgroundColor: "#007AFF",
   },
   toastTouchable: {
     flex: 1,
@@ -219,6 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontStyle: "italic",
+    fontWeight: 600,
   },
   toastDismiss: {
     marginLeft: 12,
@@ -272,9 +302,10 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: 16,
   },
-  payloadText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#333",
-  },
 });
+
+const TOAST_BACKGROUND_BY_KIND: Record<ToastNotice["kind"], object> = {
+  success: styles.toastSuccess,
+  error: styles.toastError,
+  info: styles.toastInfo,
+};

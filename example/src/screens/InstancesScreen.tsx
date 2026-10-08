@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import {
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ScrollView,
@@ -9,9 +8,10 @@ import {
   Modal,
 } from "react-native";
 import { type LogLevel, type TrackResult } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
-import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
-import TrackResultToast from "./TrackResultToast";
+import { useTealium } from "../TealiumProvider";
+import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
+import PlainTextInput from "../components/PlainTextInput";
+import TrackResultToast from "../components/TrackResultToast";
 
 const LOG_LEVELS: LogLevel[] = [
   "trace",
@@ -99,15 +99,16 @@ export default function InstancesScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.sectionTitle}>Create Instance</Text>
-        <TextInput
+        <PlainTextInput
           style={styles.input}
           placeholder="Account"
           value={account}
           onChangeText={setAccount}
         />
-        <TextInput
+        <PlainTextInput
           style={styles.input}
           placeholder="Profile"
           value={profile}
@@ -232,7 +233,7 @@ export default function InstancesScreen() {
         {activeInstance && (
           <>
             <Text style={styles.sectionTitle}>Track Event/View</Text>
-            <TextInput
+            <PlainTextInput
               style={styles.input}
               placeholder="Event/View Name"
               value={trackName}
@@ -259,7 +260,7 @@ export default function InstancesScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <TextInput
+            <PlainTextInput
               style={[styles.input, styles.inputMultiline]}
               placeholder='Custom Data (JSON, e.g. {"screen": "home"})'
               value={trackData}

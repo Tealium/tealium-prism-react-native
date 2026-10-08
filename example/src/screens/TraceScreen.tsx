@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import {
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ScrollView,
   StyleSheet,
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
+import { useTealium } from "../TealiumProvider";
+import JsonPayload from "../components/JsonPayload";
+import PlainTextInput from "../components/PlainTextInput";
 
 // Trace demo: join/leave a trace and force end-of-visit on the active app
 // instance selected on the Instances screen. Track an event in between to
@@ -77,7 +78,11 @@ export default function TraceScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.sectionTitle}>Instance</Text>
       {activeInstance ? (
         <Text style={styles.instanceKey}>{activeInstance.instanceId}</Text>
@@ -93,12 +98,11 @@ export default function TraceScreen() {
           <Text style={styles.stateText}>
             {joined ? "🟢 In an active trace" : "⚪ Not in a trace"}
           </Text>
-          <TextInput
+          <PlainTextInput
             style={styles.input}
             placeholder="Trace ID"
             value={traceId}
             onChangeText={setTraceId}
-            autoCapitalize="none"
           />
           <TouchableOpacity style={styles.button} onPress={handleJoin}>
             <Text style={styles.buttonText}>Join Trace</Text>
@@ -134,9 +138,7 @@ export default function TraceScreen() {
           <Text style={styles.resultTitle}>
             Last dispatch: {lastResult.status}
           </Text>
-          <Text style={styles.payloadText}>
-            {JSON.stringify(lastResult.payload, null, 2)}
-          </Text>
+          <JsonPayload value={lastResult.payload} boxed={false} />
         </View>
       )}
 
@@ -220,11 +222,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 6,
-  },
-  payloadText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: "#333",
   },
   error: {
     backgroundColor: "#ffebee",

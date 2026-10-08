@@ -7,43 +7,15 @@ import {
   StyleSheet,
 } from "react-native";
 import { type TrackResult } from "@tealium/prism-react-native";
-import { useTealium } from "./TealiumProvider";
-import { useActiveInstanceGuard } from "./useActiveInstanceGuard";
-import TrackResultToast from "./TrackResultToast";
+import { useTealium } from "../TealiumProvider";
+import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
+import TrackResultToast from "../components/TrackResultToast";
 
-// Each entry maps a button to the event name that matches a transformation's
-// condition in mobile_settings.json. Tracking that event runs the corresponding
-// transformation on the active instance, and the tappable result toast reveals
-// the transformed fields in the dispatch payload.
-const TRANSFORMATIONS: { label: string; event: string; hint: string }[] = [
-  {
-    label: "Lowercase",
-    event: "lowercase_modules",
-    hint: "Lowercases the enabled_modules values.",
-  },
-  {
-    label: "Set Data Values",
-    event: "set_copied_event",
-    hint: "Copies tealium_event into new_values.copied_event.",
-  },
-  {
-    label: "Persist Data Value",
-    event: "persist_value",
-    hint: "Persists a fixed value at persistent.value.",
-  },
-  {
-    label: "JavaScript Transformer",
-    event: "js_demo_event",
-    hint: "Runs JS that derives js_result from enabled_modules.",
-  },
-];
-
-// Transformations demo: each button tracks an event whose name matches a
-// transformation's condition in mobile_settings.json, so the transformation
-// fires and the tappable result toast reveals the transformed data in the
-// dispatch payload. Works against the active instance selected on the Instances
-// screen.
-export default function TransformationsScreen() {
+// Lifecycle demo: tracks a "lifecycle_data_test" event on the active app
+// instance selected on the Instances screen. A load rule in mobile_settings.json
+// attaches the Lifecycle module's data to events with this name, so the tappable
+// result toast reveals the lifecycle fields in the dispatch payload.
+export default function LifecycleScreen() {
   const { activeInstance } = useTealium();
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,14 +27,14 @@ export default function TransformationsScreen() {
     setError(null);
   }, [activeInstance?.instanceId]);
 
-  const handleSend = (event: string) => {
+  const handleSend = () => {
     setError(null);
     if (!activeInstance) {
       setError("No active instance. Create one on the Instances screen.");
       return;
     }
     activeInstance
-      .track(event, "event")
+      .track("lifecycle_data_test", "event")
       .then(guard((result) => setLastResult(result)))
       .catch(guard((e) => setError(String(e))));
   };
@@ -86,23 +58,14 @@ export default function TransformationsScreen() {
 
         {activeInstance && (
           <>
-            <Text style={styles.sectionTitle}>Transformations</Text>
+            <Text style={styles.sectionTitle}>Lifecycle</Text>
             <Text style={styles.hint}>
-              Each button tracks an event that triggers a transformation. Tap
-              the result toast to view the transformed data in the dispatch
-              payload.
+              Tracks a "lifecycle_data_test" event. Tap the result toast to view
+              the lifecycle data in the dispatch payload.
             </Text>
-            {TRANSFORMATIONS.map((transformation) => (
-              <View key={transformation.event}>
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handleSend(transformation.event)}
-                >
-                  <Text style={styles.buttonText}>{transformation.label}</Text>
-                </TouchableOpacity>
-                <Text style={styles.hint}>{transformation.hint}</Text>
-              </View>
-            ))}
+            <TouchableOpacity style={styles.button} onPress={handleSend}>
+              <Text style={styles.buttonText}>Send Lifecycle Data</Text>
+            </TouchableOpacity>
           </>
         )}
 
@@ -116,7 +79,7 @@ export default function TransformationsScreen() {
       <TrackResultToast
         result={lastResult}
         onDismiss={handleToastDismiss}
-        logTag="TransformationsScreen"
+        logTag="LifecycleScreen"
       />
     </View>
   );
