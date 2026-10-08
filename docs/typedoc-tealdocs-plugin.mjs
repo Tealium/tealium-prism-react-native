@@ -60,7 +60,7 @@ var utag_data = {
 
 const sidebarBegin = `
 <ul class="list pa0 mt0 mb1">
-  <li class="w-100 fw4 f5 text-color-primary pv1 pl2"><a href="/early-access/mobile/quick-start/" class="w-100 link text-color-primary hover-primary-color pv2 pl0 pr2"><img src="/images/icons/icon-arrow-left.svg" height="10" width="16" class="di v-mid pr1">Back</a></li>
+  <li class="w-100 fw4 f5 text-color-primary pv1 pl2"><a href="/early-access/mobile/quick-start/" class="w-100 link text-color-primary hover-primary-color pv2 pl0 pr2"><img src="/images/icons/icon-arrow-left.svg" alt="" height="10" width="16" class="di v-mid pr1">Back</a></li>
 </ul>
 <ul class="list pa0">
   <li data-level="1" class="relative w-100 fw8 f4 mv2 text-color-primary pv1 ind2">

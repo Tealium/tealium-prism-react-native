@@ -41,7 +41,7 @@ cd ios && pod install
 
 Android needs no extra steps because autolinking adds the native dependencies.
 
-To check which native Prism SDK version the app links, call `getSdkVersion`:
+To check the native Prism SDK version, call `getSdkVersion`:
 
 ```ts
 import { getSdkVersion } from "@tealium/prism-react-native";
@@ -67,7 +67,7 @@ const tealium = Tealium.create(
 
 The optional arguments after the environment configure the settings sources and logging:
 
-- `settingsFile` is the name of a JSON settings file bundled with the app. Include the `.json` extension. These local settings have the lowest priority.
+- `settingsFile` is the name of a JSON settings file bundled with the app. Include the `.json` extension. On iOS, add the file to your app target so that it ships in the main bundle. On Android, put the file in `android/app/src/main/assets/`. These local settings have the lowest priority.
 - `settingsUrl` is the URL of a remote JSON settings resource. Remote settings override local settings.
 - `logLevel` sets the log verbosity of the native SDK. It overrides both settings sources.
 
