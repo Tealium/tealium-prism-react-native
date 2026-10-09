@@ -8,6 +8,8 @@ Tealium Prism is the Tealium SDK for iOS and Android. This package wraps the nat
 
 The package has the following requirements:
 
+- Android API level 24 or later.
+- iOS 15.1 or later.
 - React Native 0.85. This is the version that the example app tests.
 - The New Architecture (TurboModules). The package does not support the legacy architecture.
 
@@ -101,6 +103,58 @@ The data must be a plain object with JSON-serializable values.
 ```ts
 const result = await tealium.track("user_login");
 console.log(result.status, result.info, result.payload);
+```
+
+## Data layer
+
+Read and write data layer values through `tealium.dataLayer`. Every method returns a Promise.
+
+To get a value, call `get` with the key. The Promise resolves with `undefined` if the key is absent:
+
+```ts
+const customerId = await tealium.dataLayer.get("customer_id");
+```
+
+To set a value, call `put`:
+
+```ts
+await tealium.dataLayer.put("my_string", "my_string_value");
+```
+
+To set several values in one call, pass a plain object to `putAll`:
+
+```ts
+await tealium.dataLayer.putAll({
+  customer_id: "12345",
+  is_logged_in: true,
+  consent_status: "consented",
+  product_category: ["electronics", "headphones"],
+});
+```
+
+Values must be JSON-serializable: strings, numbers, booleans, `null`, arrays, and plain objects.
+
+To set an expiration, pass an expiry as the last argument of `put` or `putAll`. The expiry is `"session"`, `"untilRestart"`, `"forever"`, or a `Date`. Without an expiry, the value never expires:
+
+```ts
+await tealium.dataLayer.put("currency", "USD", "untilRestart");
+
+const sevenDays = 7 * 24 * 60 * 60 * 1000;
+await tealium.dataLayer.put("order_total", 249.95, new Date(Date.now() + sevenDays));
+```
+
+To get every value as one object, call `getAll`:
+
+```ts
+const data = await tealium.dataLayer.getAll();
+```
+
+To remove values, call `remove` with a key or an array of keys. To remove every value, call `clear`:
+
+```ts
+await tealium.dataLayer.remove("customer_id");
+await tealium.dataLayer.remove(["is_logged_in", "consent_status"]);
+await tealium.dataLayer.clear();
 ```
 
 ## Log level
