@@ -81,10 +81,7 @@ export interface TrackResult {
   status: "accepted" | "dropped";
   /** Human-readable reason behind the status decision. */
   info: string;
-  /**
-   * The dispatch payload after the SDK collected, transformed, and applied
-   * consent to it.
-   */
+  /** The dispatch payload after the SDK collected and transformed it. */
   payload: JsonValueObject;
 }
 
