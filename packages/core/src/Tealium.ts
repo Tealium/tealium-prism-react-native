@@ -14,6 +14,21 @@ import type { ModuleProxy, NativeModule } from "./modules/ModuleProxy";
 
 const instances = new Map<string, Tealium>();
 
+/**
+ * A Tealium Prism instance for one account and profile.
+ *
+ * Get an instance with {@link Tealium.create}. The constructor is private.
+ * Every instance method that talks to the native SDK returns a Promise.
+ * {@link Tealium.create} is synchronous. After {@link Tealium.shutdown}, those
+ * Promises reject with {@link ErrorCode.INSTANCE_SHUT_DOWN}, except that
+ * calling {@link Tealium.shutdown} again resolves.
+ *
+ * @example
+ * ```ts
+ * const tealium = Tealium.create("my_account", "my_profile", Environment.prod);
+ * await tealium.track("homepage", "view");
+ * ```
+ */
 export class Tealium {
   /**
    * Stable id addressing this instance in every native call. Equal to the
@@ -82,28 +97,52 @@ export class Tealium {
   }
 
   /**
-   * Creates (or reuses) a Tealium instance for the given account/profile.
+   * Creates a Tealium instance for an account and profile, or returns the
+   * existing one.
    *
-   * The optional settings arguments mirror the sources on the native
-   * `TealiumConfig`; an omitted argument leaves that source unconfigured on the
-   * native SDK. Settings precedence on both platforms is
-   * `local < remote < programmatic`, so a key in `settingsUrl` (remote)
-   * overrides the same key in `settingsFile` (local), and `logLevel`
-   * (programmatic) overrides both.
+   * If an instance already exists for the same account and profile, this
+   * method logs a warning and returns it. It ignores `environment`,
+   * `settingsFile`, `settingsUrl`, and `logLevel` in that case.
    *
-   * @param account Tealium account identifier.
-   * @param profile Tealium profile identifier.
-   * @param environment Environment name (e.g. `dev`, `qa`, `prod`).
-   * @param settingsFile Name of a JSON settings file bundled with the app,
-   *   providing local (lowest-priority) settings. On iOS this is a resource
-   *   name in the app's main bundle (the `.json` extension is optional); on
-   *   Android it is a file name in the `assets/` directory. If the file is
-   *   missing or invalid, the native SDK skips local settings silently.
-   * @param settingsUrl Full URL of a remote JSON settings resource. When set,
-   *   the native SDK fetches and caches remote (middle-priority) settings and
-   *   refreshes them per the configured interval. When omitted, no remote
-   *   settings are fetched.
-   * @param logLevel Log verbosity for the native Prism SDK.
+   * The optional arguments mirror the settings sources of the native
+   * `TealiumConfig`. An omitted argument leaves that source unconfigured. The
+   * settings precedence is `local < remote < programmatic` on both platforms.
+   * A key in `settingsUrl` (remote) overrides the same key in `settingsFile`
+   * (local). `logLevel` (programmatic) overrides both.
+   *
+   * @param account - Tealium account name.
+   * @param profile - Tealium profile name.
+   * @param environment - Environment name, such as `dev`, `qa`, or `prod`. See
+   *   {@link Environment}.
+   * @param settingsFile - Name of a JSON settings file bundled with the app.
+   *   It provides the local settings, which have the lowest priority. On iOS
+   *   this is a resource name in the main bundle, and the `.json` extension is
+   *   optional. On Android this is a file name in the `assets/` directory. The
+   *   native SDK skips local settings silently if the file is missing or
+   *   invalid.
+   * @param settingsUrl - Full URL of a remote JSON settings resource. The
+   *   native SDK fetches and caches these remote settings, which have middle
+   *   priority, and refreshes them at the configured interval. Without a URL,
+   *   the SDK fetches no remote settings.
+   * @param logLevel - Log verbosity of the native Prism SDK. See
+   *   {@link LogLevel}.
+   * @returns The Tealium instance. Native initialization continues
+   *   asynchronously, so a native failure does not make this method throw.
+   *   Later calls on the instance reject instead.
+   * @throws {@link TealiumError} with code
+   *   {@link ErrorCode.NATIVE_MODULE_NOT_REGISTERED} if the native module is
+   *   missing. The error is thrown synchronously.
+   *
+   * @example
+   * ```ts
+   * const tealium = Tealium.create(
+   *   "my_account",
+   *   "my_profile",
+   *   Environment.prod,
+   *   "my_settings.json",
+   *   "https://tags.tiqcdn.com/dle/my_account/my_profile/mobile_settings_prod.json"
+   * );
+   * ```
    */
   static create(
     account: string,
@@ -145,6 +184,31 @@ export class Tealium {
     return instance;
   }
 
+  /**
+   * Tracks an event or a view.
+   *
+   * The Promise rejects with a {@link TealiumError} if the instance is shut
+   * down or the native SDK reports a failure. It rejects with a plain `Error`
+   * if `data` cannot be serialized, for example if it contains a `BigInt` or a
+   * circular reference.
+   *
+   * @param name - Name of the event or view.
+   * @param type - Dispatch type. Defaults to `"event"`.
+   * @param data - Data to attach to the dispatch. TypeScript rejects values
+   *   that are not JSON types. At runtime, `track` serializes `data` with
+   *   `JSON.stringify`, so it silently omits object properties whose values
+   *   are functions, symbols, or `undefined`.
+   * @returns A Promise that resolves with the {@link TrackResult}. The result
+   *   reports whether the SDK accepted or dropped the dispatch.
+   *
+   * @example
+   * ```ts
+   * const result = await tealium.track("user_login", "event", {
+   *   customer_id: "1234567890",
+   * });
+   * console.log(result.status);
+   * ```
+   */
   track(
     name: string,
     type: DispatchType = "event",
@@ -159,6 +223,18 @@ export class Tealium {
     });
   }
 
+  /**
+   * Shuts down the native instance.
+   *
+   * Calling this method again on a shut-down instance resolves immediately.
+   * After shutdown, calls on this instance reject with
+   * {@link ErrorCode.INSTANCE_SHUT_DOWN}. Call {@link Tealium.create} again to
+   * get a new instance for the same account and profile.
+   *
+   * @returns A Promise that resolves after the native SDK receives the shutdown
+   *   request. It rejects with {@link ErrorCode.NATIVE_MODULE_NOT_REGISTERED} if the native
+   *   module is missing.
+   */
   shutdown(): Promise<void> {
     if (this._isShutdown) {
       return Promise.resolve();

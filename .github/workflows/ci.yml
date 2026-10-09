@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - dev
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
@@ -33,6 +32,9 @@ jobs:
 
       - name: Run unit tests
         run: yarn test
+
+      - name: Build docs
+        run: yarn docs
 
   build-library:
     runs-on: ubuntu-latest

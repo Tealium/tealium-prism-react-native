@@ -3,9 +3,8 @@ import type { Expiry, JsonValue, JsonValueObject } from "../types";
 import { encodeExpiry, parseJsonValue, serialize } from "../serialization";
 
 /**
- * DataLayer facade bound to a Tealium instance. Mirrors the native Prism
- * `DataLayer` module (prism-swift `DataLayer` protocol, prism-kotlin
- * `DataLayer` interface). Reached via {@link Tealium.dataLayer}.
+ * Data layer of a Tealium instance. Mirrors the native Prism `DataLayer`
+ * module. Reach it with {@link Tealium.dataLayer}.
  */
 export class DataLayer {
   /** @internal Constructed by {@link Tealium}; not part of the public API. */
@@ -13,9 +12,9 @@ export class DataLayer {
 
   /**
    * Stores every key/value pair in `data`, replacing any existing value for
-   * each key. An omitted `expiry` stores forever; a `Date` expires the entries
-   * at that time. Rejects without calling native if `expiry` is an invalid
-   * `Date`.
+   * each key. An omitted `expiry` stores the entries forever. A `Date` expires
+   * the entries at that time. Rejects without calling native if `expiry` is an
+   * invalid `Date`.
    */
   putAll(data: JsonValueObject, expiry?: Expiry): Promise<void> {
     return this.proxy
@@ -31,8 +30,9 @@ export class DataLayer {
 
   /**
    * Stores a single `key`/`value` pair, replacing any existing value for that
-   * key. An omitted `expiry` stores forever; a `Date` expires the entry at that
-   * time. Rejects without calling native if `expiry` is an invalid `Date`.
+   * key. An omitted `expiry` stores the entry forever. A `Date` expires the
+   * entry at that time. Rejects without calling native if `expiry` is an
+   * invalid `Date`.
    */
   put(key: string, value: JsonValue, expiry?: Expiry): Promise<void> {
     return this.proxy

@@ -1,0 +1,6 @@
+{
+  "extends": ["./typedoc.json"],
+  "out": "_site-tealdocs",
+  "plugin": ["./docs/typedoc-tealdocs-plugin.mjs"],
+  "customCss": ["./docs/tealdocs.css"]
+}

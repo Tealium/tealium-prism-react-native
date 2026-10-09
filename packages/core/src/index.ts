@@ -5,7 +5,6 @@ import { ErrorCode } from "./ErrorCode";
 import { tealiumError } from "./errors";
 export { ErrorCode } from "./ErrorCode";
 export type { TealiumError, TealiumErrorCode } from "./errors";
-export { tealiumError } from "./errors";
 
 export type {
   JsonValue,
@@ -21,10 +20,20 @@ export type { Trace } from "./modules/Trace";
 export type { DataLayer } from "./modules/DataLayer";
 
 /**
- * Returns the linked Prism SDK version for the current platform.
+ * Returns the version of the native Prism SDK linked into the app.
  *
- * iOS reads from `TealiumConstants.libraryVersion` at runtime.
- * Android reads from the SDK's `BuildConfig.TEALIUM_LIBRARY_VERSION` at runtime.
+ * iOS reads `TealiumConstants.libraryVersion` at runtime. Android returns
+ * `BuildConfig.TEALIUM_LIBRARY_VERSION` of the SDK version that the wrapper was
+ * compiled against.
+ *
+ * @returns A Promise that resolves with the version string. It rejects with
+ *   {@link ErrorCode.NATIVE_MODULE_NOT_REGISTERED} if the native module is
+ *   missing.
+ *
+ * @example
+ * ```ts
+ * const version = await getSdkVersion();
+ * ```
  */
 export function getSdkVersion(): Promise<string> {
   if (!NativeTealiumPrismReactNative) {
@@ -40,13 +49,15 @@ export function getSdkVersion(): Promise<string> {
  * side and immediately converted back, so the returned value is the JS-visible
  * representation of whatever the native SDK would store.
  *
- * Accepts any JSON value — primitive, array, or object.
+ * Accepts any JSON value: primitive, array, or object.
  *
  * The value is serialized to a JSON string before crossing the bridge so that
  * `null` values are preserved. The TurboModule bridge drops `null`-valued keys
  * from plain objects on iOS before the native method body runs.
  *
  * Intended for bridge round-trip verification in the example app only.
+ *
+ * @internal
  */
 export function _echoJsonValue(input: JsonValue): Promise<JsonValue> {
   if (!NativeTealiumPrismReactNative) {

@@ -1,8 +1,28 @@
 import { ErrorCode } from "./ErrorCode";
 
+/**
+ * Union of the string values of {@link ErrorCode}.
+ */
 export type TealiumErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
+/**
+ * Error thrown or used to reject a Promise by this package.
+ *
+ * Errors from the native SDK carry the same `code` property.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await tealium.track("checkout_started");
+ * } catch (error) {
+ *   if ((error as TealiumError).code === ErrorCode.INSTANCE_SHUT_DOWN) {
+ *     // Create a new instance before tracking again.
+ *   }
+ * }
+ * ```
+ */
 export interface TealiumError extends Error {
+  /** Machine-readable error code. Compare it against {@link ErrorCode}. */
   code: TealiumErrorCode;
 }
 
