@@ -188,7 +188,9 @@ export class Tealium {
    * Tracks an event or a view.
    *
    * The Promise rejects with a {@link TealiumError} if the instance is shut
-   * down or the native SDK reports a failure.
+   * down or the native SDK reports a failure. It rejects with a plain `Error`
+   * if `data` cannot be serialized, for example if it contains a `BigInt` or a
+   * circular reference.
    *
    * @param name - Name of the event or view.
    * @param type - Dispatch type. Defaults to `"event"`.
@@ -198,10 +200,6 @@ export class Tealium {
    *   are functions, symbols, or `undefined`.
    * @returns A Promise that resolves with the {@link TrackResult}. The result
    *   reports whether the SDK accepted or dropped the dispatch.
-   * @throws `Error` if `data` cannot be serialized, for example if it
-   *   contains a `BigInt` or a circular reference. The error is thrown
-   *   synchronously instead of rejecting the Promise. It has no `code`
-   *   property.
    *
    * @example
    * ```ts
