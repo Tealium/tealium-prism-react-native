@@ -53,11 +53,13 @@ export type DispatchType = "event" | "view";
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "silent";
 
 /**
- * Conventional Prism environment names.
+ * Environment names of a standard Tealium profile: `dev`, `qa`, and `prod`.
+ * The mobile settings publisher publishes a settings file for each of them.
  *
- * `dev`, `qa`, and `prod` are the environments of a standard Tealium profile.
- * The mobile settings publisher supports only these three. Any other string is
- * also valid, because the native SDKs accept a free-form environment name.
+ * You can also pass a custom string, such as `"staging"`. The SDK adds the
+ * environment name to every dispatch as `tealium_environment`. It does not use
+ * the name to choose settings. Settings come from `settingsFile` and
+ * `settingsUrl`.
  *
  * @example
  * ```ts
