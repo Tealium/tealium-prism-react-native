@@ -53,7 +53,20 @@ const version = await getSdkVersion();
 
 ## Initialize
 
-Create a single instance when the app starts, and share it across your app. Pass the account, profile, and environment to `Tealium.create`:
+Create a single instance when the app starts, and share it across your app. `Tealium.create` has the following signature:
+
+```ts
+Tealium.create(
+  account: string,
+  profile: string,
+  environment: string,
+  settingsFile?: string,
+  settingsUrl?: string,
+  logLevel?: LogLevel
+): Tealium
+```
+
+The following example passes all arguments:
 
 ```ts
 import { Tealium, Environment } from "@tealium/prism-react-native";
@@ -63,17 +76,18 @@ const tealium = Tealium.create(
   "my_profile",
   Environment.prod,
   "my_settings.json",
-  "https://tags.tiqcdn.com/dle/my_account/my_profile/mobile_settings_prod.json"
+  "https://tags.tiqcdn.com/dle/my_account/my_profile/mobile_settings_prod.json",
+  "debug"
 );
 ```
 
-The optional arguments after the environment configure the settings sources and logging:
+The optional arguments configure the settings sources and logging:
 
 - `settingsFile` is the name of a JSON settings file bundled with the app. Include the `.json` extension. On iOS, add the file to your app target so that it ships in the main bundle. On Android, put the file in `android/app/src/main/assets/`. These local settings have the lowest priority.
 - `settingsUrl` is the URL of a remote JSON settings resource. Remote settings override local settings.
-- `logLevel` sets the log verbosity of the native SDK. It overrides both settings sources.
+- `logLevel` sets the log verbosity of the native SDK: `trace`, `debug`, `info`, `warn`, `error`, or `silent`. It overrides both settings sources.
 
-If an instance already exists for the same account and profile, `Tealium.create` returns it and logs a warning. It ignores the other arguments in that case.
+> **Important:** If an instance already exists for the same account and profile, `Tealium.create` returns it and ignores `environment`, `settingsFile`, `settingsUrl`, and `logLevel`. To change the configuration, call `await tealium.shutdown()` on the existing instance first.
 
 To shut down an instance, call `shutdown`. Calls on a shut-down instance reject with an error:
 
