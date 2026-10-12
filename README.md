@@ -210,7 +210,7 @@ The trace stays active after `forceEndOfVisit` until you call `leave`.
 
 ## Error handling
 
-`Tealium.create` throws synchronously only if the native module is missing. All other failures reject the returned Promise. `track` rejects if `data` cannot be serialized to JSON, for example if it contains a `BigInt` or a circular reference. `track` does not validate the other values. It silently drops object properties whose values are functions, symbols, or `undefined`. Errors from the package and the native module carry a `code` property, except the serialization error from `track`. Compare the `code` against `ErrorCode`:
+`Tealium.create` throws synchronously only if the native module is missing. All other failures reject the returned Promise. Methods that take data, such as `track` and `dataLayer.put`, serialize it to JSON. They reject if a value cannot be serialized, for example a `BigInt` or a circular reference. They silently drop object properties whose values are functions, symbols, or `undefined`. Methods that take an expiry reject if it is an invalid `Date`. These input errors are plain `Error` objects without a `code`. All other errors from the package and the native module carry a `code` property. Compare the `code` against `ErrorCode`:
 
 ```ts
 import { ErrorCode, type TealiumError } from "@tealium/prism-react-native";
