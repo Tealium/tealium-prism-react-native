@@ -101,8 +101,8 @@ export class Tealium {
    * existing one.
    *
    * If an instance already exists for the same account and profile, this
-   * method logs a warning and returns it. It ignores `environment`,
-   * `settingsFile`, `settingsUrl`, and `logLevel` in that case.
+   * method logs a warning and returns it. It ignores newly passed
+   * `environment`, `settingsFile`, `settingsUrl`, and `logLevel` in that case.
    *
    * The optional arguments mirror the settings sources of the native
    * `TealiumConfig`. An omitted argument leaves that source unconfigured. The
@@ -195,9 +195,9 @@ export class Tealium {
    * @param name - Name of the event or view.
    * @param type - Dispatch type. Defaults to `"event"`.
    * @param data - Data to attach to the dispatch. TypeScript rejects values
-   *   that are not JSON types. At runtime, `track` serializes `data` with
-   *   `JSON.stringify`, so it silently omits object properties whose values
-   *   are functions, symbols, or `undefined`.
+   *   that are not {@link JsonValue} types. At runtime, `track` serializes
+   *   `data` with `JSON.stringify`, so it silently omits object properties
+   *   whose values are functions, symbols, or `undefined`.
    * @returns A Promise that resolves with the {@link TrackResult}. The result
    *   reports whether the SDK accepted or dropped the dispatch.
    *
