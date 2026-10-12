@@ -33,9 +33,14 @@ apply plugin: "com.facebook.react"
 // The Prism AARs are published only to the Tealium Maven repository. The app resolves this
 // library's dependencies with its own repositories, so add the repository to every project,
 // as React Native's Gradle plugin does for its repositories. Apps then need no Gradle setup.
+// The content filter limits the repository to Prism artifacts, so it cannot serve any other
+// dependency of the app.
 rootProject.allprojects {
   repositories {
-    maven { url "https://maven.tealiumiq.com/android/releases/" }
+    maven {
+      url "https://maven.tealiumiq.com/android/releases/"
+      content { includeGroup "com.tealium.prism" }
+    }
   }
 }
 
