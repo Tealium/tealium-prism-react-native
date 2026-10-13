@@ -10,10 +10,12 @@ const codes = JSON.parse(
   fs.readFileSync(path.join(root, "packages/core/error-codes.json"), "utf8")
 );
 
+function entriesFor(platform) {
+  return codes.filter((e) => !e.platforms || e.platforms.includes(platform));
+}
+
 function codesFor(platform) {
-  return codes
-    .filter((e) => !e.platforms || e.platforms.includes(platform))
-    .map((e) => e.code);
+  return entriesFor(platform).map((e) => e.code);
 }
 
 const header = "// Generated from error-codes.json — do not edit manually";
@@ -56,12 +58,22 @@ fs.writeFileSync(
   swiftLines.join("\n")
 );
 
-// TypeScript
-const tsCodes = codesFor("ts");
+// TypeScript. Only this output carries the "description" field, as TSDoc.
+const tsEntries = entriesFor("ts").flatMap((e) => {
+  if (!e.description) {
+    throw new Error(`error-codes.json: "${e.code}" needs a description.`);
+  }
+  return [`  /** ${e.description} */`, `  ${e.code}: "${e.code}",`];
+});
 const tsLines = [
   header,
+  "/**",
+  " * Machine-readable codes for errors raised by the wrapper or the native SDK.",
+  " *",
+  " * Compare {@link TealiumError.code} against these values.",
+  " */",
   "export const ErrorCode = {",
-  ...tsCodes.map((c) => `  ${c}: "${c}",`),
+  ...tsEntries,
   "} as const;",
   "",
 ];

@@ -82,3 +82,7 @@ android/generated
 
 # React Native Nitro Modules
 nitrogen/
+
+# TypeDoc output
+_site
+_site-tealdocs

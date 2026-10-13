@@ -13,6 +13,8 @@
     "typecheck": "yarn workspaces foreach --all run typecheck",
     "lint": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" && yarn typecheck",
     "fix": "eslint \"packages/*/src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" --fix",
+    "docs": "typedoc --options typedoc.json",
+    "docs:tealdocs": "typedoc --options typedoc.tealdocs.json",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -30,6 +32,7 @@
     "husky": "^9.1.7",
     "prettier": "^3.8.3",
     "turbo": "^2.9.16",
+    "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"
   }

@@ -1,0 +1,18 @@
+{
+  // Add a package path here once that package exports a TypeScript API. Then move
+  // `name` to the root, because `packageOptions` applies it to every package.
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/core"],
+  "packageOptions": {
+    "entryPoints": ["src/index.ts"],
+    "name": "Tealium Prism React Native",
+    "excludeInternal": true,
+    "gitRevision": "main",
+    "validation": {
+      "notDocumented": true
+    }
+  },
+  "out": "_site",
+  "readme": "README.md",
+  "treatWarningsAsErrors": true
+}
