@@ -79,6 +79,7 @@ describe("Tealium", () => {
   // tests and the example app.
   const tealiumMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
     ["track", (i) => i.track("event_name")],
+    ["flushEventQueue", (i) => i.flushEventQueue()],
     ["trace.join", (i) => i.trace.join("trace-123")],
     ["trace.leave", (i) => i.trace.leave()],
     ["trace.forceEndOfVisit", (i) => i.trace.forceEndOfVisit()],

@@ -224,6 +224,33 @@ export class Tealium {
   }
 
   /**
+   * Sends the queued events now, instead of waiting for the normal trigger,
+   * such as a full batch.
+   *
+   * The Promise resolves when the SDK accepts the flush request. It does not
+   * wait until the events are sent. The flush bypasses only the barriers that
+   * the SDK marks as flushable, such as the batching barrier. Other barriers,
+   * such as the connectivity barrier while the device is offline, still hold
+   * the events.
+   *
+   * The Promise rejects with a {@link TealiumError} if the instance is shut
+   * down or the native SDK reports a failure.
+   *
+   * @returns A Promise that resolves after the SDK accepts the flush request.
+   *
+   * @example
+   * ```ts
+   * await tealium.track("checkout_completed");
+   * await tealium.flushEventQueue();
+   * ```
+   */
+  flushEventQueue(): Promise<void> {
+    return this.withNative((native) =>
+      native.flushEventQueue(this.instanceId)
+    ).then(() => undefined);
+  }
+
+  /**
    * Shuts down the native instance.
    *
    * Calling this method again on a shut-down instance resolves immediately.

@@ -103,6 +103,17 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     /**
+     * Asks the SDK to send queued events now, bypassing flushable barriers. flushEventQueue emits
+     * [Unit] once the request is accepted, not once events are sent; the promise resolves with no
+     * value.
+     */
+    override fun flushEventQueue(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.flushEventQueue().subscribeVoid(promise)
+        }
+    }
+
+    /**
      * Joins the trace [id] on the instance, adding the id to every subsequent dispatch until
      * [leaveTrace] is called or the session expires. Trace.join emits [Unit]; the promise
      * resolves with no value.

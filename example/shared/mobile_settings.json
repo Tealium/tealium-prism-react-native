@@ -1,6 +1,6 @@
 {
   "core": {
-    "log_level": "error",
+    "log_level": "debug",
     "max_queue_size": 100,
     "expiration": 86400,
     "refresh_interval": 900
@@ -24,6 +24,22 @@
         ],
         "autotracking_enabled": true,
         "data_target": "allEvents"
+      }
+    },
+    "Collect": {
+      "module_type": "Collect",
+      "enabled": true,
+      "order": 2
+    }
+  },
+  "barriers": {
+    "BatchingBarrier": {
+      "barrier_id": "BatchingBarrier",
+      "scope": [
+        "Collect"
+      ],
+      "configuration": {
+        "batch_size": 5
       }
     }
   },

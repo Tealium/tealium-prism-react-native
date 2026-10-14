@@ -119,6 +119,17 @@ const result = await tealium.track("user_login");
 console.log(result.status, result.info, result.payload);
 ```
 
+## Event queue
+
+The SDK queues tracked events and sends them according to your Tealium settings, for example in batches. Call `flushEventQueue` to send the queued events now. The Promise resolves when the SDK accepts the request, not when the events are sent. Some barriers still hold the events, such as the connectivity barrier while the device is offline.
+
+```ts
+await tealium.track("checkout_completed");
+
+// Send the queued events now instead of waiting for a full batch.
+await tealium.flushEventQueue();
+```
+
 ## Data layer
 
 Read and write data layer values through `tealium.dataLayer`. Every method returns a Promise.
