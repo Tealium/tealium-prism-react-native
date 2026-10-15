@@ -9,16 +9,17 @@ public final class TealiumPrismBridge: NSObject {
     /// conversion path without any side effects.
     ///
     /// Accepts a JSON string rather than a native type so that JS `null`
-    /// values survive the TurboModule bridge: `JSONSerialization` maps JSON
-    /// null to `NSNull`, whereas the TurboModule bridge drops nil-valued keys
-    /// from plain objects before the method body runs.
+    /// values survive the TurboModule bridge: the Prism SDK's
+    /// `DataItem(jsonString:)` maps JSON null to `NSNull`, whereas the
+    /// TurboModule bridge drops nil-valued keys from plain objects before the
+    /// method body runs.
     @objc public static func echoJsonValue(
         _ jsonString: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         do {
-            let dataItem = try JsonValueConversions.dataItem(fromJSONString: jsonString)
-            completion(try JsonValueConversions.jsonString(from: dataItem), nil)
+            let dataItem = try DataItem(jsonString: jsonString)
+            completion(try dataItem.serialize(), nil)
         } catch {
             completion(nil, PromiseRejection(
                 code: .prismNativeError,
@@ -239,7 +240,7 @@ public final class TealiumPrismBridge: NSObject {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
             let value: DataItem
             do {
-                value = try JsonValueConversions.dataItem(fromJSONString: valueJson)
+                value = try DataItem(jsonString: valueJson)
             } catch {
                 completion(PromiseRejection(
                     code: .dataParseError,

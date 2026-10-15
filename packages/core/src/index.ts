@@ -43,7 +43,6 @@ export function getSdkVersion(): Promise<string> {
   return NativeTealiumPrismReactNative.getSdkVersion();
 }
 
-// TODO: we should probably remove this as an export once the DataLayer arrives
 /**
  * Passes `input` through the native DataItem conversion layer and returns
  * the result. The input is converted to a Prism `DataItem` on the native
@@ -56,7 +55,7 @@ export function getSdkVersion(): Promise<string> {
  * `null` values are preserved. The TurboModule bridge drops `null`-valued keys
  * from plain objects on iOS before the native method body runs.
  *
- * Intended for bridge round-trip verification in the example app only.
+ * Intended for internal bridge round-trip verification in the example app only.
  *
  * @internal
  */

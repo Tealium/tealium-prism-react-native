@@ -25,10 +25,8 @@ const EXPIRY_PRESETS: { preset: ExpiryPreset; label: string }[] = [
 // putAll(data, expiry?) storing several keys (including nested/array/null
 // values) in one call.
 const SAMPLE_OBJECT = {
-  // TODO: update comment when Kotlin null drops are fixed
   // Flat keys are visible in Tealium Trace; nested objects may be dropped
-  // server-side, and the Kotlin SDK data layer ignores null values in bulk
-  // puts (the Swift SDK stores them).
+  // server-side.
   sample_string: "hello from data layer",
   sample_number: 42,
   sample_tags: ["a", "b"],
