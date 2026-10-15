@@ -2,7 +2,9 @@
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
-    create: jest.fn(() => "mock-instance-id"),
+    create: jest.fn(
+      (account: string, profile: string) => `${account}-${profile}`
+    ),
     flushEventQueue: jest.fn(() => Promise.resolve(null)),
   },
 }));
@@ -18,12 +20,11 @@ describe("Tealium.flushEventQueue", () => {
   });
 
   it("calls flushEventQueue with the instance id", async () => {
-    (native.create as jest.Mock).mockReturnValueOnce("flush-instance-id");
     const instance = Tealium.create("account", "flush-args", "dev");
 
     await instance.flushEventQueue();
 
-    expect(native.flushEventQueue).toHaveBeenCalledWith("flush-instance-id");
+    expect(native.flushEventQueue).toHaveBeenCalledWith("account-flush-args");
   });
 
   it.each([null, undefined])(
