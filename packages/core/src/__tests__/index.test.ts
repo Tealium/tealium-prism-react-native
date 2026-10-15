@@ -1,6 +1,6 @@
 import { getSdkVersion, _echoJsonValue, Tealium, ErrorCode } from "../index";
 import { Trace } from "../modules/Trace";
-import { VisitorId } from "../modules/VisitorId";
+import { VisitorIdManager } from "../modules/VisitorIdManager";
 import { DataLayer } from "../modules/DataLayer";
 
 // Builds a Tealium mock without running the (native-touching) constructor, then
@@ -13,7 +13,7 @@ function makeMockTealium(isShutdown: boolean): Tealium {
   mock.instanceId = "test-instance";
   mock._isShutdown = isShutdown; // Set before creating the proxy.
   mock.trace = new Trace(mock.createModuleProxy());
-  mock.visitorId = new VisitorId(mock.createModuleProxy());
+  mock.visitorId = new VisitorIdManager(mock.createModuleProxy());
   mock.dataLayer = new DataLayer(mock.createModuleProxy());
   return mock as Tealium;
 }

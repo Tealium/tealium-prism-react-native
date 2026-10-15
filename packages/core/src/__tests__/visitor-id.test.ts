@@ -1,4 +1,4 @@
-// Verifies VisitorId.current/regenerate/eraseLocalHistory each forward the
+// Verifies VisitorIdManager.current/regenerate/eraseLocalHistory each forward the
 // instance id to the matching native bridge method exactly once, resolve with
 // the parsed visitor id, and propagate native rejections unchanged.
 jest.mock("../NativeTealiumPrismReactNative", () => ({

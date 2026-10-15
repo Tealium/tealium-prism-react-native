@@ -17,7 +17,7 @@ export type {
 export { Environment } from "./types";
 export { Tealium } from "./Tealium";
 export type { Trace } from "./modules/Trace";
-export type { VisitorId } from "./modules/VisitorId";
+export type { VisitorIdManager } from "./modules/VisitorIdManager";
 export type { DataLayer } from "./modules/DataLayer";
 
 /**

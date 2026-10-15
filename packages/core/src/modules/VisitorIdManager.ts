@@ -14,7 +14,7 @@ import { parseJsonValue } from "../serialization";
  * Visitor switching is configured through the module's `visitor_identity_key`
  * in your local/remote settings JSON.
  */
-export class VisitorId {
+export class VisitorIdManager {
   /** @internal Constructed by {@link Tealium}; not part of the public API. */
   constructor(private readonly proxy: ModuleProxy) {}
 
