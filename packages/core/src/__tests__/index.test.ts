@@ -4,7 +4,7 @@ import { VisitorIdManager } from "../modules/VisitorIdManager";
 import { DataLayer } from "../modules/DataLayer";
 
 // Builds a Tealium mock without running the (native-touching) constructor, then
-// wires a real Trace/DataLayer exactly as the constructor would. This keeps
+// wires a real Trace/VisitorIdManager/DataLayer exactly as the constructor would. This keeps
 // trace.*/dataLayer.*/visitorId.* driven by the same withNative/_isShutdown guard as
 // track(), so the guard-contract table below exercises the genuine
 // shutdown-aware path, not a test-local fake.

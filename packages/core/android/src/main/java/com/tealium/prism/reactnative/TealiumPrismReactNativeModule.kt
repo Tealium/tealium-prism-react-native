@@ -158,10 +158,10 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }.asDataItem()
 
     /**
-     * Resolves the current anonymous visitor id. Delegates to the Prism SDK's [VisitorIdManager];
+     * Resolves the current anonymous visitor ID. Delegates to the Prism SDK's [VisitorIdManager];
      * the SDK backs this with the VisitorId module, enabled by default but disableable through
      * settings, in which case the SDK fails the call and the bridge rejects with
-     * [ErrorCode.PRISM_NATIVE_ERROR]. Resolves with the id as a JSON-encoded string, like every
+     * [ErrorCode.PRISM_NATIVE_ERROR]. Resolves with the ID as a JSON-encoded string, like every
      * other promise-returning method.
      */
     override fun getVisitorId(instanceId: String, promise: Promise) {
@@ -171,11 +171,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Generates a new anonymous visitor id, resolving with it. Delegates to the Prism SDK's
-     * [VisitorIdManager]; the SDK backs this with the VisitorId module, enabled by default but
-     * disableable through settings, in which case the SDK fails the call and the bridge rejects
-     * with [ErrorCode.PRISM_NATIVE_ERROR]. Resolves with the id as a JSON-encoded string, like
-     * every other promise-returning method.
+     * Generates a new anonymous visitor ID and resolves with it. Delegates to the Prism SDK's
+     * [VisitorIdManager.regenerate]; same VisitorId-module gating and JSON-encoded result as
+     * [getVisitorId].
      */
     override fun regenerateVisitorId(instanceId: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
@@ -185,10 +183,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Erases every locally stored identity association, then generates a new anonymous visitor
-     * id, resolving with it. Delegates to the Prism SDK's [VisitorIdManager]; the SDK backs this
-     * with the VisitorId module, enabled by default but disableable through settings, in which
-     * case the SDK fails the call and the bridge rejects with [ErrorCode.PRISM_NATIVE_ERROR].
-     * Resolves with the id as a JSON-encoded string, like every other promise-returning method.
+     * ID and resolves with it. Delegates to the Prism SDK's [VisitorIdManager.eraseLocalHistory];
+     * same VisitorId-module gating and JSON-encoded result as [getVisitorId].
      */
     override fun eraseVisitorIdLocalHistory(instanceId: String, promise: Promise) {
         Tealium.withInstance(instanceId, promise) { instance ->
@@ -197,7 +193,7 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Wraps a visitor id [String] as a [DataItem] so it resolves JSON-encoded, like every other
+     * Wraps a visitor ID [String] as a [DataItem] so it resolves JSON-encoded, like every other
      * promise-returning method.
      */
     private fun visitorIdAsDataItem(visitorId: String): DataItem = DataItem.string(visitorId)

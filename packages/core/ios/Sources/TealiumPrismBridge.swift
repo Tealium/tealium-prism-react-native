@@ -129,9 +129,9 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Resolves the current visitor id. Delegates to the Prism SDK's `VisitorIdManager`, backed by
+    /// Resolves the current visitor ID. Delegates to the Prism SDK's `VisitorIdManager`, backed by
     /// the `VisitorId` module — enabled by default, but disableable through settings, in which case
-    /// the SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the id as a
+    /// the SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the ID as a
     /// JSON-encoded string, like every other promise-returning method.
     @objc public static func getVisitorId(
         instanceId: String,
@@ -142,7 +142,7 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Generates a new anonymous visitor id and resolves with it. Delegates to the Prism SDK's
+    /// Generates a new anonymous visitor ID and resolves with it. Delegates to the Prism SDK's
     /// [`VisitorIdManager.regenerate()`](doc:VisitorIdManager/regenerate()); same `VisitorId`-module
     /// gating and JSON-encoded result as
     /// [`TealiumPrismBridge.getVisitorId(instanceId:completion:)`](doc:TealiumPrismBridge/getVisitorId(instanceId:completion:)).
@@ -155,7 +155,7 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Erases every locally stored identity association, then generates a new visitor id and
+    /// Erases every locally stored identity association, then generates a new visitor ID and
     /// resolves with it. Delegates to the Prism SDK's
     /// [`VisitorIdManager.eraseLocalHistory()`](doc:VisitorIdManager/eraseLocalHistory()); same
     /// `VisitorId`-module gating and JSON-encoded result as
@@ -169,7 +169,7 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Wraps a visitor id `String` as a `DataItem` so it resolves JSON-encoded, like every other
+    /// Wraps a visitor ID `String` as a `DataItem` so it resolves JSON-encoded, like every other
     /// promise-returning method.
     private static func visitorIdAsDataItem(_ visitorId: String) -> DataItem {
         DataItem(value: visitorId)
