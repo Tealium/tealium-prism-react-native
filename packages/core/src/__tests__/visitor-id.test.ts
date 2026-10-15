@@ -1,6 +1,6 @@
 // Verifies VisitorIdManager.current/regenerate/eraseLocalHistory each forward the
 // instance id to the matching native bridge method exactly once, resolve with
-// the parsed visitor id, and propagate native rejections unchanged.
+// the parsed visitor ID, and propagate native rejections unchanged.
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
@@ -11,10 +11,10 @@ jest.mock("../NativeTealiumPrismReactNative", () => ({
       Promise.resolve(JSON.stringify("visitor-current"))
     ),
     regenerateVisitorId: jest.fn(() =>
-      Promise.resolve(JSON.stringify("visitor-regenerated"))
+      Promise.resolve(JSON.stringify("visitor-regenerate"))
     ),
     eraseVisitorIdLocalHistory: jest.fn(() =>
-      Promise.resolve(JSON.stringify("visitor-erased"))
+      Promise.resolve(JSON.stringify("visitor-eraseLocalHistory"))
     ),
   },
 }));
@@ -24,122 +24,66 @@ import { Tealium, ErrorCode } from "../index";
 
 const native = NativeTealiumPrismReactNative!;
 
-describe("Tealium.visitorId", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+type VisitorIdNativeMethod =
+  | "getVisitorId"
+  | "regenerateVisitorId"
+  | "eraseVisitorIdLocalHistory";
 
-  describe("current", () => {
-    it("calls native getVisitorId with the instance id exactly once", async () => {
-      const instance = Tealium.create("account", "visitor-current", "dev");
+// [wrapper method, native bridge method, call]. Each native mock resolves with
+// the JSON of `visitor-<wrapper method>`.
+const visitorIdMethods: Array<
+  [string, VisitorIdNativeMethod, (i: Tealium) => Promise<string>]
+> = [
+  ["current", "getVisitorId", (i) => i.visitorId.current()],
+  ["regenerate", "regenerateVisitorId", (i) => i.visitorId.regenerate()],
+  [
+    "eraseLocalHistory",
+    "eraseVisitorIdLocalHistory",
+    (i) => i.visitorId.eraseLocalHistory(),
+  ],
+];
 
-      await instance.visitorId.current();
+describe.each(visitorIdMethods)(
+  "Tealium.visitorId.%s",
+  (name, nativeMethod, call) => {
+    // Tealium.create caches by account/profile, so each test uses its own profile.
+    const create = (test: string) =>
+      Tealium.create("account", `visitor-${name}-${test}`, "dev");
 
-      expect(native.getVisitorId).toHaveBeenCalledTimes(1);
-      expect(native.getVisitorId).toHaveBeenCalledWith(instance.instanceId);
+    beforeEach(() => {
+      jest.clearAllMocks();
     });
 
-    it("resolves with the parsed visitor id", async () => {
-      const instance = Tealium.create(
-        "account",
-        "visitor-current-value",
-        "dev"
-      );
+    it(`calls native ${nativeMethod} with the instance id exactly once`, async () => {
+      const instance = create("forward");
 
-      await expect(instance.visitorId.current()).resolves.toBe(
-        "visitor-current"
-      );
+      await call(instance);
+
+      expect(native[nativeMethod]).toHaveBeenCalledTimes(1);
+      expect(native[nativeMethod]).toHaveBeenCalledWith(instance.instanceId);
+    });
+
+    it("resolves with the parsed visitor ID", async () => {
+      await expect(call(create("value"))).resolves.toBe(`visitor-${name}`);
     });
 
     it("rejects with the native error when native rejects", async () => {
-      const instance = Tealium.create(
-        "account",
-        "visitor-current-reject",
-        "dev"
-      );
-      const nativeError = new Error("native getVisitorId failed");
-      (native.getVisitorId as jest.Mock).mockRejectedValueOnce(nativeError);
+      const instance = create("reject");
+      const nativeError = new Error(`native ${nativeMethod} failed`);
+      (native[nativeMethod] as jest.Mock).mockRejectedValueOnce(nativeError);
 
-      await expect(instance.visitorId.current()).rejects.toBe(nativeError);
+      await expect(call(instance)).rejects.toBe(nativeError);
     });
 
     it("rejects with DATA_PARSE_ERROR when native returns non-JSON", async () => {
-      const instance = Tealium.create(
-        "account",
-        "visitor-current-malformed",
-        "dev"
-      );
+      const instance = create("malformed");
       const malformedJson = "not valid json {{{";
-      (native.getVisitorId as jest.Mock).mockResolvedValueOnce(malformedJson);
+      (native[nativeMethod] as jest.Mock).mockResolvedValueOnce(malformedJson);
 
-      await expect(instance.visitorId.current()).rejects.toMatchObject({
+      await expect(call(instance)).rejects.toMatchObject({
         code: ErrorCode.DATA_PARSE_ERROR,
-        message: `Tealium.visitorId.current: native returned non-JSON string: ${malformedJson}`,
+        message: `Tealium.visitorId.${name}: native returned non-JSON string: ${malformedJson}`,
       });
     });
-  });
-
-  describe("regenerate", () => {
-    it("calls native regenerateVisitorId with the instance id exactly once", async () => {
-      const instance = Tealium.create("account", "visitor-regen", "dev");
-
-      await instance.visitorId.regenerate();
-
-      expect(native.regenerateVisitorId).toHaveBeenCalledTimes(1);
-      expect(native.regenerateVisitorId).toHaveBeenCalledWith(
-        instance.instanceId
-      );
-    });
-
-    it("resolves with the parsed visitor id", async () => {
-      const instance = Tealium.create("account", "visitor-regen-value", "dev");
-
-      await expect(instance.visitorId.regenerate()).resolves.toBe(
-        "visitor-regenerated"
-      );
-    });
-
-    it("rejects with the native error when native rejects", async () => {
-      const instance = Tealium.create("account", "visitor-regen-reject", "dev");
-      const nativeError = new Error("native regenerateVisitorId failed");
-      (native.regenerateVisitorId as jest.Mock).mockRejectedValueOnce(
-        nativeError
-      );
-
-      await expect(instance.visitorId.regenerate()).rejects.toBe(nativeError);
-    });
-  });
-
-  describe("eraseLocalHistory", () => {
-    it("calls native eraseVisitorIdLocalHistory with the instance id exactly once", async () => {
-      const instance = Tealium.create("account", "visitor-erase", "dev");
-
-      await instance.visitorId.eraseLocalHistory();
-
-      expect(native.eraseVisitorIdLocalHistory).toHaveBeenCalledTimes(1);
-      expect(native.eraseVisitorIdLocalHistory).toHaveBeenCalledWith(
-        instance.instanceId
-      );
-    });
-
-    it("resolves with the parsed visitor id", async () => {
-      const instance = Tealium.create("account", "visitor-erase-value", "dev");
-
-      await expect(instance.visitorId.eraseLocalHistory()).resolves.toBe(
-        "visitor-erased"
-      );
-    });
-
-    it("rejects with the native error when native rejects", async () => {
-      const instance = Tealium.create("account", "visitor-erase-reject", "dev");
-      const nativeError = new Error("native eraseVisitorIdLocalHistory failed");
-      (native.eraseVisitorIdLocalHistory as jest.Mock).mockRejectedValueOnce(
-        nativeError
-      );
-
-      await expect(instance.visitorId.eraseLocalHistory()).rejects.toBe(
-        nativeError
-      );
-    });
-  });
-});
+  }
+);
