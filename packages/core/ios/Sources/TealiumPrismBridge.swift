@@ -165,14 +165,13 @@ public final class TealiumPrismBridge: NSObject {
 
     // MARK: - DataLayer
 
-    // TODO: update native call when API changed in SDK
     /// Stores every key/value pair of the JSON object `dataJson` in the data layer.
     ///
     /// `expiryEncoded` carries the JS-encoded expiry (see
     /// [`DataLayerConversions.expiry(fromEncoded:)`](doc:DataLayerConversions/expiry(fromEncoded:)));
     /// `nil` selects the SDK's no-expiry overload, which stores forever. The Prism SDK's
-    /// [`DataLayer.put(data:)`](doc:DataLayer/put(data:)) (still named `put`, not `putAll`) emits
-    /// `Void`; the promise completes with no value.
+    /// [`DataLayer.putAll(dataObject:)`](doc:DataLayer/putAll(dataObject:)) emits `Void`; the promise
+    /// completes with no value.
     @objc public static func dataLayerPutAll(
         instanceId: String,
         dataJson: String,
@@ -193,9 +192,9 @@ public final class TealiumPrismBridge: NSObject {
 
             let pendingPut: SingleResult<Void, ModuleError<Error>>
             if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
-                pendingPut = instance.dataLayer.put(data: data, expiry: expiry)
+                pendingPut = instance.dataLayer.putAll(dataObject: data, expiry: expiry)
             } else {
-                pendingPut = instance.dataLayer.put(data: data)
+                pendingPut = instance.dataLayer.putAll(dataObject: data)
             }
             pendingPut.subscribeVoid(completion)
         }

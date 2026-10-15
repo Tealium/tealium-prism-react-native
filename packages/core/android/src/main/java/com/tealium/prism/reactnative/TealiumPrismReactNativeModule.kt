@@ -177,12 +177,11 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    // TODO: update native call when API changed in SDK
     /**
      * Stores every key-value pair of [dataJson] in the instance's data layer, expiring them
      * according to [expiryEncoded] (see [resolveExpiry]). An omitted [expiryEncoded] selects the
-     * SDK's no-expiry overload, which stores forever. The Prism SDK's DataLayer.put (still named
-     * `put`, not `putAll`) emits [Unit]; the promise resolves with no value.
+     * SDK's no-expiry overload, which stores forever. The Prism SDK's DataLayer.putAll emits [Unit];
+     * the promise resolves with no value.
      */
     override fun dataLayerPutAll(
         instanceId: String,
@@ -198,9 +197,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
             val expiry = resolveExpiry(expiryEncoded)
             val pendingPut = if (expiry == null) {
-                instance.dataLayer.put(data)
+                instance.dataLayer.putAll(data)
             } else {
-                instance.dataLayer.put(data, expiry)
+                instance.dataLayer.putAll(data, expiry)
             }
             pendingPut.subscribeVoid(promise)
         }
