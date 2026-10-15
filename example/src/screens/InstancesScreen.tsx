@@ -305,8 +305,7 @@ export default function InstancesScreen() {
               <Text style={styles.buttonText}>Flush queue</Text>
             </TouchableOpacity>
             <Text style={styles.hintText}>
-              Events are batched by 5 (BatchingBarrier). Flush sends them
-              earlier.
+              Events are batched (BatchingBarrier). Flush sends them earlier.
             </Text>
           </>
         )}
