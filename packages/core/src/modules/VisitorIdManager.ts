@@ -2,9 +2,13 @@ import type { ModuleProxy } from "./ModuleProxy";
 import { parseJsonValue } from "../serialization";
 
 /**
- * Visitor ID controls. Mirrors the native Prism `VisitorIdManager` (Swift/Kotlin
- * `Tealium.visitorId`), backed by the Prism SDK's `VisitorId` module.
- * Reach it with {@link Tealium.visitorId}.
+ * Visitor ID controls, matching the one-shot methods of the native Prism
+ * `VisitorIdManager` (Swift/Kotlin `Tealium.visitorId`), backed by the Prism
+ * SDK's `VisitorId` module. Reach it with {@link Tealium.visitorId}.
+ *
+ * The bridge doesn't expose the native subscription to visitor ID changes yet.
+ * Call {@link VisitorIdManager.current} again after an identity change, for
+ * example after writing the `visitor_identity_key` value to the data layer.
  *
  * The VisitorId module is registered and enabled by default, but your Tealium
  * settings can disable it. While disabled, every method rejects with

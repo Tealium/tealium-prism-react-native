@@ -8,17 +8,17 @@ import {
 } from "react-native";
 import { useTealium } from "../TealiumProvider";
 
-// Visitor ID demo: read the current visitor id, regenerate the anonymous
-// visitor id, or erase the stored identity-linked id history on the active
+// Visitor ID demo: read the current visitor ID, regenerate the anonymous
+// visitor ID, or erase the stored identity-linked id history on the active
 // app instance selected on the Instances screen. All three resolve with a
-// visitor id, shown below.
+// visitor ID, shown below.
 export default function VisitorIdScreen() {
   const { activeInstance } = useTealium();
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load the current visitor id whenever the screen opens (screens remount on
+  // Load the current visitor ID whenever the screen opens (screens remount on
   // every visit) or the active instance changes. The UI is reset first and a
   // late response for a previous instance is ignored, so a stale id is not shown.
   useEffect(() => {

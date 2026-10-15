@@ -39,7 +39,7 @@ export class Tealium {
   readonly instanceId: string;
   /** Trace controls, namespaced to mirror the native Prism `Trace` module. */
   readonly trace: Trace;
-  /** Visitor ID controls, mirroring the native Prism `VisitorIdManager`. */
+  /** Visitor ID controls: the one-shot methods of the native Prism `VisitorIdManager`. */
   readonly visitorId: VisitorIdManager;
   /** DataLayer facade, mirroring the native Prism `DataLayer` module. */
   readonly dataLayer: DataLayer;
