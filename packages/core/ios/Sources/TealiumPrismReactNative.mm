@@ -70,6 +70,20 @@
     }];
 }
 
+- (void)flushEventQueue:(NSString *)instanceId
+                resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge flushEventQueueWithInstanceId:instanceId
+                                           completion:^(PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(nil);
+        }
+    }];
+}
+
 - (void)shutdown:(NSString *)instanceId
          resolve:(RCTPromiseResolveBlock)resolve
           reject:(RCTPromiseRejectBlock)reject

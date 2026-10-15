@@ -81,6 +81,18 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
+    /// Asks the SDK to send queued events now, bypassing flushable barriers. flushEventQueue emits
+    /// `Void` once the request is accepted, not once events are sent; the promise completes with no
+    /// value.
+    @objc public static func flushEventQueue(
+        instanceId: String,
+        completion: @escaping (PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.flushEventQueue().subscribeVoid(completion)
+        }
+    }
+
     /// Joins the trace `id` on the instance, adding the id to every subsequent dispatch until
     /// `leaveTrace` is called or the session expires. Trace.join emits `Void`; the promise
     /// completes with no value.

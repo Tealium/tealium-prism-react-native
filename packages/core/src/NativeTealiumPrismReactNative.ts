@@ -31,6 +31,8 @@ export interface Spec extends TurboModule {
     type: string,
     dataJson: string | null
   ): Promise<string>;
+  /** Asks the SDK to send queued events now, bypassing flushable barriers. */
+  flushEventQueue(instanceId: string): Promise<void>;
   /** Shuts the instance down. */
   shutdown(instanceId: string): Promise<void>;
   /** Joins a trace for `id`. */

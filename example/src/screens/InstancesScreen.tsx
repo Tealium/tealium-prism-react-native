@@ -11,6 +11,7 @@ import { type LogLevel, type TrackResult } from "@tealium/prism-react-native";
 import { useTealium } from "../TealiumProvider";
 import { useActiveInstanceGuard } from "../hooks/useActiveInstanceGuard";
 import PlainTextInput from "../components/PlainTextInput";
+import Toast, { type ToastNotice } from "../components/Toast";
 import TrackResultToast from "../components/TrackResultToast";
 
 const LOG_LEVELS: LogLevel[] = [
@@ -42,10 +43,12 @@ export default function InstancesScreen() {
   const [trackType, setTrackType] = useState<"event" | "view">("event");
   const [trackData, setTrackData] = useState("");
   const [lastResult, setLastResult] = useState<TrackResult | null>(null);
+  const [flushNotice, setFlushNotice] = useState<ToastNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const guard = useActiveInstanceGuard(activeInstance);
 
   const handleToastDismiss = useCallback(() => setLastResult(null), []);
+  const handleFlushToastDismiss = useCallback(() => setFlushNotice(null), []);
 
   const handleCreate = () => {
     setError(null);
@@ -67,6 +70,7 @@ export default function InstancesScreen() {
     setError(null);
     if (activeKey === key) {
       setLastResult(null);
+      setFlushNotice(null);
     }
     shutdownInstance(key).catch((e) => setError(String(e)));
   };
@@ -90,7 +94,34 @@ export default function InstancesScreen() {
 
     activeInstance
       .track(trackName, trackType, data)
-      .then(guard((result) => setLastResult(result)))
+      .then(
+        guard((result) => {
+          setFlushNotice(null);
+          setLastResult(result);
+        }),
+      )
+      .catch(guard((e) => setError(String(e))));
+  };
+
+  const handleFlush = () => {
+    setError(null);
+    if (!activeInstance) {
+      setError("No instance selected");
+      return;
+    }
+
+    activeInstance
+      .flushEventQueue()
+      .then(
+        guard(() => {
+          setLastResult(null);
+          setFlushNotice({
+            kind: "success",
+            title: "Flush requested",
+            lines: ["Request accepted by the SDK"],
+          });
+        }),
+      )
       .catch(guard((e) => setError(String(e))));
   };
 
@@ -270,6 +301,12 @@ export default function InstancesScreen() {
             <TouchableOpacity style={styles.button} onPress={handleTrack}>
               <Text style={styles.buttonText}>Track</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={handleFlush}>
+              <Text style={styles.buttonText}>Flush queue</Text>
+            </TouchableOpacity>
+            <Text style={styles.hintText}>
+              Events are batched (BatchingBarrier). Flush sends them earlier.
+            </Text>
           </>
         )}
 
@@ -283,6 +320,11 @@ export default function InstancesScreen() {
       <TrackResultToast
         result={lastResult}
         onDismiss={handleToastDismiss}
+        logTag="InstancesScreen"
+      />
+      <Toast
+        notice={flushNotice}
+        onDismiss={handleFlushToastDismiss}
         logTag="InstancesScreen"
       />
     </View>
@@ -360,6 +402,11 @@ const styles = StyleSheet.create({
     color: "#666",
     fontStyle: "italic",
     marginBottom: 12,
+  },
+  hintText: {
+    color: "#666",
+    fontSize: 13,
+    marginBottom: 8,
   },
   instanceRow: {
     flexDirection: "row",
