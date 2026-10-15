@@ -118,7 +118,7 @@ export default function InstancesScreen() {
           setFlushNotice({
             kind: "success",
             title: "Flush requested",
-            lines: ["Queued events are being sent"],
+            lines: ["Request accepted by the SDK"],
           });
         }),
       )

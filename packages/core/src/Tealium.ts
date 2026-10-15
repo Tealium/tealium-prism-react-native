@@ -231,7 +231,7 @@ export class Tealium {
    * wait until the events are sent. The flush bypasses only the barriers that
    * the SDK marks as flushable, such as the batching barrier. Other barriers,
    * such as the connectivity barrier while the device is offline, still hold
-   * the events.
+   * the events. The flush still happens once those barriers open.
    *
    * The Promise rejects with a {@link TealiumError} if the instance is shut
    * down or the native SDK reports a failure.

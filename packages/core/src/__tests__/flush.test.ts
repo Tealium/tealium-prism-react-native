@@ -1,10 +1,8 @@
-// Verifies flushEventQueue() calls native with the instance id and normalizes
-// the native result to undefined: it resolves with no payload (nil on iOS,
-// surfacing as JS undefined; null on Android, surfacing as JS null).
+// Verifies flushEventQueue() passes the instance id, resolves undefined, and surfaces native rejections.
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
-    create: () => "mock-instance-id",
+    create: jest.fn(() => "mock-instance-id"),
     flushEventQueue: jest.fn(() => Promise.resolve(null)),
   },
 }));
@@ -20,24 +18,33 @@ describe("Tealium.flushEventQueue", () => {
   });
 
   it("calls flushEventQueue with the instance id", async () => {
+    (native.create as jest.Mock).mockReturnValueOnce("flush-instance-id");
     const instance = Tealium.create("account", "flush-args", "dev");
 
     await instance.flushEventQueue();
 
-    expect(native.flushEventQueue).toHaveBeenCalledWith(instance.instanceId);
+    expect(native.flushEventQueue).toHaveBeenCalledWith("flush-instance-id");
   });
 
-  it("resolves undefined when native resolves null (Android payload-less result)", async () => {
-    const instance = Tealium.create("account", "flush-void", "dev");
-    (native.flushEventQueue as jest.Mock).mockResolvedValueOnce(null);
+  it.each([null, undefined])(
+    "resolves undefined when native resolves %s",
+    async (nativeResult) => {
+      const instance = Tealium.create(
+        "account",
+        `flush-void-${nativeResult}`,
+        "dev"
+      );
+      (native.flushEventQueue as jest.Mock).mockResolvedValueOnce(nativeResult);
 
-    await expect(instance.flushEventQueue()).resolves.toBeUndefined();
-  });
+      await expect(instance.flushEventQueue()).resolves.toBeUndefined();
+    }
+  );
 
-  it("resolves undefined when native resolves undefined (iOS payload-less result)", async () => {
-    const instance = Tealium.create("account", "flush-void-ios", "dev");
-    (native.flushEventQueue as jest.Mock).mockResolvedValueOnce(undefined);
+  it("rejects with the native error when native rejects", async () => {
+    const instance = Tealium.create("account", "flush-reject", "dev");
+    const nativeError = new Error("native flush failed");
+    (native.flushEventQueue as jest.Mock).mockRejectedValueOnce(nativeError);
 
-    await expect(instance.flushEventQueue()).resolves.toBeUndefined();
+    await expect(instance.flushEventQueue()).rejects.toBe(nativeError);
   });
 });

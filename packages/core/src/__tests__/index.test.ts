@@ -72,11 +72,11 @@ describe("Tealium", () => {
     });
   });
 
-  // track, the trace API (trace.join / trace.leave / trace.forceEndOfVisit),
-  // and the dataLayer API share the same guard contract: reject with
-  // INSTANCE_SHUT_DOWN when shut down and NATIVE_MODULE_NOT_REGISTERED when
-  // the native binding is missing. End-to-end behavior is verified in native
-  // tests and the example app.
+  // track, flushEventQueue, the trace API (trace.join / trace.leave /
+  // trace.forceEndOfVisit), and the dataLayer API share the same guard
+  // contract: reject with INSTANCE_SHUT_DOWN when shut down and
+  // NATIVE_MODULE_NOT_REGISTERED when the native binding is missing.
+  // End-to-end behavior is verified in native tests and the example app.
   const tealiumMethods: Array<[string, (i: Tealium) => Promise<unknown>]> = [
     ["track", (i) => i.track("event_name")],
     ["flushEventQueue", (i) => i.flushEventQueue()],
