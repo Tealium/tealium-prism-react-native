@@ -142,32 +142,46 @@
 
 #pragma mark - Visitor ID
 
-- (void)resetVisitorId:(NSString *)instanceId
-               resolve:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject
+- (void)getVisitorId:(NSString *)instanceId
+              resolve:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject
 {
-    [TealiumPrismBridge resetVisitorIdWithInstanceId:instanceId
-                                          completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
-                                              if (rejection) {
-                                                  reject(rejection.code, rejection.message, rejection.error);
-                                              } else {
-                                                  resolve(result);
-                                              }
-                                          }];
+    [TealiumPrismBridge getVisitorIdWithInstanceId:instanceId
+                                         completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
 }
 
-- (void)clearStoredVisitorIds:(NSString *)instanceId
-                      resolve:(RCTPromiseResolveBlock)resolve
-                       reject:(RCTPromiseRejectBlock)reject
+- (void)regenerateVisitorId:(NSString *)instanceId
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
 {
-    [TealiumPrismBridge clearStoredVisitorIdsWithInstanceId:instanceId
-                                                 completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
-                                                     if (rejection) {
-                                                         reject(rejection.code, rejection.message, rejection.error);
-                                                     } else {
-                                                         resolve(result);
-                                                     }
-                                                 }];
+    [TealiumPrismBridge regenerateVisitorIdWithInstanceId:instanceId
+                                                completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)eraseVisitorIdLocalHistory:(NSString *)instanceId
+                            resolve:(RCTPromiseResolveBlock)resolve
+                             reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge eraseVisitorIdLocalHistoryWithInstanceId:instanceId
+                                                       completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
 }
 
 #pragma mark - DataLayer

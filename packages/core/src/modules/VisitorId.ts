@@ -1,33 +1,64 @@
 import type { ModuleProxy } from "./ModuleProxy";
+import { parseJsonValue } from "../serialization";
 
 /**
- * Visitor ID controls: reset the anonymous visitor id, or clear the stored
- * identity-linked id history and reset. Mirrors the native Prism core visitor-id
- * calls (prism-swift/prism-kotlin `Tealium.resetVisitorId` /
- * `clearStoredVisitorIds`), which live flat on the instance and are always
- * available (no module registration). Reached via {@link Tealium.visitorId}.
+ * Visitor ID controls. Mirrors the native Prism `VisitorIdManager` (Swift/Kotlin
+ * `Tealium.visitorId`), backed by the Prism SDK's `VisitorId` module.
+ * Reach it with {@link Tealium.visitorId}.
  *
- * Both methods resolve with the NEW visitor id. The native layer returns the id
- * as a raw string (not JSON-encoded), so no parsing happens JS-side.
+ * The VisitorId module is registered and enabled by default, but your Tealium
+ * settings can disable it. While disabled, every method rejects with
+ * {@link ErrorCode.PRISM_NATIVE_ERROR} — that behavior comes from the Prism
+ * SDK; the bridge only forwards the failure.
+ *
+ * Visitor switching is configured through the module's `visitor_identity_key`
+ * in your local/remote settings JSON.
  */
 export class VisitorId {
   /** @internal Constructed by {@link Tealium}; not part of the public API. */
   constructor(private readonly proxy: ModuleProxy) {}
 
-  /** Regenerates the anonymous visitor id. Resolves with the new id. */
-  reset(): Promise<string> {
+  /** Resolves with the visitor ID at the time of the call. */
+  current(): Promise<string> {
     return this.proxy.withNative((native) =>
-      native.resetVisitorId(this.proxy.instanceId)
+      native
+        .getVisitorId(this.proxy.instanceId)
+        .then(
+          (json) => parseJsonValue(json, "Tealium.visitorId.current") as string
+        )
     );
   }
 
   /**
-   * Clears the stored history of identity-linked ids and regenerates the
-   * anonymous visitor id. Resolves with the new id.
+   * Generates a new anonymous visitor ID and resolves with it. The new id
+   * stays associated with the owning identity, if any.
    */
-  clearStored(): Promise<string> {
+  regenerate(): Promise<string> {
     return this.proxy.withNative((native) =>
-      native.clearStoredVisitorIds(this.proxy.instanceId)
+      native
+        .regenerateVisitorId(this.proxy.instanceId)
+        .then(
+          (json) =>
+            parseJsonValue(json, "Tealium.visitorId.regenerate") as string
+        )
+    );
+  }
+
+  /**
+   * Erases every identity association stored on this device, then generates
+   * a new visitor ID and resolves with it.
+   */
+  eraseLocalHistory(): Promise<string> {
+    return this.proxy.withNative((native) =>
+      native
+        .eraseVisitorIdLocalHistory(this.proxy.instanceId)
+        .then(
+          (json) =>
+            parseJsonValue(
+              json,
+              "Tealium.visitorId.eraseLocalHistory"
+            ) as string
+        )
     );
   }
 }

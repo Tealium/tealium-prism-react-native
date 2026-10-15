@@ -219,6 +219,23 @@ await tealium.trace.leave();
 
 The trace stays active after `forceEndOfVisit` until you call `leave`.
 
+## Visitor ID
+
+Read and manage the visitor ID through `tealium.visitorId`. The VisitorId module is registered and enabled by default. If your Tealium settings disable it, every call rejects.
+
+```ts
+// The visitor ID at the time of the call.
+const visitorId = await tealium.visitorId.current();
+
+// Generate a new anonymous visitor ID. It stays associated with the owning identity, if any.
+const regeneratedId = await tealium.visitorId.regenerate();
+
+// Erase every identity association stored on this device, then generate a new visitor ID.
+const newId = await tealium.visitorId.eraseLocalHistory();
+```
+
+Configure visitor switching through the module's `visitor_identity_key` in your local/remote settings JSON.
+
 ## Error handling
 
 `Tealium.create` throws synchronously only if the native module is missing. All other failures reject the returned Promise. Methods that take data, such as `track` and `dataLayer.put`, serialize it to JSON. They reject if a value cannot be serialized, for example a `BigInt` or a circular reference. They silently drop object properties whose values are functions, symbols, or `undefined`. Methods that take an expiry reject if it is an invalid `Date`. These input errors are plain `Error` objects without a `code`. All other errors from the package and the native module carry a `code` property. Compare the `code` against `ErrorCode`:

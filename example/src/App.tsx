@@ -4,7 +4,7 @@ import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./screens/BridgeTestScreen";
 import InstancesScreen from "./screens/InstancesScreen";
 import TraceScreen from "./screens/TraceScreen";
-import VisitorIdScreen from "./VisitorIdScreen";
+import VisitorIdScreen from "./screens/VisitorIdScreen";
 import LifecycleScreen from "./screens/LifecycleScreen";
 import TransformationsScreen from "./screens/TransformationsScreen";
 import DataLayerScreen from "./screens/DataLayerScreen";

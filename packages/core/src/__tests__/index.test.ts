@@ -74,7 +74,7 @@ describe("Tealium", () => {
     });
   });
 
-  // All Tealium methods share the same guard contract: reject with
+  // The following Tealium methods share the same guard contract: reject with
   // INSTANCE_SHUT_DOWN when shut down and NATIVE_MODULE_NOT_REGISTERED when
   // the native binding is missing. End-to-end behavior is verified in native
   // tests and the example app.
@@ -84,8 +84,9 @@ describe("Tealium", () => {
     ["trace.join", (i) => i.trace.join("trace-123")],
     ["trace.leave", (i) => i.trace.leave()],
     ["trace.forceEndOfVisit", (i) => i.trace.forceEndOfVisit()],
-    ["visitorId.reset", (i) => i.visitorId.reset()],
-    ["visitorId.clearStored", (i) => i.visitorId.clearStored()],
+    ["visitorId.current", (i) => i.visitorId.current()],
+    ["visitorId.regenerate", (i) => i.visitorId.regenerate()],
+    ["visitorId.eraseLocalHistory", (i) => i.visitorId.eraseLocalHistory()],
     ["dataLayer.putAll (bulk)", (i) => i.dataLayer.putAll({ a: 1 })],
     ["dataLayer.put (single)", (i) => i.dataLayer.put("key", "value")],
     ["dataLayer.get", (i) => i.dataLayer.get("key")],

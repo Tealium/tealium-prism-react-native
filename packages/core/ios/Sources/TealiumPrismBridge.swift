@@ -129,27 +129,50 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
-    /// Resets the anonymous visitor id, completing with the new id. Visitor id is a core capability
-    /// (flat on the instance, always available), so no module registration is needed. The id is a
-    /// raw String, completed directly (not JSON-encoded).
-    @objc public static func resetVisitorId(
+    /// Resolves the current visitor id. Delegates to the Prism SDK's `VisitorIdManager`, backed by
+    /// the `VisitorId` module — enabled by default, but disableable through settings, in which case
+    /// the SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the id as a
+    /// JSON-encoded string, like every other promise-returning method.
+    @objc public static func getVisitorId(
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.resetVisitorId().subscribe(completion)
+            instance.visitorId.current().subscribe(completion, converter: visitorIdAsDataItem)
         }
     }
 
-    /// Clears the stored history of identity-linked ids and regenerates the anonymous visitor id,
-    /// completing with the new id (raw String).
-    @objc public static func clearStoredVisitorIds(
+    /// Generates a new anonymous visitor id and resolves with it. Delegates to the Prism SDK's
+    /// [`VisitorIdManager.regenerate()`](doc:VisitorIdManager/regenerate()); same `VisitorId`-module
+    /// gating and JSON-encoded result as
+    /// [`TealiumPrismBridge.getVisitorId(instanceId:completion:)`](doc:TealiumPrismBridge/getVisitorId(instanceId:completion:)).
+    @objc public static func regenerateVisitorId(
         instanceId: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
-            instance.clearStoredVisitorIds().subscribe(completion)
+            instance.visitorId.regenerate().subscribe(completion, converter: visitorIdAsDataItem)
         }
+    }
+
+    /// Erases every locally stored identity association, then generates a new visitor id and
+    /// resolves with it. Delegates to the Prism SDK's
+    /// [`VisitorIdManager.eraseLocalHistory()`](doc:VisitorIdManager/eraseLocalHistory()); same
+    /// `VisitorId`-module gating and JSON-encoded result as
+    /// [`TealiumPrismBridge.getVisitorId(instanceId:completion:)`](doc:TealiumPrismBridge/getVisitorId(instanceId:completion:)).
+    @objc public static func eraseVisitorIdLocalHistory(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.visitorId.eraseLocalHistory().subscribe(completion, converter: visitorIdAsDataItem)
+        }
+    }
+
+    /// Wraps a visitor id `String` as a `DataItem` so it resolves JSON-encoded, like every other
+    /// promise-returning method.
+    private static func visitorIdAsDataItem(_ visitorId: String) -> DataItem {
+        DataItem(value: visitorId)
     }
 
     /// Converts a `TrackResult` into the JSON-serializable `DataItem` shape shared with `track`:
