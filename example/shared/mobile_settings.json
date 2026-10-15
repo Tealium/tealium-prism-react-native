@@ -28,8 +28,7 @@
     },
     "Collect": {
       "module_type": "Collect",
-      "enabled": true,
-      "order": 2
+      "enabled": true
     }
   },
   "barriers": {
