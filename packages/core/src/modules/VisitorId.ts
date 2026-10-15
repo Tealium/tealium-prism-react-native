@@ -30,8 +30,21 @@ export class VisitorId {
   }
 
   /**
-   * Generates a new anonymous visitor ID and resolves with it. The new id
-   * stays associated with the owning identity, if any.
+   * Generates a new anonymous visitor ID and resolves with it.
+   *
+   * Stored identity associations are left untouched. If an identity is present
+   * in the data layer, it takes ownership of the new ID; otherwise the new ID
+   * stays unowned until the next identity is written.
+   *
+   * **Important:** to keep events in the anonymous gap from being attributed to
+   * the previous identity, remove the identity key from the data layer
+   * **before** calling this method. Calling it while the identity is still
+   * present rebinds that identity to the new ID.
+   *
+   * Rejects with {@link ErrorCode.PRISM_NATIVE_ERROR} when the VisitorId module
+   * is disabled, or when the new ID can't be stored. In the storage case the
+   * Prism SDK still uses the new ID for events until the app relaunches, then
+   * restores the previous one.
    */
   regenerate(): Promise<string> {
     return this.proxy.withNative((native) =>
@@ -47,6 +60,18 @@ export class VisitorId {
   /**
    * Erases every identity association stored on this device, then generates
    * a new visitor ID and resolves with it.
+   *
+   * If an identity is present in the data layer, the Prism SDK immediately
+   * associates it with the new ID, so one new association may remain. Remove
+   * the identity key from the data layer first to leave none.
+   *
+   * This is a device-only operation: it doesn't remove the identity from the
+   * data layer or change server-side visitor profiles.
+   *
+   * Rejects with {@link ErrorCode.PRISM_NATIVE_ERROR} when the VisitorId module
+   * is disabled, or when the erasure can't be stored. In the storage case
+   * nothing is erased, but the Prism SDK still uses the new ID for events until
+   * the app relaunches, then restores the previous ID and every association.
    */
   eraseLocalHistory(): Promise<string> {
     return this.proxy.withNative((native) =>

@@ -227,12 +227,14 @@ Read and manage the visitor ID through `tealium.visitorId`. The VisitorId module
 // The visitor ID at the time of the call.
 const visitorId = await tealium.visitorId.current();
 
-// Generate a new anonymous visitor ID. It stays associated with the owning identity, if any.
+// Generate a new anonymous visitor ID. An identity present in the data layer takes ownership of it.
 const regeneratedId = await tealium.visitorId.regenerate();
 
 // Erase every identity association stored on this device, then generate a new visitor ID.
 const newId = await tealium.visitorId.eraseLocalHistory();
 ```
+
+On logout, remove the identity key from the data layer **before** calling `regenerate()`. Calling it while the identity is still present rebinds that identity to the new ID. `eraseLocalHistory()` is device-only: it doesn't remove the identity from the data layer or change server-side visitor profiles.
 
 Configure visitor switching through the module's `visitor_identity_key` in your local/remote settings JSON.
 
