@@ -1750,15 +1750,15 @@ PODS:
   - SQLite.swift (0.15.5):
     - SQLite.swift/standard (= 0.15.5)
   - SQLite.swift/standard (0.15.5)
-  - tealium-prism/Core (0.6.0):
+  - tealium-prism/Core (0.7.0):
     - SQLite.swift (~> 0.15.0)
-  - tealium-prism/Extensions (0.6.0):
-    - SQLite.swift (~> 0.15.0)
-    - tealium-prism/Core
-  - tealium-prism/JavaScriptTransformer (0.6.0):
+  - tealium-prism/Extensions (0.7.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
-  - tealium-prism/Lifecycle (0.6.0):
+  - tealium-prism/JavaScriptTransformer (0.7.0):
+    - SQLite.swift (~> 0.15.0)
+    - tealium-prism/Core
+  - tealium-prism/Lifecycle (0.7.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
   - TealiumPrismReactNative (0.1.0):
@@ -1782,7 +1782,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - tealium-prism/Core (~> 0.6)
+    - tealium-prism/Core (~> 0.7)
     - Yoga
   - TealiumPrismReactNative/Tests (0.1.0):
     - hermes-engine
@@ -1805,14 +1805,14 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - tealium-prism/Core (~> 0.6)
+    - tealium-prism/Core (~> 0.7)
     - Yoga
   - TealiumPrismReactNativeExtensions (0.1.0):
-    - tealium-prism/Extensions (~> 0.6)
+    - tealium-prism/Extensions (~> 0.7)
   - TealiumPrismReactNativeJavaScriptTransformer (0.1.0):
-    - tealium-prism/JavaScriptTransformer (~> 0.6)
+    - tealium-prism/JavaScriptTransformer (~> 0.7)
   - TealiumPrismReactNativeLifecycle (0.1.0):
-    - tealium-prism/Lifecycle (~> 0.6)
+    - tealium-prism/Lifecycle (~> 0.7)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2132,11 +2132,11 @@ SPEC CHECKSUMS:
   ReactCommon: fe2a3af8975e63efa60f95fca8c34dc85deee360
   ReactNativeDependencies: 869d8c0511fb3918d1be668c2d0117bfe8e6067b
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
-  tealium-prism: 8ef59057de8f0ff7f02cbe4225b350e51cbdb070
-  TealiumPrismReactNative: 9da7a4cf235e70e7bb1b23a0826f57ea01bab050
-  TealiumPrismReactNativeExtensions: 0a24045ca24c77e19dcd453c4e73e2ea557d8ca9
-  TealiumPrismReactNativeJavaScriptTransformer: 38e5170dbaf4a69bb9ab52074df73528d33a4b27
-  TealiumPrismReactNativeLifecycle: 4675b2dbf9cb6386eb7e7eed68700af8f7aa97e1
+  tealium-prism: a8398a92bbee99f7109a0f54637464cdb90b6a73
+  TealiumPrismReactNative: fbbf20f6807e82a3fd430fd1cc356a32c34c9f89
+  TealiumPrismReactNativeExtensions: 440aafe7fb49a3d29cfa367ba6022da9acef94f5
+  TealiumPrismReactNativeJavaScriptTransformer: 228ec8118f1b2a3b5be6f590b7c7bc66e7dc2983
+  TealiumPrismReactNativeLifecycle: 404a61ca9fb74bb299f5a4d98e3c93f101cc3a55
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 
 PODFILE CHECKSUM: 22938b525cd57a36bb04fb5533604f2631c9c819
