@@ -116,7 +116,7 @@ jobs:
     if: github.event.pull_request.draft == false
 
     env:
-      XCODE_VERSION: 26
+      XCODE_VERSION: "26.6"
       TURBO_CACHE_DIR: .turbo/ios
       RCT_USE_RN_DEP: 1
       RCT_USE_PREBUILT_RNCORE: 1
@@ -159,3 +159,74 @@ jobs:
       - name: Build example for iOS
         run: |
           yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+
+  test-android:
+    runs-on: ubuntu-latest
+    needs: build-library
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Finalize Android SDK
+        run: |
+          /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+
+      - name: Cache Gradle
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('example/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run Android unit tests
+        env:
+          JAVA_OPTS: "-XX:MaxHeapSize=6g"
+        run: yarn test:android
+
+  test-ios:
+    runs-on: macos-latest
+    needs: build-library
+    if: github.event.pull_request.draft == false
+
+    # Xcode, runtime and device are pinned together, like the Prism Swift SDK's CI. Bump them
+    # together against the macos-latest runner image's installed Xcode versions and simulators.
+    env:
+      XCODE_VERSION: "26.6"
+      IOS_DESTINATION: "platform=iOS Simulator,OS=26.5,name=iPhone 17 Pro"
+      RCT_USE_RN_DEP: 1
+      RCT_USE_PREBUILT_RNCORE: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Use appropriate Xcode version
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Install cocoapods
+        run: |
+          cd example
+          bundle install
+          bundle exec pod install --project-directory=ios
+
+      - name: Run iOS unit tests
+        run: yarn test:ios "$IOS_DESTINATION"
