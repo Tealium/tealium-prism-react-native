@@ -220,12 +220,9 @@ function buildEchoTestCases(): TestCase[] {
   }));
 }
 
-// TODO: update the comment when Kotlin null drops are fixed
 // Builds the on-device DataLayer round-trip cases against `dl`. Every value
 // must round-trip exactly on both platforms, including a top-level JSON null
-// inside a bulk put. The Kotlin SDK data layer currently drops top-level null
-// values in bulk puts, so the bulk "Bare null" and "multiple keys with null"
-// cases are expected to fail on Android until the SDK is aligned with Swift.
+// inside a bulk put.
 function buildDataLayerTestCases(dl: DataLayer): TestCase[] {
   const cases: TestCase[] = [];
 

@@ -7,7 +7,9 @@
 jest.mock("../NativeTealiumPrismReactNative", () => ({
   __esModule: true,
   default: {
-    create: jest.fn(() => "mock-instance-id"),
+    create: jest.fn(
+      (account: string, profile: string) => `${account}-${profile}`
+    ),
     track: () => Promise.resolve("{}"),
     echoJsonValue: () => Promise.resolve("{}"),
     shutdown: () => Promise.resolve(),

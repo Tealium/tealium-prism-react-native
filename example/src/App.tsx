@@ -4,6 +4,7 @@ import { getSdkVersion } from "@tealium/prism-react-native";
 import BridgeTestScreen from "./screens/BridgeTestScreen";
 import InstancesScreen from "./screens/InstancesScreen";
 import TraceScreen from "./screens/TraceScreen";
+import VisitorIdScreen from "./screens/VisitorIdScreen";
 import LifecycleScreen from "./screens/LifecycleScreen";
 import TransformationsScreen from "./screens/TransformationsScreen";
 import DataLayerScreen from "./screens/DataLayerScreen";
@@ -15,6 +16,7 @@ type Screen =
   | "bridgeTests"
   | "instances"
   | "trace"
+  | "visitorId"
   | "lifecycle"
   | "transformations"
   | "dataLayer";
@@ -23,6 +25,7 @@ const SCREENS: Record<Exclude<Screen, "home">, ComponentType> = {
   bridgeTests: BridgeTestScreen,
   instances: InstancesScreen,
   trace: TraceScreen,
+  visitorId: VisitorIdScreen,
   lifecycle: LifecycleScreen,
   transformations: TransformationsScreen,
   dataLayer: DataLayerScreen,
@@ -76,6 +79,12 @@ function AppContent() {
         onPress={() => setScreen("trace")}
       >
         <Text style={styles.buttonText}>Trace</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setScreen("visitorId")}
+      >
+        <Text style={styles.buttonText}>Visitor ID</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}

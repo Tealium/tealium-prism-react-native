@@ -9,16 +9,17 @@ public final class TealiumPrismBridge: NSObject {
     /// conversion path without any side effects.
     ///
     /// Accepts a JSON string rather than a native type so that JS `null`
-    /// values survive the TurboModule bridge: `JSONSerialization` maps JSON
-    /// null to `NSNull`, whereas the TurboModule bridge drops nil-valued keys
-    /// from plain objects before the method body runs.
+    /// values survive the TurboModule bridge: the Prism SDK's
+    /// `DataItem(jsonString:)` maps JSON null to `NSNull`, whereas the
+    /// TurboModule bridge drops nil-valued keys from plain objects before the
+    /// method body runs.
     @objc public static func echoJsonValue(
         _ jsonString: String,
         completion: @escaping (String?, PromiseRejection?) -> Void
     ) {
         do {
-            let dataItem = try JsonValueConversions.dataItem(fromJSONString: jsonString)
-            completion(try JsonValueConversions.jsonString(from: dataItem), nil)
+            let dataItem = try DataItem(jsonString: jsonString)
+            completion(try dataItem.serialize(), nil)
         } catch {
             completion(nil, PromiseRejection(
                 code: .prismNativeError,
@@ -129,6 +130,52 @@ public final class TealiumPrismBridge: NSObject {
         }
     }
 
+    /// Resolves the current visitor ID. Delegates to the Prism SDK's `VisitorIdManager`, backed by
+    /// the `VisitorId` module — enabled by default, but settings can disable it, in which case the
+    /// SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the ID as a
+    /// JSON-encoded string, like every other promise-returning method.
+    @objc public static func getVisitorId(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.visitorId.current().subscribe(completion, converter: visitorIdAsDataItem)
+        }
+    }
+
+    /// Generates a new anonymous visitor ID and resolves with it. Delegates to the Prism SDK's
+    /// [`VisitorIdManager.regenerate()`](doc:VisitorIdManager/regenerate()); same `VisitorId`-module
+    /// gating and JSON-encoded result as
+    /// [`TealiumPrismBridge.getVisitorId(instanceId:completion:)`](doc:TealiumPrismBridge/getVisitorId(instanceId:completion:)).
+    @objc public static func regenerateVisitorId(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.visitorId.regenerate().subscribe(completion, converter: visitorIdAsDataItem)
+        }
+    }
+
+    /// Erases every locally stored identity association, then generates a new visitor ID and
+    /// resolves with it. Delegates to the Prism SDK's
+    /// [`VisitorIdManager.eraseLocalHistory()`](doc:VisitorIdManager/eraseLocalHistory()); same
+    /// `VisitorId`-module gating and JSON-encoded result as
+    /// [`TealiumPrismBridge.getVisitorId(instanceId:completion:)`](doc:TealiumPrismBridge/getVisitorId(instanceId:completion:)).
+    @objc public static func eraseVisitorIdLocalHistory(
+        instanceId: String,
+        completion: @escaping (String?, PromiseRejection?) -> Void
+    ) {
+        TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
+            instance.visitorId.eraseLocalHistory().subscribe(completion, converter: visitorIdAsDataItem)
+        }
+    }
+
+    /// Wraps a visitor ID `String` as a `DataItem` so it resolves JSON-encoded, like every other
+    /// promise-returning method.
+    private static func visitorIdAsDataItem(_ visitorId: String) -> DataItem {
+        DataItem(value: visitorId)
+    }
+
     /// Converts a `TrackResult` into the JSON-serializable `DataItem` shape shared with `track`:
     /// `status` (accepted/dropped), `info`, and the dispatch `payload`.
     private static func trackResultAsDataItem(_ result: TrackResult) -> DataItem {
@@ -142,14 +189,13 @@ public final class TealiumPrismBridge: NSObject {
 
     // MARK: - DataLayer
 
-    // TODO: update native call when API changed in SDK
     /// Stores every key/value pair of the JSON object `dataJson` in the data layer.
     ///
     /// `expiryEncoded` carries the JS-encoded expiry (see
     /// [`DataLayerConversions.expiry(fromEncoded:)`](doc:DataLayerConversions/expiry(fromEncoded:)));
     /// `nil` selects the SDK's no-expiry overload, which stores forever. The Prism SDK's
-    /// [`DataLayer.put(data:)`](doc:DataLayer/put(data:)) (still named `put`, not `putAll`) emits
-    /// `Void`; the promise completes with no value.
+    /// [`DataLayer.putAll(dataObject:)`](doc:DataLayer/putAll(dataObject:)) emits `Void`; the promise
+    /// completes with no value.
     @objc public static func dataLayerPutAll(
         instanceId: String,
         dataJson: String,
@@ -170,9 +216,9 @@ public final class TealiumPrismBridge: NSObject {
 
             let pendingPut: SingleResult<Void, ModuleError<Error>>
             if let expiry = DataLayerConversions.expiry(fromEncoded: expiryEncoded) {
-                pendingPut = instance.dataLayer.put(data: data, expiry: expiry)
+                pendingPut = instance.dataLayer.putAll(dataObject: data, expiry: expiry)
             } else {
-                pendingPut = instance.dataLayer.put(data: data)
+                pendingPut = instance.dataLayer.putAll(dataObject: data)
             }
             pendingPut.subscribeVoid(completion)
         }
@@ -194,7 +240,7 @@ public final class TealiumPrismBridge: NSObject {
         TealiumInstanceManager.shared.withInstance(instanceId, completion: completion) { instance in
             let value: DataItem
             do {
-                value = try JsonValueConversions.dataItem(fromJSONString: valueJson)
+                value = try DataItem(jsonString: valueJson)
             } catch {
                 completion(PromiseRejection(
                     code: .dataParseError,

@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.private_header_files = "ios/Sources/**/*.h"
 
   install_modules_dependencies(s)
-  s.dependency "tealium-prism/Core", "~> 0.6"
+  s.dependency "tealium-prism/Core", "~> 0.7"
 
   # Pure-logic unit tests for the wrapper. CocoaPods generates a test target
   # in Pods.xcodeproj on `pod install`; run it via that scheme or
