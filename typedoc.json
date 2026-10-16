@@ -12,6 +12,9 @@
       "notDocumented": true
     }
   },
+  // Packages without a TypeScript API can't be entry points, so their READMEs are
+  // pulled in as standalone pages through the wrappers in docs/packages.
+  "projectDocuments": ["docs/packages/optional-modules.md"],
   "out": "_site",
   "readme": "README.md",
   "treatWarningsAsErrors": true
