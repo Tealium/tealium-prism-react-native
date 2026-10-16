@@ -159,8 +159,8 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
     /**
      * Resolves the current anonymous visitor ID. Delegates to the Prism SDK's [VisitorIdManager];
-     * the SDK backs this with the VisitorId module, enabled by default but disableable through
-     * settings, in which case the SDK fails the call and the bridge rejects with
+     * the SDK backs this with the VisitorId module, enabled by default, but settings can disable
+     * it, in which case the SDK fails the call and the bridge rejects with
      * [ErrorCode.PRISM_NATIVE_ERROR]. Resolves with the ID as a JSON-encoded string, like every
      * other promise-returning method.
      */

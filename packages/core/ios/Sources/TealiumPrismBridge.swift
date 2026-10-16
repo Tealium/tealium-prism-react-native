@@ -131,8 +131,8 @@ public final class TealiumPrismBridge: NSObject {
     }
 
     /// Resolves the current visitor ID. Delegates to the Prism SDK's `VisitorIdManager`, backed by
-    /// the `VisitorId` module — enabled by default, but disableable through settings, in which case
-    /// the SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the ID as a
+    /// the `VisitorId` module — enabled by default, but settings can disable it, in which case the
+    /// SDK fails the call and this rejects with `PRISM_NATIVE_ERROR`. Resolves with the ID as a
     /// JSON-encoded string, like every other promise-returning method.
     @objc public static func getVisitorId(
         instanceId: String,

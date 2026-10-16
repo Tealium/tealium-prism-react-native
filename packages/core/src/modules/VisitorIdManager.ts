@@ -8,7 +8,8 @@ import { parseJsonValue } from "../serialization";
  *
  * The bridge doesn't expose the native subscription to visitor ID changes yet.
  * Call {@link VisitorIdManager.current} again after an identity change, for
- * example after writing the `visitor_identity_key` value to the data layer.
+ * example after writing a value to the data layer under the key named by the
+ * module's `visitor_identity_key` setting.
  *
  * The VisitorId module is registered and enabled by default, but your Tealium
  * settings can disable it. While disabled, every method rejects with
