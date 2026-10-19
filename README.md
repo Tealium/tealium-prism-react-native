@@ -288,7 +288,7 @@ test("tracks a login", async () => {
 });
 ```
 
-To run the package's JavaScript in Jest instead, for example to test how your app handles errors, let Jest transform the package. Add it to the exceptions in `transformIgnorePatterns` in your Jest config:
+To run the package's JavaScript in Jest instead, for example to test how your app handles a missing native module, let Jest transform the package. Add it to the exceptions in `transformIgnorePatterns` in your Jest config:
 
 ```js
 transformIgnorePatterns: [
@@ -296,9 +296,11 @@ transformIgnorePatterns: [
 ],
 ```
 
-Every native call then rejects with `NATIVE_MODULE_NOT_REGISTERED`.
+Jest has no native module, so `Tealium.create` then throws a `TealiumError` with the `NATIVE_MODULE_NOT_REGISTERED` code synchronously, and `getSdkVersion` rejects with the same code. You can't get an instance this way, so to test code that uses an instance, mock the package as shown above.
 
-The optional packages contain only native code, so they don't need mocks. To test tracking end to end, run the app on a simulator or a device.
+The optional packages contain only native code, so they don't need mocks. 
+
+To test tracking end to end, run the app on a simulator or a device.
 
 ## Documentation
 
