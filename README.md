@@ -263,6 +263,45 @@ The error codes are:
 - `PRISM_NATIVE_ERROR`: The native Prism SDK reported a failure. The error message comes from the native SDK.
 - `TEALIUM_CANCELLED`: The native operation completed without producing a result.
 
+## Testing
+
+Jest tests run without the native SDKs, so they can't use this package directly. Importing it in a Jest test fails with `SyntaxError: Cannot use import statement outside a module`, because the package ships ES modules and the React Native Jest preset doesn't transform them.
+
+In Jest tests, mock the package with `jest.mock`. Mock only the parts that your code calls:
+
+```ts
+import { Environment, Tealium } from "@tealium/prism-react-native";
+
+const mockTrack = jest.fn(() => Promise.resolve({ status: "accepted" }));
+
+jest.mock("@tealium/prism-react-native", () => ({
+  Environment: { prod: "prod" },
+  Tealium: {
+    create: jest.fn(() => ({ track: mockTrack })),
+  },
+}));
+
+test("tracks a login", async () => {
+  const tealium = Tealium.create("my_account", "my_profile", Environment.prod);
+  await tealium.track("user_login");
+  expect(mockTrack).toHaveBeenCalledWith("user_login");
+});
+```
+
+To run the package's JavaScript in Jest instead, for example to test how your app handles a missing native module, let Jest transform the package. Add it to the exceptions in `transformIgnorePatterns` in your Jest config:
+
+```js
+transformIgnorePatterns: [
+  "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@tealium/prism-react-native)/)",
+],
+```
+
+Jest has no native module, so `Tealium.create` then throws a `TealiumError` with the `NATIVE_MODULE_NOT_REGISTERED` code synchronously, and `getSdkVersion` rejects with the same code. You can't get an instance this way, so to test code that uses an instance, mock the package as shown above.
+
+The optional packages contain only native code, so they don't need mocks. 
+
+To test tracking end to end, run the app on a simulator or a device.
+
 ## Documentation
 
 Read the API reference at [tealium.github.io/tealium-prism-react-native](https://tealium.github.io/tealium-prism-react-native/).

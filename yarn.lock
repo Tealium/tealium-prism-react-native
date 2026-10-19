@@ -2607,8 +2607,8 @@ __metadata:
   dependencies:
     del-cli: "npm:^7.0.0"
   peerDependencies:
-    "@tealium/prism-react-native": "*"
-    react-native: "*"
+    "@tealium/prism-react-native": ^0.1.0
+    react-native: ">=0.85"
   languageName: unknown
   linkType: soft
 
@@ -2618,8 +2618,8 @@ __metadata:
   dependencies:
     del-cli: "npm:^7.0.0"
   peerDependencies:
-    "@tealium/prism-react-native": "*"
-    react-native: "*"
+    "@tealium/prism-react-native": ^0.1.0
+    react-native: ">=0.85"
   languageName: unknown
   linkType: soft
 
@@ -2629,8 +2629,8 @@ __metadata:
   dependencies:
     del-cli: "npm:^7.0.0"
   peerDependencies:
-    "@tealium/prism-react-native": "*"
-    react-native: "*"
+    "@tealium/prism-react-native": ^0.1.0
+    react-native: ">=0.85"
   languageName: unknown
   linkType: soft
 
@@ -2651,7 +2651,7 @@ __metadata:
     typescript: "npm:^6.0.3"
   peerDependencies:
     react: "*"
-    react-native: "*"
+    react-native: ">=0.85"
   languageName: unknown
   linkType: soft
 

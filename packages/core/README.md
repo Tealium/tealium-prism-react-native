@@ -29,7 +29,7 @@ await tealium.track("user_login", "event", { customer_id: "1234567890" });
 
 The following resources describe the full API:
 
-- [README on GitHub](https://github.com/Tealium/tealium-prism-react-native#readme) covers optional packages, settings, log level, trace, and error handling.
+- [README on GitHub](https://github.com/Tealium/tealium-prism-react-native#readme) covers optional packages, settings, log level, trace, error handling, and testing with Jest.
 - [API reference](https://tealium.github.io/tealium-prism-react-native/) lists every exported symbol.
 
 ## License

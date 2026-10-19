@@ -13,7 +13,9 @@
     "!**/.*"
   ],
   "scripts": {
-    "clean": "del-cli android/build"
+    "clean": "del-cli android/build",
+    "prepack": "node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "postpack": "del-cli LICENSE"
   },
   "keywords": [
     "tealium-prism",
@@ -35,11 +37,12 @@
   },
   "homepage": "https://github.com/Tealium/tealium-prism-react-native#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "peerDependencies": {
-    "@tealium/prism-react-native": "*",
-    "react-native": "*"
+    "@tealium/prism-react-native": "^0.1.0",
+    "react-native": ">=0.85"
   },
   "devDependencies": {
     "del-cli": "^7.0.0"
