@@ -39,7 +39,9 @@
     "prepare": "yarn codegen && bob build",
     "typecheck": "tsc",
     "test": "jest",
-    "lint": "yarn run -T eslint \"src/**/*.{js,ts,tsx}\""
+    "lint": "yarn run -T eslint \"src/**/*.{js,ts,tsx}\"",
+    "prepack": "node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "postpack": "del-cli LICENSE"
   },
   "keywords": [
     "tealium-prism",

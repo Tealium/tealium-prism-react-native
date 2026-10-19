@@ -86,3 +86,6 @@ nitrogen/
 # TypeDoc output
 _site
 _site-tealdocs
+
+# LICENSE copied from the repo root by each package's prepack script
+packages/*/LICENSE

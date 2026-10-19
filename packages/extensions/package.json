@@ -13,7 +13,9 @@
     "!**/.*"
   ],
   "scripts": {
-    "clean": "del-cli android/build"
+    "clean": "del-cli android/build",
+    "prepack": "node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "postpack": "del-cli LICENSE"
   },
   "keywords": [
     "tealium-prism",
