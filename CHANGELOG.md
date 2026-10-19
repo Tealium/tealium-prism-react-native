@@ -22,7 +22,7 @@ First release of Tealium Prism for React Native. The packages wrap the Tealium P
 - **Data layer:** `tealium.dataLayer` provides `put`, `putAll`, `get`, `getAll`, `remove` for one key or several, and `clear`. Writes accept an optional `Expiry`: `"forever"`, `"session"`, `"untilRestart"`, or a `Date`.
 - **Trace:** `tealium.trace` provides `join`, `leave`, and `forceEndOfVisit`.
 - **Visitor ID:** `tealium.visitorId` provides `current`, `regenerate`, and `eraseLocalHistory`. `eraseLocalHistory` erases only the identity associations stored on the device. It doesn't change server-side visitor profiles.
-- **Errors:** every Promise rejects with a `TealiumError` whose `code` is one of the `ErrorCode` values.
+- **Errors:** errors from the package and the native SDK are `TealiumError`s whose `code` is one of the `ErrorCode` values. They reject the returned Promise, except in `Tealium.create`, which throws `NATIVE_MODULE_NOT_REGISTERED` synchronously when the native module is missing. Invalid input rejects with a plain `Error` without a `code`: data that can't be serialized to JSON, such as a circular reference or a `BigInt`, and an invalid `Date` expiry.
 - **SDK version:** `getSdkVersion()` resolves with the version of the native Prism SDK.
 - **Optional packages:** install `@tealium/prism-react-native-lifecycle`, `@tealium/prism-react-native-extensions` (the SetDataValues, Lowercase, and PersistDataValue transformers), or `@tealium/prism-react-native-js-transformer` to add the matching native Prism module. Autolinking registers the module, and your Tealium settings configure it.
 
