@@ -55,7 +55,7 @@ extension Single {
                         return
                     }
                     do {
-                        completion(try JsonValueConversions.jsonString(from: dataItem), nil)
+                        completion(try dataItem.serialize(), nil)
                     } catch {
                         // Should never happen if the DataItem contains only json encodable values.
                         completion(nil, PromiseRejection(

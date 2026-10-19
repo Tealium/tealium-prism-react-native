@@ -40,6 +40,18 @@ export interface Spec extends TurboModule {
   /** Leaves the current trace, if any. */
   leaveTrace(instanceId: string): Promise<void>;
   forceEndOfVisit(instanceId: string): Promise<string>;
+  /** Resolves the current visitor ID as a JSON-encoded string. */
+  getVisitorId(instanceId: string): Promise<string>;
+  /**
+   * Generates a new anonymous visitor ID and resolves with it as a
+   * JSON-encoded string.
+   */
+  regenerateVisitorId(instanceId: string): Promise<string>;
+  /**
+   * Erases every locally stored identity association, then generates a new
+   * visitor ID and resolves with it as a JSON-encoded string.
+   */
+  eraseVisitorIdLocalHistory(instanceId: string): Promise<string>;
   /**
    * Stores a JSON object in the data layer. `expiryEncoded` is the encoded
    * expiry: `-1` forever, `-2` session, `-3` untilRestart, otherwise a Unix

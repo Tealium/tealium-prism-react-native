@@ -110,7 +110,7 @@ final class DataLayerConversionsTests: XCTestCase {
         """#
 
         let dataObject = try DataObject(jsonString: json)
-        let encoded = try JsonValueConversions.jsonString(from: DataItem(converting: dataObject))
+        let encoded = try DataItem(converting: dataObject).serialize()
 
         guard let expected = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? NSDictionary,
               let actual = try JSONSerialization.jsonObject(with: Data(encoded.utf8)) as? NSDictionary else {
@@ -121,7 +121,7 @@ final class DataLayerConversionsTests: XCTestCase {
     }
 
     func test_dataItem_roundTrip_preserves_stored_null() throws {
-        let dataItem = try JsonValueConversions.dataItem(fromJSONString: "null")
-        XCTAssertEqual(try JsonValueConversions.jsonString(from: dataItem), "null")
+        let dataItem = try DataItem(jsonString: "null")
+        XCTAssertEqual(try dataItem.serialize(), "null")
     }
 }

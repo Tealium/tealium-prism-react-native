@@ -11,6 +11,7 @@ import com.tealium.prism.core.api.TealiumConfig
 import com.tealium.prism.core.api.data.DataItem
 import com.tealium.prism.core.api.data.DataObject
 import com.tealium.prism.core.api.logger.LogLevel
+import com.tealium.prism.core.api.modules.VisitorIdManager
 import com.tealium.prism.core.api.tracking.DispatchType
 import com.tealium.prism.core.api.tracking.TrackResult
 
@@ -156,12 +157,52 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
             put("payload", result.dispatch.payload())
         }.asDataItem()
 
-    // TODO: update native call when API changed in SDK
+    /**
+     * Resolves the current anonymous visitor ID. Delegates to the Prism SDK's [VisitorIdManager];
+     * the SDK backs this with the VisitorId module, enabled by default, but settings can disable
+     * it, in which case the SDK fails the call and the bridge rejects with
+     * [ErrorCode.PRISM_NATIVE_ERROR]. Resolves with the ID as a JSON-encoded string, like every
+     * other promise-returning method.
+     */
+    override fun getVisitorId(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.visitorId.current().subscribe(promise, ::visitorIdAsDataItem)
+        }
+    }
+
+    /**
+     * Generates a new anonymous visitor ID and resolves with it. Delegates to the Prism SDK's
+     * [VisitorIdManager.regenerate]; same VisitorId-module gating and JSON-encoded result as
+     * [getVisitorId].
+     */
+    override fun regenerateVisitorId(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.visitorId.regenerate().subscribe(promise, ::visitorIdAsDataItem)
+        }
+    }
+
+    /**
+     * Erases every locally stored identity association, then generates a new anonymous visitor
+     * ID and resolves with it. Delegates to the Prism SDK's [VisitorIdManager.eraseLocalHistory];
+     * same VisitorId-module gating and JSON-encoded result as [getVisitorId].
+     */
+    override fun eraseVisitorIdLocalHistory(instanceId: String, promise: Promise) {
+        Tealium.withInstance(instanceId, promise) { instance ->
+            instance.visitorId.eraseLocalHistory().subscribe(promise, ::visitorIdAsDataItem)
+        }
+    }
+
+    /**
+     * Wraps a visitor ID [String] as a [DataItem] so it resolves JSON-encoded, like every other
+     * promise-returning method.
+     */
+    private fun visitorIdAsDataItem(visitorId: String): DataItem = DataItem.string(visitorId)
+
     /**
      * Stores every key-value pair of [dataJson] in the instance's data layer, expiring them
      * according to [expiryEncoded] (see [resolveExpiry]). An omitted [expiryEncoded] selects the
-     * SDK's no-expiry overload, which stores forever. The Prism SDK's DataLayer.put (still named
-     * `put`, not `putAll`) emits [Unit]; the promise resolves with no value.
+     * SDK's no-expiry overload, which stores forever. The Prism SDK's DataLayer.putAll emits [Unit];
+     * the promise resolves with no value.
      */
     override fun dataLayerPutAll(
         instanceId: String,
@@ -177,9 +218,9 @@ class TealiumPrismReactNativeModule(reactContext: ReactApplicationContext) :
 
             val expiry = resolveExpiry(expiryEncoded)
             val pendingPut = if (expiry == null) {
-                instance.dataLayer.put(data)
+                instance.dataLayer.putAll(data)
             } else {
-                instance.dataLayer.put(data, expiry)
+                instance.dataLayer.putAll(data, expiry)
             }
             pendingPut.subscribeVoid(promise)
         }

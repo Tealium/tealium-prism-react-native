@@ -140,6 +140,50 @@
     }];
 }
 
+#pragma mark - Visitor ID
+
+- (void)getVisitorId:(NSString *)instanceId
+              resolve:(RCTPromiseResolveBlock)resolve
+               reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge getVisitorIdWithInstanceId:instanceId
+                                         completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)regenerateVisitorId:(NSString *)instanceId
+                     resolve:(RCTPromiseResolveBlock)resolve
+                      reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge regenerateVisitorIdWithInstanceId:instanceId
+                                                completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
+- (void)eraseVisitorIdLocalHistory:(NSString *)instanceId
+                            resolve:(RCTPromiseResolveBlock)resolve
+                             reject:(RCTPromiseRejectBlock)reject
+{
+    [TealiumPrismBridge eraseVisitorIdLocalHistoryWithInstanceId:instanceId
+                                                       completion:^(NSString * _Nullable result, PromiseRejection * _Nullable rejection) {
+        if (rejection) {
+            reject(rejection.code, rejection.message, rejection.error);
+        } else {
+            resolve(result);
+        }
+    }];
+}
+
 #pragma mark - DataLayer
 
 // `expiryEncoded` is optional on the JS side. Codegen represents a nullable `number`
