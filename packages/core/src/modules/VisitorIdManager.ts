@@ -38,8 +38,9 @@ export class VisitorIdManager {
    * Generates a new anonymous visitor ID and resolves with it.
    *
    * Stored identity associations are left untouched. If an identity is present
-   * in the data layer, it takes ownership of the new ID; otherwise the new ID
-   * stays unowned until the next identity is written.
+   * in the data layer, it takes ownership of the new ID. Otherwise the new ID
+   * is unowned: the next identity written to the data layer adopts it, and a
+   * returning identity restores its own previous visitor ID.
    *
    * **Important:** to keep events in the anonymous gap from being attributed to
    * the previous identity, remove the identity key from the data layer
