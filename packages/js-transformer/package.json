@@ -39,8 +39,8 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@tealium/prism-react-native": "*",
-    "react-native": "*"
+    "@tealium/prism-react-native": "^0.1.0",
+    "react-native": ">=0.85"
   },
   "devDependencies": {
     "del-cli": "^7.0.0"

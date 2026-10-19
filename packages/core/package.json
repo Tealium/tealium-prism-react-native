@@ -78,7 +78,7 @@
   },
   "peerDependencies": {
     "react": "*",
-    "react-native": "*"
+    "react-native": ">=0.85"
   },
   "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {
