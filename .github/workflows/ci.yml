@@ -48,7 +48,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Build package
-        run: yarn workspace @tealium/prism-react-native prepare
+        run: yarn workspace @tealium/prism-react-native build
 
   build-android:
     runs-on: ubuntu-latest

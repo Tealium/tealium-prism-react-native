@@ -36,11 +36,11 @@
   "scripts": {
     "clean": "del-cli android/build lib",
     "codegen": "node ../../scripts/generate-error-codes.js",
-    "prepare": "yarn codegen && bob build",
+    "build": "yarn codegen && bob build",
     "typecheck": "tsc",
     "test": "jest",
     "lint": "yarn run -T eslint \"src/**/*.{js,ts,tsx}\"",
-    "prepack": "node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
+    "prepack": "yarn build && node -e \"require('fs').copyFileSync('../../LICENSE', 'LICENSE')\"",
     "postpack": "del-cli LICENSE"
   },
   "keywords": [
