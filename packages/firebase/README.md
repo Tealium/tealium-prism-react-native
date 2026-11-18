@@ -2,7 +2,10 @@
 
 Optional [Tealium Prism](https://github.com/Tealium/tealium-prism-react-native) Firebase dispatcher for React Native. Sends Tealium events to Firebase Analytics.
 
-This package ships no JavaScript. Installing it links the native Prism Firebase dispatcher, which registers itself automatically — no app-side wiring is required. The dispatcher is configured entirely through your Tealium settings (remote or local JSON) via a `FirebaseDispatcher` module entry, mirroring the native SDKs. Only one Tealium instance should enable it, since Firebase Analytics has a single shared instance.
+This package ships no JavaScript. Installing it links the native Prism Firebase dispatcher, which registers itself automatically — no app-side wiring is required. The dispatcher is configured entirely through your Tealium settings (remote or local JSON) via a `FirebaseDispatcher` module entry, mirroring the native SDKs.
+
+> [!IMPORTANT]
+> Enable `FirebaseDispatcher` in only one Tealium instance. Firebase Analytics has a single shared instance, so every Tealium instance that enables it writes to the same Firebase instance.
 
 ## Installation
 
