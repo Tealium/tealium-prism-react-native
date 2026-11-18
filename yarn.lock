@@ -2612,6 +2612,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@tealium/prism-react-native-firebase@workspace:packages/firebase":
+  version: 0.0.0-use.local
+  resolution: "@tealium/prism-react-native-firebase@workspace:packages/firebase"
+  dependencies:
+    del-cli: "npm:^7.0.0"
+  peerDependencies:
+    "@tealium/prism-react-native": ^0.1.0
+    react-native: ">=0.85"
+  languageName: unknown
+  linkType: soft
+
 "@tealium/prism-react-native-js-transformer@workspace:*, @tealium/prism-react-native-js-transformer@workspace:packages/js-transformer":
   version: 0.0.0-use.local
   resolution: "@tealium/prism-react-native-js-transformer@workspace:packages/js-transformer"
