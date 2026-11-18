@@ -19,6 +19,17 @@ To install all dependencies (run from the **repo root**, not `example/`):
 yarn install
 ```
 
+# Firebase credentials
+
+This repo is public: **never commit real Firebase config files.** To run the Firebase dispatcher with your own Firebase project, download the files from the Firebase console and put them here:
+
+| Platform | Real file (git-ignored)                                      | Template (committed)                 |
+| -------- | ------------------------------------------------------------ | ------------------------------------ |
+| Android  | `example/android/app/google-services.json`                   | `google-services.json.example`       |
+| iOS      | `example/ios/TealiumPrismReactNativeExample/GoogleService-Info.plist` | `GoogleService-Info.plist.example` |
+
+Both file names are git-ignored anywhere in the repo, and `scripts/check-firebase-credentials.sh` (run by the pre-commit hook and CI) fails if either one is tracked, even after `git add -f`. If one was ever pushed, untrack it with `git rm --cached <file>` and rotate the keys in the Firebase console: the public history already exposed them.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

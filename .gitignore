@@ -89,3 +89,8 @@ _site-tealdocs
 
 # LICENSE copied from the repo root by each package's prepack script
 packages/*/LICENSE
+
+# Firebase credentials, anywhere in the repo. The repo is public, so these must never be
+# committed (see example/README.md). The committed *.example templates do not match.
+google-services.json
+GoogleService-Info.plist
