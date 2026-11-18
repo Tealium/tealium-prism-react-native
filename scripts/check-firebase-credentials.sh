@@ -7,8 +7,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# Case-insensitive because macOS filesystems (and git's core.ignorecase there) are too.
-if tracked=$(git ls-files | grep -iE '(^|/)(google-services\.json|GoogleService-Info\.plist)$'); then
+# Pathspecs match the real paths, not `git ls-files` output, which quotes names with non-ASCII
+# characters or tabs. `icase` because macOS filesystems (and git's core.ignorecase there) are too.
+tracked=$(git ls-files -- ':(glob,icase)**/google-services.json' ':(glob,icase)**/GoogleService-Info.plist')
+if [ -n "$tracked" ]; then
   echo "error: Firebase credentials must never be committed. Unstage/untrack these files:" >&2
   echo "$tracked" | sed 's/^/  /' >&2
   echo "Run: git rm --cached <file>  (see example/README.md, Firebase credentials)" >&2
