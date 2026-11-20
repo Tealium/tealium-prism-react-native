@@ -91,6 +91,6 @@ _site-tealdocs
 packages/*/LICENSE
 
 # Firebase credentials, anywhere in the repo. The repo is public, so these must never be
-# committed (see example/README.md). The committed *.example templates do not match.
+# committed (see example/README.md).
 google-services.json
 GoogleService-Info.plist
