@@ -1,8 +1,117 @@
 PODS:
   - FBLazyVector (0.85.0)
+  - Firebase/Analytics (12.19.3):
+    - Firebase/Core
+  - Firebase/Core (12.19.3):
+    - Firebase/CoreOnly
+    - FirebaseAnalytics (~> 12.19.0)
+  - Firebase/CoreOnly (12.19.3):
+    - FirebaseCore (~> 12.19.3)
+  - FirebaseAnalytics (12.19.0):
+    - FirebaseAnalytics/Default (= 12.19.0)
+    - FirebaseCore (~> 12.19.0)
+    - FirebaseInstallations (~> 12.19.0)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/MethodSwizzler (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+    - nanopb (~> 3.30910.0)
+  - FirebaseAnalytics/Default (12.19.0):
+    - FirebaseCore (~> 12.19.0)
+    - FirebaseInstallations (~> 12.19.0)
+    - GoogleAppMeasurement/Default (= 12.19.0)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/MethodSwizzler (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+    - nanopb (~> 3.30910.0)
+  - FirebaseCore (12.19.3):
+    - FirebaseCoreInternal (~> 12.19.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Logger (~> 8.1)
+  - FirebaseCoreInternal (12.19.0):
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+  - FirebaseInstallations (12.19.0):
+    - FirebaseCore (~> 12.19.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - PromisesObjC (~> 2.4)
+  - GoogleAdsOnDeviceConversion (3.7.0):
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Logger (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - nanopb (~> 3.30910.0)
+  - GoogleAppMeasurement/Core (12.19.0):
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/MethodSwizzler (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+    - nanopb (~> 3.30910.0)
+  - GoogleAppMeasurement/Default (12.19.0):
+    - GoogleAdsOnDeviceConversion (~> 3.7.0)
+    - GoogleAppMeasurement/Core (= 12.19.0)
+    - GoogleAppMeasurement/IdentitySupport (= 12.19.0)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/MethodSwizzler (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+    - nanopb (~> 3.30910.0)
+  - GoogleAppMeasurement/IdentitySupport (12.19.0):
+    - GoogleAppMeasurement/Core (= 12.19.0)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/MethodSwizzler (~> 8.1)
+    - GoogleUtilities/Network (~> 8.1)
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+    - nanopb (~> 3.30910.0)
+  - GoogleUtilities (8.1.5):
+    - GoogleUtilities/AppDelegateSwizzler (= 8.1.5)
+    - GoogleUtilities/Environment (= 8.1.5)
+    - GoogleUtilities/Logger (= 8.1.5)
+    - GoogleUtilities/MethodSwizzler (= 8.1.5)
+    - GoogleUtilities/Network (= 8.1.5)
+    - "GoogleUtilities/NSData+zlib (= 8.1.5)"
+    - GoogleUtilities/Privacy (= 8.1.5)
+    - GoogleUtilities/Reachability (= 8.1.5)
+    - GoogleUtilities/SwizzlerTestHelpers (= 8.1.5)
+    - GoogleUtilities/UserDefaults (= 8.1.5)
+  - GoogleUtilities/AppDelegateSwizzler (8.1.5):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Network
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Environment (8.1.5):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.5):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/MethodSwizzler (8.1.5):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Network (8.1.5):
+    - GoogleUtilities/Logger
+    - "GoogleUtilities/NSData+zlib"
+    - GoogleUtilities/Privacy
+    - GoogleUtilities/Reachability
+  - "GoogleUtilities/NSData+zlib (8.1.5)":
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.5)
+  - GoogleUtilities/Reachability (8.1.5):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/SwizzlerTestHelpers (8.1.5):
+    - GoogleUtilities/MethodSwizzler
+  - GoogleUtilities/UserDefaults (8.1.5):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - PromisesObjC (2.4.1)
   - RCTDeprecation (0.85.0)
   - RCTRequired (0.85.0)
   - RCTSwiftUI (0.85.0)
@@ -1761,6 +1870,9 @@ PODS:
   - tealium-prism/Lifecycle (0.7.0):
     - SQLite.swift (~> 0.15.0)
     - tealium-prism/Core
+  - TealiumPrismFirebase (0.2.0):
+    - Firebase/Analytics (~> 12.0)
+    - tealium-prism/Core (~> 0.7)
   - TealiumPrismReactNative (0.1.0):
     - hermes-engine
     - RCTRequired
@@ -1809,6 +1921,8 @@ PODS:
     - Yoga
   - TealiumPrismReactNativeExtensions (0.1.0):
     - tealium-prism/Extensions (~> 0.7)
+  - TealiumPrismReactNativeFirebase (0.1.0):
+    - TealiumPrismFirebase (~> 0.2)
   - TealiumPrismReactNativeJavaScriptTransformer (0.1.0):
     - tealium-prism/JavaScriptTransformer (~> 0.7)
   - TealiumPrismReactNativeLifecycle (0.1.0):
@@ -1817,6 +1931,7 @@ PODS:
 
 DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
+  - GoogleUtilities
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
@@ -1892,14 +2007,26 @@ DEPENDENCIES:
   - TealiumPrismReactNative (from `../../packages/core`)
   - TealiumPrismReactNative/Tests (from `../../packages/core`)
   - TealiumPrismReactNativeExtensions (from `../../packages/extensions`)
+  - "TealiumPrismReactNativeFirebase (from `../node_modules/@tealium/prism-react-native-firebase`)"
   - TealiumPrismReactNativeJavaScriptTransformer (from `../../packages/js-transformer`)
   - TealiumPrismReactNativeLifecycle (from `../../packages/lifecycle`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
+    - Firebase
+    - FirebaseAnalytics
+    - FirebaseCore
+    - FirebaseCoreInternal
+    - FirebaseInstallations
+    - GoogleAdsOnDeviceConversion
+    - GoogleAppMeasurement
+    - GoogleUtilities
+    - nanopb
+    - PromisesObjC
     - SQLite.swift
     - tealium-prism
+    - TealiumPrismFirebase
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -2051,6 +2178,8 @@ EXTERNAL SOURCES:
     :path: "../../packages/core"
   TealiumPrismReactNativeExtensions:
     :path: "../../packages/extensions"
+  TealiumPrismReactNativeFirebase:
+    :path: "../node_modules/@tealium/prism-react-native-firebase"
   TealiumPrismReactNativeJavaScriptTransformer:
     :path: "../../packages/js-transformer"
   TealiumPrismReactNativeLifecycle:
@@ -2060,7 +2189,17 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FBLazyVector: c00c20551d40126351a6783c47ce75f5b374851b
-  hermes-engine: 91c1b04c9a775b3e0d1c94afc05f5001044c9c1c
+  Firebase: e3c5ab38229ae085490d02398d97b9f5374bbe6e
+  FirebaseAnalytics: e9f8c369447e453da23f0455a06e4910bad10de0
+  FirebaseCore: ab948de5d99e69aeed3cd6f5ace263ce795b2559
+  FirebaseCoreInternal: 656b1c2fd5a1c5976183dc54b73deda78fb26ee3
+  FirebaseInstallations: f70a49eed611f5602f373e40974b3b01556ac217
+  GoogleAdsOnDeviceConversion: 41f168313b305040f4af27093d3c0af5ba46a9a3
+  GoogleAppMeasurement: f2f676480e4c97936df934aa181bc29caea46975
+  GoogleUtilities: 7dc09b3fa9ecb5c2298b952313d14628b61b9da3
+  hermes-engine: 280d62eebbccf841e12aac79936f634045bf206e
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   RCTDeprecation: 3bb167081b134461cfeb875ff7ae1945f8635257
   RCTRequired: 74839f55d5058a133a0bc4569b0afec750957f64
   RCTSwiftUI: 87a316382f3eab4dd13d2a0d0fd2adcce917361a
@@ -2069,7 +2208,7 @@ SPEC CHECKSUMS:
   React: 1b1536b9099195944034e65b1830f463caaa8390
   React-callinvoker: 6dff6d17d1d6cc8fdf85468a649bafed473c65f5
   React-Core: 00faa4d038298089a1d5a5b21dde8660c4f0820d
-  React-Core-prebuilt: 04684ff5ad62b89fab85ef6140f4d753b3ef6ada
+  React-Core-prebuilt: 1d1904065c6bf3bb1e563e00022be685d58c0a3b
   React-CoreModules: a17807f849bfd86045b0b9a75ec8c19373b482f6
   React-cxxreact: c7b53ace5827be54048288bce5c55f337c41e95f
   React-debug: e1f00fcd2cef58a2897471a6d76a4ef5f5f90c74
@@ -2130,15 +2269,17 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 5787b37b8e2e51dfeab697ec031cc7c4080dcea2
   ReactCodegen: b3184a229afd01e7f8058dd81b805b843caa2bf9
   ReactCommon: fe2a3af8975e63efa60f95fca8c34dc85deee360
-  ReactNativeDependencies: 869d8c0511fb3918d1be668c2d0117bfe8e6067b
+  ReactNativeDependencies: 23a89b6c9fee19de39174d37832a8e016a3399c8
   SQLite.swift: c38c92f61436f1a4053029550edb1ef7caa2a2cd
   tealium-prism: a8398a92bbee99f7109a0f54637464cdb90b6a73
+  TealiumPrismFirebase: 5e3cd317deaf7615f766fca3e008b97862181813
   TealiumPrismReactNative: fbbf20f6807e82a3fd430fd1cc356a32c34c9f89
   TealiumPrismReactNativeExtensions: 440aafe7fb49a3d29cfa367ba6022da9acef94f5
+  TealiumPrismReactNativeFirebase: 5dfa824a16c6c9985c161dc6cf1bdffef880594c
   TealiumPrismReactNativeJavaScriptTransformer: 228ec8118f1b2a3b5be6f590b7c7bc66e7dc2983
   TealiumPrismReactNativeLifecycle: 404a61ca9fb74bb299f5a4d98e3c93f101cc3a55
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
 
-PODFILE CHECKSUM: 22938b525cd57a36bb04fb5533604f2631c9c819
+PODFILE CHECKSUM: 4710a2ae1570ff114efcbc6ec118cfef97263cd3
 
 COCOAPODS: 1.16.2

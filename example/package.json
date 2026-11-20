@@ -13,6 +13,7 @@
   "dependencies": {
     "@tealium/prism-react-native": "workspace:*",
     "@tealium/prism-react-native-extensions": "workspace:*",
+    "@tealium/prism-react-native-firebase": "workspace:*",
     "@tealium/prism-react-native-js-transformer": "workspace:*",
     "@tealium/prism-react-native-lifecycle": "workspace:*",
     "react": "19.2.3",

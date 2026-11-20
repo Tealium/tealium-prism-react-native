@@ -22,6 +22,10 @@ target 'TealiumPrismReactNativeExample' do
   # duplicate declaration and autolinking otherwise links it as usual.
   pod "TealiumPrismReactNative", :path => "../../packages/core", :testspecs => ["Tests"]
 
+  # Without modular headers `pod install` fails with static libraries: the Swift pod
+  # FirebaseCoreInternal depends upon GoogleUtilities, which does not define modules.
+  pod 'GoogleUtilities', :modular_headers => true
+
   config = use_native_modules!
 
   use_react_native!(
@@ -37,5 +41,19 @@ target 'TealiumPrismReactNativeExample' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 27 rejects deployment targets below iOS 15, but react_native_post_install raises only
+    # the pods' code targets, not their resource bundles (privacy manifests). SQLite.swift (via
+    # tealium-prism/Core), GoogleUtilities and nanopb declare iOS 12, PromisesObjC iOS 9.
+    # TODO: Remove once react_native_post_install also raises resource bundles, or every pod with
+    # a resource bundle declares iOS 15+ (e.g. SQLite.swift 0.17+).
+    installer.target_installation_results.pod_target_installation_results.each_value do |result|
+      result.resource_bundle_targets.each do |bundle|
+        bundle.build_configurations.each do |c|
+          current = c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f
+          c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = [current, min_ios_version_supported.to_f].max.to_s
+        end
+      end
+    end
   end
 end
