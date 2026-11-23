@@ -59,6 +59,15 @@ export default function InstancesScreen() {
 
   const handleCreate = () => {
     setError(null);
+    // Tealium.create returns an existing account/profile instance and ignores
+    // the new settings with only a console warning, so surface it here.
+    const key = `${account}-${profile}`;
+    if (instances.some((i) => i.key === key)) {
+      setError(
+        `${key} already exists. Shut it down first to apply new settings.`,
+      );
+      return;
+    }
     try {
       createInstance(
         account,
@@ -198,9 +207,9 @@ export default function InstancesScreen() {
         {settingsFile === "mobile_settings_firebase.json" && (
           <Text style={styles.hintText}>
             Needs Firebase credentials (iOS crashes without
-            GoogleService-Info.plist). Ignored if an instance for this
-            account/profile already exists; shut it down first. Enable Firebase
-            in one instance only.
+            GoogleService-Info.plist). Enable Firebase in one instance only.
+            After a JS reload, the native instance keeps its old settings: tap
+            Create, Shutdown, then Create again.
           </Text>
         )}
         <TouchableOpacity

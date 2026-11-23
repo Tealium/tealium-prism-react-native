@@ -32,17 +32,18 @@ Both file names are git-ignored anywhere in the repo, and `scripts/check-firebas
 
 ## Firebase settings
 
-The default `mobile_settings.json` has no Firebase dispatcher, because iOS crashes without `GoogleService-Info.plist`. With the credentials in place, pick **Settings: Firebase** on the Instances screen and tap **Create** to load `example/shared/mobile_settings_firebase.json`. Shut down any instance with the same account/profile first, otherwise the existing instance is returned and the new settings are ignored. Enable Firebase in one instance only, because the Firebase SDK is shared.
+The default `mobile_settings.json` has no Firebase dispatcher, because iOS crashes without `GoogleService-Info.plist`. With the credentials in place, pick **Settings: Firebase** on the Instances screen and tap **Create** to load `example/shared/mobile_settings_firebase.json`. Shut down any instance with the same account/profile first: the SDK would return it and ignore the new settings, so the Instances screen shows an error instead. After a JS reload the native instance survives while the list is empty: tap **Create**, **Shutdown**, then **Create** again. Enable Firebase in one instance only, because the Firebase SDK is shared.
 
-| Tealium event                                              | Firebase call                                    |
-| ---------------------------------------------------------- | ------------------------------------------------ |
-| `test_event` (Instances screen)                            | `logevent("test_event")`                         |
-| `purchase` with data `{"total": 19.99, "currency": "USD"}` | `logevent("purchase", {value, currency})`        |
-| `home` tracked as a view                                   | `logevent("screen_view", {screen_name: "home"})` |
-| `launch` (lifecycle, on Create)                            | `setuserid(tealium_visitor_id)`                  |
-| `trace_demo_event` (Trace screen, after Join)              | `setuserproperty("trace_id", tealium_trace_id)`  |
+| Tealium event                                              | Firebase call                                                                    |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `test_event` (Instances screen)                            | `logevent("test_event")`                                                         |
+| `purchase` with data `{"total": 19.99, "currency": "USD"}` | `logevent("purchase", {value: 19.99, currency: "USD"})`                          |
+| `home`, tracked as an event or a view                      | `logevent("screen_view", {screen_name: "home"})`                                 |
+| `launch` (lifecycle, on Create)                            | `setuserid(tealium_visitor_id)`                                                  |
+| `trace_demo_event` (Trace screen)                          | `setuserproperty("trace_id", tealium_trace_id)`, cleared when no trace is joined |
+| `login` with data `{"user_email": "user@example.com"}`     | `initiateconversionmeasurement(email_address: user_email)`, iOS only             |
 
-`initiateconversionmeasurement` is not mapped because it is iOS-only.
+`login` also picks up `user_email` from the Data Layer screen. `initiateconversionmeasurement` exists only in the iOS dispatcher, so on Android `login` logs a "Command not found" warning and sends nothing to Firebase.
 
 # Getting Started
 

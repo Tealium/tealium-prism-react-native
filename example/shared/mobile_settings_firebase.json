@@ -236,7 +236,49 @@
           },
           "parameters": {
             "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "trace_demo_event"
+            },
+            "map_to": {
+              "value": ""
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "property_value"
+          },
+          "parameters": {
+            "reference": {
               "key": "tealium_trace_id"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "login"
+            },
+            "map_to": {
+              "value": "initiateconversionmeasurement"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "email_address"
+          },
+          "parameters": {
+            "reference": {
+              "key": "user_email"
             }
           }
         }
