@@ -23,6 +23,12 @@ const LOG_LEVELS: LogLevel[] = [
   "silent",
 ];
 
+// Firebase is opt-in because iOS crashes on create without GoogleService-Info.plist.
+const SETTINGS_FILES = [
+  { label: "Default", file: "mobile_settings.json" },
+  { label: "Firebase", file: "mobile_settings_firebase.json" },
+];
+
 export default function InstancesScreen() {
   const {
     instances,
@@ -36,6 +42,7 @@ export default function InstancesScreen() {
   const [account, setAccount] = useState("tealiummobile");
   const [profile, setProfile] = useState("demo");
   const [environment, setEnvironment] = useState("dev");
+  const [settingsFile, setSettingsFile] = useState("mobile_settings.json");
   const [logLevel, setLogLevel] = useState<LogLevel | null>(null);
   const [logLevelDropdownOpen, setLogLevelDropdownOpen] = useState(false);
 
@@ -57,7 +64,7 @@ export default function InstancesScreen() {
         account,
         profile,
         environment,
-        "mobile_settings.json",
+        settingsFile,
         undefined,
         logLevel ?? undefined,
       );
@@ -166,6 +173,36 @@ export default function InstancesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        <Text style={styles.hintText}>Settings</Text>
+        <View style={styles.row}>
+          {SETTINGS_FILES.map(({ label, file }) => (
+            <TouchableOpacity
+              key={file}
+              style={[
+                styles.envButton,
+                settingsFile === file && styles.envButtonActive,
+              ]}
+              onPress={() => setSettingsFile(file)}
+            >
+              <Text
+                style={[
+                  styles.envButtonText,
+                  settingsFile === file && styles.envButtonTextActive,
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {settingsFile === "mobile_settings_firebase.json" && (
+          <Text style={styles.hintText}>
+            Needs Firebase credentials (iOS crashes without
+            GoogleService-Info.plist). Ignored if an instance for this
+            account/profile already exists; shut it down first. Enable Firebase
+            in one instance only.
+          </Text>
+        )}
         <TouchableOpacity
           style={styles.dropdown}
           onPress={() => setLogLevelDropdownOpen(true)}

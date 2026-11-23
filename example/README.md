@@ -30,6 +30,20 @@ This repo is public: **never commit real Firebase config files.** To run the Fir
 
 Both file names are git-ignored anywhere in the repo, and `scripts/check-firebase-credentials.sh` (run by the pre-commit hook and CI) fails if either one is tracked, even after `git add -f`. If one was ever pushed, untrack it with `git rm --cached <file>` and rotate the keys in the Firebase console: the public history already exposed them.
 
+## Firebase settings
+
+The default `mobile_settings.json` has no Firebase dispatcher, because iOS crashes without `GoogleService-Info.plist`. With the credentials in place, pick **Settings: Firebase** on the Instances screen and tap **Create** to load `example/shared/mobile_settings_firebase.json`. Shut down any instance with the same account/profile first, otherwise the existing instance is returned and the new settings are ignored. Enable Firebase in one instance only, because the Firebase SDK is shared.
+
+| Tealium event                                              | Firebase call                                    |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| `test_event` (Instances screen)                            | `logevent("test_event")`                         |
+| `purchase` with data `{"total": 19.99, "currency": "USD"}` | `logevent("purchase", {value, currency})`        |
+| `home` tracked as a view                                   | `logevent("screen_view", {screen_name: "home"})` |
+| `launch` (lifecycle, on Create)                            | `setuserid(tealium_visitor_id)`                  |
+| `trace_demo_event` (Trace screen, after Join)              | `setuserproperty("trace_id", tealium_trace_id)`  |
+
+`initiateconversionmeasurement` is not mapped because it is iOS-only.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

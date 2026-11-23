@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0C80B921A6F3F58F76C31292 /* libPods-TealiumPrismReactNativeExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-TealiumPrismReactNativeExample.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		4512B64030B48D3000A08F22 /* mobile_settings_firebase.json in Resources */ = {isa = PBXBuildFile; fileRef = 4512B63F30B48D3000A08F22 /* mobile_settings_firebase.json */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		CC8C5C9C8875ECA6019A0C63 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -21,6 +22,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TealiumPrismReactNativeExample/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = TealiumPrismReactNativeExample/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-TealiumPrismReactNativeExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TealiumPrismReactNativeExample.debug.xcconfig"; path = "Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample.debug.xcconfig"; sourceTree = "<group>"; };
+		4512B63F30B48D3000A08F22 /* mobile_settings_firebase.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = mobile_settings_firebase.json; path = ../shared/mobile_settings_firebase.json; sourceTree = SOURCE_ROOT; };
 		5709B34CF0A7D63546082F79 /* Pods-TealiumPrismReactNativeExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TealiumPrismReactNativeExample.release.xcconfig"; path = "Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-TealiumPrismReactNativeExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TealiumPrismReactNativeExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TealiumPrismReactNativeExample/AppDelegate.swift; sourceTree = "<group>"; };
@@ -44,6 +46,7 @@
 		13B07FAE1A68108700A75B9A /* TealiumPrismReactNativeExample */ = {
 			isa = PBXGroup;
 			children = (
+				4512B63F30B48D3000A08F22 /* mobile_settings_firebase.json */,
 				E5DD0EBA3046C7DD001BFA30 /* mobile_settings.json */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
@@ -165,6 +168,7 @@
 				E5DD0EBB3046C7DD001BFA30 /* mobile_settings.json in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				4512B64030B48D3000A08F22 /* mobile_settings_firebase.json in Resources */,
 				CC8C5C9C8875ECA6019A0C63 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -196,9 +200,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -255,9 +263,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-TealiumPrismReactNativeExample/Pods-TealiumPrismReactNativeExample-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
