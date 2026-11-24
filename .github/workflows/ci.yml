@@ -13,6 +13,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -75,7 +78,7 @@ jobs:
 
       - name: Check turborepo cache for Android
         run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:android').cache.status")
+          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.taskId === '@tealium/prism-react-native-example#build:android').cache.status")
 
           if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
             echo "turbo_cache_hit=1" >> $GITHUB_ENV
@@ -111,9 +114,17 @@ jobs:
           yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}"
 
   build-ios:
+    # The default leg keeps the `build-ios` check name. The framework legs build with
+    # `use_frameworks!`, which the example Podfile enables when USE_FRAMEWORKS is set.
+    name: ${{ matrix.linkage == 'default' && 'build-ios' || format('build-ios ({0} frameworks)', matrix.linkage) }}
     runs-on: macos-latest
     needs: build-library
     if: github.event.pull_request.draft == false
+
+    strategy:
+      fail-fast: false
+      matrix:
+        linkage: [default, static, dynamic]
 
     env:
       XCODE_VERSION: "26.6"
@@ -128,17 +139,23 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      # Leave USE_FRAMEWORKS unset for the default leg: the Podfile and React Native's
+      # post-install treat any value, even an empty one, as a framework linkage.
+      - name: Configure framework linkage
+        if: matrix.linkage != 'default'
+        run: echo "USE_FRAMEWORKS=${{ matrix.linkage }}" >> "$GITHUB_ENV"
+
       - name: Cache turborepo for iOS
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-turborepo-ios-${{ matrix.linkage }}-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-turborepo-ios-
+            ${{ runner.os }}-turborepo-ios-${{ matrix.linkage }}-
 
       - name: Check turborepo cache for iOS
         run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
+          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.taskId === '@tealium/prism-react-native-example#build:ios').cache.status")
 
           if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
             echo "turbo_cache_hit=1" >> $GITHUB_ENV
@@ -156,9 +173,9 @@ jobs:
           path: |
             example/ios/Pods
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-pods-${{ hashFiles('example/ios/Podfile.lock') }}
+          key: ${{ runner.os }}-pods-${{ matrix.linkage }}-${{ hashFiles('example/ios/Podfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pods-
+            ${{ runner.os }}-pods-${{ matrix.linkage }}-
 
       - name: Install cocoapods
         run: |
