@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+The packages now wrap the Tealium Prism SDK 0.8.0 for iOS and Android. The JavaScript API is the same as in 0.1.0, so your app code needs no changes. For the changes in the native SDK, see the [Prism for Swift 0.8.0](https://github.com/Tealium/tealium-prism-swift/releases/tag/0.8.0) and [Prism for Kotlin 0.8.0](https://github.com/Tealium/tealium-prism-kotlin/releases/tag/0.8.0) release notes.
+
+### Packages
+
+| Package | Version | Native dependency |
+| --- | --- | --- |
+| `@tealium/prism-react-native` | 0.2.0 | `tealium-prism/Core` ~> 0.8 (iOS), `com.tealium.prism:prism-core:0.8.0` (Android) |
+| `@tealium/prism-react-native-lifecycle` | 0.2.0 | `tealium-prism/Lifecycle` ~> 0.8, `com.tealium.prism:prism-lifecycle:0.8.0` |
+| `@tealium/prism-react-native-extensions` | 0.2.0 | `tealium-prism/Extensions` ~> 0.8, `com.tealium.prism:prism-extensions:0.8.0` |
+| `@tealium/prism-react-native-js-transformer` | 0.2.0 | `tealium-prism/JavaScriptTransformer` ~> 0.8, `com.tealium.prism:prism-js-transformer-rhino:0.8.0` |
+
+The optional packages now require `@tealium/prism-react-native` 0.2.0. Upgrade all installed Tealium packages together.
 
 ### Fixed
 
