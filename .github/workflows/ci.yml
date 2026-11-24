@@ -124,7 +124,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        linkage: [default, static]
+        linkage: [default, static, dynamic]
 
     env:
       XCODE_VERSION: "26.6"
