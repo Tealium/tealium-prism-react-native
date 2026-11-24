@@ -1,0 +1,407 @@
+{
+  "core": {
+    "log_level": "debug",
+    "max_queue_size": 100,
+    "expiration": 86400,
+    "refresh_interval": 900
+  },
+  "modules": {
+    "Trace": {
+      "module_type": "Trace",
+      "enabled": true,
+      "order": 0
+    },
+    "Lifecycle": {
+      "module_type": "Lifecycle",
+      "enabled": true,
+      "order": 1,
+      "rules": "lc-data",
+      "configuration": {
+        "tracked_lifecycle_events": [
+          "launch",
+          "wake",
+          "sleep"
+        ],
+        "autotracking_enabled": true,
+        "data_target": "allEvents"
+      }
+    },
+    "Collect": {
+      "module_type": "Collect",
+      "enabled": true
+    },
+    "VisitorId": {
+      "module_type": "VisitorId",
+      "enabled": true,
+      "configuration": {
+        "visitor_identity_key": "user_email"
+      }
+    },
+    "FirebaseDispatcher": {
+      "module_type": "FirebaseDispatcher",
+      "mappings": [
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "test_event"
+            },
+            "map_to": {
+              "value": "logevent"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "event_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "test_event"
+            },
+            "map_to": {
+              "value": "test_event"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "purchase"
+            },
+            "map_to": {
+              "value": "logevent"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "event_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "purchase"
+            },
+            "map_to": {
+              "value": "purchase"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "parameters.value"
+          },
+          "parameters": {
+            "reference": {
+              "key": "total"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "parameters.currency"
+          },
+          "parameters": {
+            "reference": {
+              "key": "currency"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "home"
+            },
+            "map_to": {
+              "value": "logevent"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "event_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "home"
+            },
+            "map_to": {
+              "value": "screen_view"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "parameters.screen_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "home"
+            },
+            "map_to": {
+              "value": "home"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "launch"
+            },
+            "map_to": {
+              "value": "setuserid"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "user_id"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_visitor_id"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "trace_demo_event"
+            },
+            "map_to": {
+              "value": "setuserproperty"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "property_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "trace_demo_event"
+            },
+            "map_to": {
+              "value": "trace_id"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "property_value"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "trace_demo_event"
+            },
+            "map_to": {
+              "value": ""
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "property_value"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_trace_id"
+            }
+          }
+        },
+        {
+          "destination": {
+            "key": "command_name"
+          },
+          "parameters": {
+            "reference": {
+              "key": "tealium_event"
+            },
+            "filter": {
+              "value": "login"
+            },
+            "map_to": {
+              "value": "initiateconversionmeasurement"
+            }
+          }
+        },
+        {
+          "destination": {
+            "path": "email_address"
+          },
+          "parameters": {
+            "reference": {
+              "key": "user_email"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "barriers": {
+    "BatchingBarrier": {
+      "barrier_id": "BatchingBarrier",
+      "scope": [
+        "Collect"
+      ],
+      "configuration": {
+        "batch_size": 5
+      }
+    }
+  },
+  "load_rules": {
+    "lc-data": {
+      "id": "lc-data",
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "lifecycle_data_test"
+        }
+      }
+    }
+  },
+  "transformations": {
+    "Lowercase-1": {
+      "transformer_id": "Lowercase",
+      "transformation_id": "1",
+      "order": 1,
+      "scope": "aftercollectors",
+      "configuration": {
+        "variables": [
+          {
+            "key": "enabled_modules"
+          }
+        ]
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "lowercase_modules"
+        }
+      }
+    },
+    "SetDataValues-2": {
+      "transformer_id": "SetDataValues",
+      "transformation_id": "2",
+      "order": 2,
+      "scope": "aftercollectors",
+      "configuration": {
+        "operations": [
+          {
+            "input": {
+              "key": "tealium_event"
+            },
+            "destination": {
+              "path": "copied_event"
+            }
+          }
+        ]
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "set_copied_event"
+        }
+      }
+    },
+    "PersistDataValue-3": {
+      "transformer_id": "PersistDataValue",
+      "transformation_id": "3",
+      "order": 3,
+      "scope": "aftercollectors",
+      "configuration": {
+        "update_policy": "allowupdate",
+        "duration": -1,
+        "input": {
+          "value": "persisted forever (but can be updated)"
+        },
+        "destination": {
+          "path": "persisted_value"
+        }
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "persist_value"
+        }
+      }
+    },
+    "JavaScriptTransformer-4": {
+      "transformer_id": "JavaScriptTransformer",
+      "transformation_id": "4",
+      "order": 4,
+      "scope": "aftercollectors",
+      "configuration": {
+        "js_code": "payload.js_result = payload.enabled_modules.length + ' modules active'"
+      },
+      "conditions": {
+        "variable": {
+          "key": "tealium_event"
+        },
+        "operator": "equals_ignore_case",
+        "filter": {
+          "value": "js_demo_event"
+        }
+      }
+    }
+  }
+}

@@ -30,6 +30,21 @@ This repo is public: **never commit real Firebase config files.** To run the Fir
 
 Both file names are git-ignored anywhere in the repo, and `scripts/check-firebase-credentials.sh` (run by the pre-commit hook and CI) fails if either one is tracked, even after `git add -f`. If one was ever pushed, untrack it with `git rm --cached <file>` and rotate the keys in the Firebase console: the public history already exposed them.
 
+## Firebase settings
+
+The default `mobile_settings.json` has no Firebase dispatcher, because iOS crashes without `GoogleService-Info.plist`. With the credentials in place, pick **Local Settings File: Firebase** on the Instances screen and tap **Create** to load `example/shared/mobile_settings_firebase.json`. Shut down any instance with the same account/profile first: the SDK would return it and ignore the new settings, so the Instances screen shows an error instead. After a JS reload the native instance survives while the list is empty: tap **Create**, **Shutdown**, then **Create** again. Only one instance can use the Firebase settings: both would call the same Firebase Analytics singleton, so the last one to set the user ID or `trace_id` would overwrite it for both. The Instances screen blocks a second Firebase instance, but it can't see one that survived a JS reload.
+
+| Tealium event                                              | Firebase call                                                                    |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `test_event` (Instances screen)                            | `logevent("test_event")`                                                         |
+| `purchase` with data `{"total": 19.99, "currency": "USD"}` | `logevent("purchase", {value: 19.99, currency: "USD"})`                          |
+| `home`, tracked as an event or a view                      | `logevent("screen_view", {screen_name: "home"})`                                 |
+| `launch` (lifecycle, on Create)                            | `setuserid(tealium_visitor_id)`                                                  |
+| `trace_demo_event` (Trace screen)                          | `setuserproperty("trace_id", tealium_trace_id)`, cleared when no trace is joined |
+| `login` with data `{"user_email": "user@example.com"}`     | `initiateconversionmeasurement(email_address: user_email)`, iOS only             |
+
+`login` also picks up `user_email` from the Data Layer screen. `initiateconversionmeasurement` exists only in the iOS dispatcher, so on Android `login` logs a "Command not found" warning and sends nothing to Firebase.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

@@ -11,6 +11,8 @@ import { Tealium, type LogLevel } from "@tealium/prism-react-native";
 type InstanceInfo = {
   key: string;
   instance: Tealium;
+  /** The local settings file the instance was created with, if any. */
+  settingsFile?: string;
 };
 
 type TealiumContextValue = {
@@ -82,7 +84,9 @@ export function TealiumProvider({ children }: { children: ReactNode }) {
       const key = instance.instanceId;
 
       setInstances((prev) =>
-        prev.some((i) => i.key === key) ? prev : [...prev, { key, instance }],
+        prev.some((i) => i.key === key)
+          ? prev
+          : [...prev, { key, instance, settingsFile }],
       );
       setActiveKey(key);
     },
