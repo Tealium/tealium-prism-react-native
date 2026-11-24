@@ -27,7 +27,8 @@ const LOG_LEVELS: LogLevel[] = [
 const SETTINGS_FILES = [
   { label: "Default", file: "mobile_settings.json" },
   { label: "Firebase", file: "mobile_settings_firebase.json" },
-];
+] as const;
+const [DEFAULT_SETTINGS, FIREBASE_SETTINGS] = SETTINGS_FILES;
 
 export default function InstancesScreen() {
   const {
@@ -42,7 +43,9 @@ export default function InstancesScreen() {
   const [account, setAccount] = useState("tealiummobile");
   const [profile, setProfile] = useState("demo");
   const [environment, setEnvironment] = useState("dev");
-  const [settingsFile, setSettingsFile] = useState("mobile_settings.json");
+  const [settingsFile, setSettingsFile] = useState<string>(
+    DEFAULT_SETTINGS.file,
+  );
   const [logLevel, setLogLevel] = useState<LogLevel | null>(null);
   const [logLevelDropdownOpen, setLogLevelDropdownOpen] = useState(false);
 
@@ -65,6 +68,17 @@ export default function InstancesScreen() {
     if (instances.some((i) => i.key === key)) {
       setError(
         `${key} already exists. Shut it down first to apply new settings.`,
+      );
+      return;
+    }
+    // Both dispatchers would share the Firebase Analytics singleton, so the
+    // last instance to set the user ID or a user property would overwrite it.
+    const firebaseOwner = instances.find(
+      (i) => i.settingsFile === FIREBASE_SETTINGS.file,
+    );
+    if (settingsFile === FIREBASE_SETTINGS.file && firebaseOwner) {
+      setError(
+        `Firebase is already enabled in ${firebaseOwner.key}. Shut it down first, because the Firebase SDK is shared.`,
       );
       return;
     }
@@ -182,7 +196,7 @@ export default function InstancesScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={styles.hintText}>Settings</Text>
+        <Text style={styles.hintText}>Local Settings File</Text>
         <View style={styles.row}>
           {SETTINGS_FILES.map(({ label, file }) => (
             <TouchableOpacity
@@ -204,12 +218,12 @@ export default function InstancesScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        {settingsFile === "mobile_settings_firebase.json" && (
+        {settingsFile === FIREBASE_SETTINGS.file && (
           <Text style={styles.hintText}>
             Needs Firebase credentials (iOS crashes without
-            GoogleService-Info.plist). Enable Firebase in one instance only.
-            After a JS reload, the native instance keeps its old settings: tap
-            Create, Shutdown, then Create again.
+            GoogleService-Info.plist). Only one instance can use Firebase. After
+            a JS reload, the native instance keeps its old settings: tap Create,
+            Shutdown, then Create again.
           </Text>
         )}
         <TouchableOpacity
@@ -295,7 +309,11 @@ export default function InstancesScreen() {
                 style={styles.instanceMain}
                 onPress={() => setActiveKey(info.key)}
               >
-                <Text style={styles.instanceKey}>{info.key}</Text>
+                <Text style={styles.instanceKey}>
+                  {info.key}
+                  {info.settingsFile === FIREBASE_SETTINGS.file &&
+                    ` (${FIREBASE_SETTINGS.label})`}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.shutdownButton}
