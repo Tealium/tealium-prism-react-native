@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **iOS:** `@tealium/prism-react-native` now builds when the app's Podfile uses `use_frameworks!`, with static or dynamic linkage. Before, the build failed with `'TealiumPrismReactNative-Swift.h' file not found`.
+
 ## 0.1.0
 
 First release of Tealium Prism for React Native. The packages wrap the Tealium Prism SDK 0.7.0 for iOS and Android: you call a typed TypeScript API, and the native SDKs run the tracking pipeline.

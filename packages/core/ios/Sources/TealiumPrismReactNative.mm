@@ -1,5 +1,11 @@
 #import "TealiumPrismReactNative.h"
+// Framework builds (`use_frameworks!`) only expose the generated Swift header
+// under the module path; static library builds expose it by bare name.
+#if __has_include(<TealiumPrismReactNative/TealiumPrismReactNative-Swift.h>)
+#import <TealiumPrismReactNative/TealiumPrismReactNative-Swift.h>
+#else
 #import "TealiumPrismReactNative-Swift.h"
+#endif
 
 @implementation TealiumPrismReactNative
 
